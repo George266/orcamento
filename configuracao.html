@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configuração de Orçamento - Gestão SUS</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Theme Configuration -->
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "primary-dark": "#0f5bbd",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a2432",
+                        "border-light": "#e7ecf3",
+                        "border-dark": "#2d3b4f",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-10 py-3 sticky top-0 z-50 shadow-sm">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">local_hospital</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Gestão de Ofertas SUS</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Ofertas</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Agendamentos</a>
+<a class="text-primary text-sm font-bold leading-normal relative after:content-[''] after:absolute after:-bottom-5 after:left-0 after:w-full after:h-0.5 after:bg-primary" href="#">Orçamento</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Relatórios</a>
+</nav>
+<div class="flex items-center gap-3 pl-4 border-l border-border-light dark:border-border-dark">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-slate-900 dark:text-white">Admin. Financeiro</p>
+<p class="text-[10px] text-slate-500 dark:text-slate-400">Secretaria de Saúde</p>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-primary/20" data-alt="Profile picture of a health administrator" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAX9uw011M6iai1xMZW5Gv0ejd7_JgWS34eOREYu0H1syjs3zTXQI043YJiIEJTogt_hkVb1m0E_seBPfDpyy3HawtZ_3y_LLXM3FKVHyf3vmztpSRqoixFlupXuyKd3Uvc-KiGbkwOE7Qq3rP7mEhWA-TvLb70bMuQBAGw2oCoQURLNyBSoYM1GOZt4tQ2CGrqs3ieWqKI01AQhMB3jy653XBrG76uVspvNkGmiSthVBPMPsgh9dzfcjfjjB-V_vVbYVSW5QI0i_g");'></div>
+</div>
+</div>
+</header>
+<main class="flex-1 w-full max-w-[1440px] mx-auto px-6 py-8">
+<!-- Breadcrumbs -->
+<div class="mb-6">
+<div class="flex flex-wrap gap-2 items-center">
+<a class="text-slate-500 dark:text-slate-400 hover:text-primary text-sm font-medium leading-normal flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[18px]">home</span> Início
+                </a>
+<span class="text-slate-400 dark:text-slate-600 text-sm font-medium leading-normal">/</span>
+<a class="text-slate-500 dark:text-slate-400 hover:text-primary text-sm font-medium leading-normal" href="#">Configurações</a>
+<span class="text-slate-400 dark:text-slate-600 text-sm font-medium leading-normal">/</span>
+<span class="text-slate-900 dark:text-white text-sm font-bold leading-normal">Orçamento</span>
+</div>
+</div>
+<!-- Page Heading -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-tight">Painel de Configuração Orçamentária</h1>
+<p class="text-slate-500 dark:text-slate-400 text-base font-normal max-w-2xl">Gerenciamento centralizado de procedimentos financeiros, valores de incentivo e metas do plano operativo.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-slate-700 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+                    Exportar Relatório
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark rounded-lg text-white text-sm font-bold transition-colors shadow-sm shadow-primary/30">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                    Configurações Globais
+                </button>
+</div>
+</div>
+<!-- KPI Cards (Optional Context) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Procedimentos</p>
+<div class="flex items-end justify-between">
+<span class="text-2xl font-bold text-slate-900 dark:text-white">1.248</span>
+<span class="text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span> 12
+                    </span>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Incentivo Médio</p>
+<div class="flex items-end justify-between">
+<span class="text-2xl font-bold text-slate-900 dark:text-white">R$ 45,20</span>
+<span class="text-slate-400 text-xs font-normal">por procedimento</span>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Metas Pactuadas (Mês)</p>
+<div class="flex items-end justify-between">
+<span class="text-2xl font-bold text-primary">85%</span>
+<div class="w-16 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full ml-2 mb-2">
+<div class="w-[85%] h-full bg-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Orçado</p>
+<div class="flex items-end justify-between">
+<span class="text-2xl font-bold text-slate-900 dark:text-white">R$ 1.2M</span>
+<span class="text-green-600 text-xs font-bold">Em dia</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<!-- SECTION 1: Cadastro de Procedimentos -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm flex flex-col overflow-hidden h-full">
+<div class="p-5 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/30">
+<div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">medical_services</span>
+                            Cadastro de Procedimentos
+                        </h2>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Gerencie os valores e incentivos por código SIGTAP.</p>
+</div>
+<button class="group flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
+<span class="material-symbols-outlined text-[20px] group-hover:rotate-90 transition-transform">add</span>
+                        Novo Procedimento
+                    </button>
+</div>
+<!-- Filters -->
+<div class="p-4 bg-white dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<div class="relative w-full">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-400">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-2.5 border border-border-light dark:border-border-dark rounded-lg leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar por código SIGTAP ou nome do procedimento..." type="text"/>
+</div>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto flex-1">
+<table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+<thead class="bg-slate-50 dark:bg-slate-800/50">
+<tr>
+<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Código SIGTAP</th>
+<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Procedimento</th>
+<th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Valor SIGTAP</th>
+<th class="px-6 py-3 text-right text-xs font-bold text-primary uppercase tracking-wider" scope="col">Incentivo</th>
+<th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Ações</th>
+</tr>
+</thead>
+<tbody class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">03.01.06.006-1</td>
+<td class="px-6 py-4">
+<div class="text-sm font-semibold text-slate-900 dark:text-white">Atendimento de Urgência</div>
+<div class="text-xs text-slate-500">Linha: Rede de Urgência</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 dark:text-slate-300">R$ 12,00</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 rounded-lg">R$ 50,00</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<div class="flex items-center justify-end gap-2">
+<button class="text-slate-400 hover:text-primary transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">02.11.07.012-9</td>
+<td class="px-6 py-4">
+<div class="text-sm font-semibold text-slate-900 dark:text-white">Eletrocardiograma</div>
+<div class="text-xs text-slate-500">Linha: Cardiologia Básica</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 dark:text-slate-300">R$ 5,30</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 rounded-lg">R$ 15,00</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<div class="flex items-center justify-end gap-2">
+<button class="text-slate-400 hover:text-primary transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">04.15.01.001-2</td>
+<td class="px-6 py-4">
+<div class="text-sm font-semibold text-slate-900 dark:text-white">Tratamento de Hipertensão</div>
+<div class="text-xs text-slate-500">Linha: Doenças Crônicas</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 dark:text-slate-300">R$ 4,55</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 rounded-lg">R$ 10,00</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<div class="flex items-center justify-end gap-2">
+<button class="text-slate-400 hover:text-primary transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-3 border-t border-border-light dark:border-border-dark bg-slate-50 dark:bg-slate-800/30 text-center">
+<button class="text-primary text-sm font-bold hover:underline">Ver todos (128)</button>
+</div>
+</section>
+<!-- SECTION 2: Configuração do Plano Operativo (PO) -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm flex flex-col overflow-hidden h-full">
+<div class="p-5 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/30">
+<div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">assignment</span>
+                            Plano Operativo (PO)
+                        </h2>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Defina metas mensais por instituto.</p>
+</div>
+<button class="group flex items-center gap-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[20px] text-primary">add_circle</span>
+                        Configurar Meta
+                    </button>
+</div>
+<!-- Filters PO -->
+<div class="p-4 bg-white dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row gap-3">
+<select class="form-select block w-full sm:w-1/2 pl-3 pr-10 py-2 border-border-light dark:border-border-dark rounded-lg leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+<option>Todos os Institutos</option>
+<option>Hosp. Santa Casa</option>
+<option>Hospital Geral</option>
+<option>UPA Central</option>
+</select>
+<select class="form-select block w-full sm:w-1/2 pl-3 pr-10 py-2 border-border-light dark:border-border-dark rounded-lg leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+<option>Período: Junho/2024</option>
+<option>Período: Maio/2024</option>
+<option>Período: Abril/2024</option>
+</select>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto flex-1">
+<table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+<thead class="bg-slate-50 dark:bg-slate-800/50">
+<tr>
+<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Instituto</th>
+<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Procedimento</th>
+<th class="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Meta (Mês)</th>
+<th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Período</th>
+<th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Ações</th>
+</tr>
+</thead>
+<tbody class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group/row">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-[18px]">apartment</span>
+</div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Hosp. Santa Casa</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[150px]" title="Atendimento de Urgência">Atendimento de Urgência</div>
+<div class="text-xs font-mono text-slate-400">03.01.06.006-1</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        500 un
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">Jun/2024</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group/row">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-[18px]">apartment</span>
+</div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">Hospital Geral</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[150px]" title="Eletrocardiograma">Eletrocardiograma</div>
+<div class="text-xs font-mono text-slate-400">02.11.07.012-9</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        1.200 un
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">Jun/2024</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group/row">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-[18px]">local_hospital</span>
+</div>
+<div class="text-sm font-medium text-slate-900 dark:text-white">UPA Central</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[150px]" title="Tratamento de Hipertensão">Tratamento de Hipertensão</div>
+<div class="text-xs font-mono text-slate-400">04.15.01.001-2</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        300 un
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">Jun/2024</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-3 border-t border-border-light dark:border-border-dark bg-slate-50 dark:bg-slate-800/30 text-center">
+<button class="text-primary text-sm font-bold hover:underline">Carregar mais dados...</button>
+</div>
+</section>
+</div>
+</main>
+<!-- Modal Example (Hidden by default, shown here conceptually as part of the design structure, usually toggled via JS) -->
+<!-- Ideally, this would be hidden with class "hidden" and toggled. For the purpose of the design screenshot, I'll add a 'Slide Over' style conceptual div on the side -->
+<!-- Footer -->
+<footer class="mt-auto border-t border-border-light dark:border-border-dark bg-white dark:bg-surface-dark py-6 px-10">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+<div>
+<span class="font-bold">Gestão de Ofertas SUS</span> © 2024 Ministério da Saúde. Todos os direitos reservados.
+            </div>
+<div class="flex gap-6">
+<a class="hover:text-primary transition-colors" href="#">Política de Privacidade</a>
+<a class="hover:text-primary transition-colors" href="#">Termos de Uso</a>
+<a class="hover:text-primary transition-colors" href="#">Suporte Técnico</a>
+</div>
+</div>
+</footer>
+</body></html>

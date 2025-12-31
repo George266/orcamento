@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Acesso ao Sistema - SUS</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                        "surface-dark": "#1e293b",
+                        "border-light": "#cfd9e7",
+                        "border-dark": "#334155",
+                        "text-main": "#0d131b",
+                        "text-sub": "#4c6c9a",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-slate-100 antialiased h-screen overflow-hidden selection:bg-primary/20 selection:text-primary">
+<div class="flex h-full w-full">
+<!-- Left Panel: Brand & Visual -->
+<div class="hidden lg:flex lg:w-1/2 relative flex-col justify-between bg-slate-900 text-white overflow-hidden">
+<!-- Background Image -->
+<div class="absolute inset-0">
+<img alt="Abstract clean blue medical background representing healthcare administration" class="h-full w-full object-cover opacity-50" data-alt="Abstract clean blue medical background representing healthcare administration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsoWkcDAkWpr2rN73PBqODJh21cDK79BVaG3f027DQ_o2_6aspDILQ3abC7EHC6vXFJCv-wrZDqTRjkwYpxtaGLywrH3hiJwUwLRwngfKq3YFA98g4EaIOt6NT859vz1FZAClnbpm5FVOkvJuGs-32e2OwY5pzcfcOd_FwTqmt9G-2mCxnL73axWVf6lCtFH8Ihb6Kh4rg7uFANtM2ZEjce_RMyXi7xkqlJ_p0eZW1QVSyHXRUL6xZMPRs5wCs-vZ4ySp36omBFzs"/>
+<!-- Gradient Overlay -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary/90 via-blue-900/85 to-slate-900/90 mix-blend-multiply"></div>
+<div class="absolute inset-0 bg-primary/20"></div>
+</div>
+<!-- Content -->
+<div class="relative z-10 flex flex-col h-full justify-between p-16">
+<!-- Logo Area -->
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+<span class="material-symbols-outlined text-white">local_hospital</span>
+</div>
+<span class="text-xl font-bold tracking-tight text-white">SUS Digital</span>
+</div>
+<!-- Hero Text -->
+<div class="max-w-xl">
+<h2 class="text-4xl font-bold mb-6 leading-tight tracking-tight">
+                        Eficiência na Gestão da Saúde Pública
+                    </h2>
+<p class="text-lg text-blue-100/80 leading-relaxed font-light">
+                        Plataforma integrada para monitoramento de ofertas, controle orçamentário e incentivos financeiros do Sistema Único de Saúde.
+                    </p>
+</div>
+<!-- Footer/Copyright -->
+<div class="flex items-center justify-between text-sm text-blue-200/60 pt-8 border-t border-white/10">
+<p>© 2024 Ministério da Saúde</p>
+<div class="flex gap-4">
+<a class="hover:text-white transition-colors" href="#">Termos de Uso</a>
+<a class="hover:text-white transition-colors" href="#">Privacidade</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Login Form -->
+<div class="flex flex-1 flex-col items-center justify-center p-4 sm:p-8 lg:p-16 bg-background-light dark:bg-background-dark overflow-y-auto">
+<div class="w-full max-w-[440px] flex flex-col gap-8">
+<!-- Mobile Logo -->
+<div class="lg:hidden flex justify-center pb-4 text-primary">
+<span class="material-symbols-outlined text-5xl">local_hospital</span>
+</div>
+<!-- Heading -->
+<div class="flex flex-col gap-2">
+<h1 class="text-text-main dark:text-white text-3xl sm:text-4xl font-black leading-tight tracking-[-0.033em]">
+                        Acesso ao Sistema
+                    </h1>
+<p class="text-text-sub dark:text-slate-400 text-base font-normal leading-normal">
+                        Gestão de Ofertas e Incentivos Financeiros
+                    </p>
+</div>
+<!-- Form -->
+<form class="flex flex-col gap-5" onsubmit="event.preventDefault();">
+<!-- Email Input -->
+<div class="flex flex-col gap-2">
+<label class="text-text-main dark:text-slate-200 text-sm font-semibold leading-normal" for="email">
+                            E-mail Institucional
+                        </label>
+<div class="relative group">
+<input class="peer form-input flex w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark h-12 px-4 pl-11 text-text-main dark:text-white placeholder:text-text-sub/50 dark:placeholder:text-slate-500 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all shadow-sm" id="email" placeholder="exemplo@saude.gov.br" type="email" value=""/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-sub dark:text-slate-500 peer-focus:text-primary transition-colors text-[20px]">
+                                mail
+                            </span>
+</div>
+</div>
+<!-- Password Input -->
+<div class="flex flex-col gap-2">
+<label class="text-text-main dark:text-slate-200 text-sm font-semibold leading-normal" for="password">
+                            Senha
+                        </label>
+<div class="relative group">
+<input class="peer form-input flex w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark h-12 px-4 pl-11 pr-11 text-text-main dark:text-white placeholder:text-text-sub/50 dark:placeholder:text-slate-500 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all shadow-sm" id="password" placeholder="••••••••" type="password" value=""/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-sub dark:text-slate-500 peer-focus:text-primary transition-colors text-[20px]">
+                                lock
+                            </span>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-text-sub dark:text-slate-500 hover:text-text-main dark:hover:text-white transition-colors cursor-pointer outline-none focus:text-primary" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Forgot Password -->
+<div class="flex justify-end pt-1">
+<a class="text-primary text-sm font-medium hover:underline hover:text-blue-700 dark:hover:text-blue-400 transition-colors" href="#">
+                            Esqueci minha senha
+                        </a>
+</div>
+<!-- Submit Button -->
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary hover:bg-blue-700 active:bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] transition-all shadow-md shadow-primary/20 mt-2">
+<span class="truncate">Acessar Painel</span>
+</button>
+</form>
+<!-- Divider & Support -->
+<div class="flex flex-col items-center gap-6 mt-4">
+<div class="relative w-full text-center">
+<div aria-hidden="true" class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-border-light dark:border-border-dark"></div>
+</div>
+<div class="relative flex justify-center">
+<span class="bg-background-light dark:bg-background-dark px-2 text-xs text-text-sub dark:text-slate-500 uppercase tracking-wider">Suporte</span>
+</div>
+</div>
+<p class="text-xs text-center text-text-sub dark:text-slate-500 leading-relaxed max-w-xs">
+                        Problemas com o acesso? Entre em contato com a equipe de TI local ou ligue para a central 136.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+</body></html>
