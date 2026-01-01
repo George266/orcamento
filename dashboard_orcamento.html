@@ -1,20 +1,20 @@
 <!DOCTYPE html>
+<html class="light" lang="pt-BR">
 
-<html class="light" lang="pt-BR"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Gestão SUS - Dashboard de Orçamento</title>
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<!-- Material Symbols -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Theme Configuration -->
-<script id="tailwind-config">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Dashboard - Gestão SUS</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -24,350 +24,170 @@
                         "background-light": "#f6f7f8",
                         "background-dark": "#101822",
                     },
-                    fontFamily: {
-                        "display": ["Public Sans", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.375rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
+                    fontFamily: { "display": ["Public Sans", "sans-serif"] },
                 },
             },
         }
     </script>
-<style>
+    <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+
         .icon-filled {
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden flex flex-col min-h-screen">
-<!-- Top Navbar -->
-<header class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
-<div class="px-4 md:px-8 flex items-center justify-between h-16">
-<div class="flex items-center gap-4 text-slate-900 dark:text-white">
-<div class="size-8 text-primary flex items-center justify-center">
-<span class="material-symbols-outlined text-3xl">local_hospital</span>
-</div>
-<div>
-<h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
-<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Módulo Orçamento</p>
-</div>
-</div>
-<nav class="hidden md:flex items-center gap-6 lg:gap-8">
-<a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="#">Dashboard</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium" href="#">Ofertas</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium" href="#">Relatórios</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium" href="#">Configurações</a>
-</nav>
-<div class="flex items-center gap-4">
-<div class="hidden sm:flex flex-col items-end mr-2">
-<span class="text-sm font-semibold text-slate-900 dark:text-white">Admin. Regional</span>
-<span class="text-xs text-slate-500 dark:text-slate-400">Secretaria de Saúde</span>
-</div>
-<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-white dark:border-slate-700 shadow-sm" data-alt="Profile picture of the administrator showing a professional person" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAyFlwRA4UDctXElJSOGBmFZkZ-yDwkiaeK81gmXpAhOa_ikqRuXfao57EYHeCPKg0heSu0V2HEHyZjIVyOnMYcp3sgX-by-FUoKe-TRFE_HWbv4ibG5haIEqGcFBjpnadhfv9oTTl5RlY2H-e4ENr7effO3mehOs2ZCLkrK8gMpiKeS9KL1jfyHLeEGBb0rlr_fGAX6_JXSl9HlKq81lLQZHJicK-cliGS_us1z2nDNwnMsHA4Svh1ToA9WzGQhKpYFzVNovaVOKE");'></div>
-<button class="hidden sm:flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-<span class="material-symbols-outlined">logout</span>
-</button>
-</div>
-</div>
-</header>
-<!-- Main Content -->
-<main class="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8">
-<!-- Page Header -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-<div class="flex flex-col gap-1">
-<h1 class="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">Visão Geral do Orçamento</h1>
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm md:text-base">
-<span class="material-symbols-outlined text-[20px]">calendar_month</span>
-<span>Competência: <strong>Outubro/2023</strong></span>
-<span class="mx-1">•</span>
-<span class="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-<span class="size-2 rounded-full bg-green-500 animate-pulse"></span>
-                        Em processamento
-                    </span>
-</div>
-</div>
-<div class="flex gap-3">
-<button class="flex items-center justify-center h-10 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-<span class="material-symbols-outlined mr-2 text-[18px]">filter_list</span>
-                    Filtrar
+
+<body
+    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased flex flex-col min-h-screen">
+    <header
+        class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
+        <div class="px-4 md:px-8 flex items-center justify-between h-16">
+            <a href="dashboard_orcamento.html"
+                class="flex items-center gap-4 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+                <div class="size-10 flex items-center justify-center overflow-hidden">
+                    <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Módulo Orçamento</p>
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
+                    href="dashboard_orcamento.html">Dashboard</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="acompanhamento_orcamento.html">Relatórios</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="configuracao.html">Configurações</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="usuarios.html">Administração</a>
+            </nav>
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:flex flex-col items-end mr-2">
+                    <span class="text-sm font-semibold">Recursos e Orçamento</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">FELUMA</span>
+                </div>
+                <button id="logout-btn"
+                    class="size-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onclick="handleLogout()">
+                    <span class="material-symbols-outlined">logout</span>
                 </button>
-<button class="flex items-center justify-center h-10 px-4 bg-primary text-white rounded-lg text-sm font-bold shadow-sm hover:bg-blue-600 transition-colors">
-                    Alterar Período
-                </button>
-</div>
-</div>
-<!-- KPI Cards Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-<!-- Card 1 -->
-<div class="bg-white dark:bg-[#101822] p-5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:border-primary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-primary">
-<span class="material-symbols-outlined icon-filled">handshake</span>
-</div>
-<span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold px-2 py-1 rounded">Meta</span>
-</div>
-<div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Total Pactuado</p>
-<h3 class="text-2xl font-bold text-slate-900 dark:text-white">150.000</h3>
-<p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Procedimentos previstos</p>
-</div>
-</div>
-<!-- Card 2 -->
-<div class="bg-white dark:bg-[#101822] p-5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:border-primary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
-<span class="material-symbols-outlined icon-filled">inventory_2</span>
-</div>
-<span class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-bold px-2 py-1 rounded">-5% da meta</span>
-</div>
-<div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Total Ofertado</p>
-<h3 class="text-2xl font-bold text-slate-900 dark:text-white">142.500</h3>
-<p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Vagas disponíveis no sistema</p>
-</div>
-</div>
-<!-- Card 3 -->
-<div class="bg-white dark:bg-[#101822] p-5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:border-primary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-lg text-teal-600 dark:text-teal-400">
-<span class="material-symbols-outlined icon-filled">donut_large</span>
-</div>
-<span class="text-xs font-bold px-2 py-1 rounded text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20">Bom</span>
-</div>
-<div>
-<div class="flex justify-between items-end mb-1">
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Meta Atingida</p>
-<span class="text-sm font-bold text-teal-600 dark:text-teal-400">95%</span>
-</div>
-<div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
-<div class="bg-teal-500 h-2.5 rounded-full" style="width: 95%"></div>
-</div>
-<p class="text-xs text-slate-400 dark:text-slate-500 mt-2">Cobertura da demanda</p>
-</div>
-</div>
-<!-- Card 4 -->
-<div class="bg-white dark:bg-[#101822] p-5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:border-primary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
-<span class="material-symbols-outlined icon-filled">payments</span>
-</div>
-<span class="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold px-2 py-1 rounded">+10% vs Mês ant.</span>
-</div>
-<div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Valor Financeiro Est.</p>
-<h3 class="text-2xl font-bold text-slate-900 dark:text-white truncate" title="R$ 4.250.000,00">R$ 4.250k</h3>
-<p class="text-xs text-slate-400 dark:text-slate-500 mt-1">SIGTAP + Incentivos Federais</p>
-</div>
-</div>
-</div>
-<!-- Layout Split: Table & Alerts -->
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-<!-- Main Column: Detailed Table -->
-<div class="xl:col-span-2 flex flex-col gap-6">
-<div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden">
-<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-[#151e2a]">
-<h3 class="font-bold text-slate-900 dark:text-white">Execução por Grupo de Procedimento</h3>
-<a class="text-sm font-medium text-primary hover:text-blue-700 dark:hover:text-blue-400" href="#">Ver relatório completo</a>
-</div>
-<div class="overflow-x-auto">
-<table class="w-full text-sm text-left">
-<thead class="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-<tr>
-<th class="px-6 py-3 font-semibold" scope="col">Grupo</th>
-<th class="px-6 py-3 font-semibold text-right" scope="col">Pactuado</th>
-<th class="px-6 py-3 font-semibold text-right" scope="col">Ofertado</th>
-<th class="px-6 py-3 font-semibold text-center" scope="col">Status</th>
-<th class="px-6 py-3 font-semibold text-center" scope="col">Ações</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-<tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
-<div class="flex items-center gap-3">
-<div class="size-2 rounded-full bg-green-500"></div>
-                                            0301 - Consultas Médicas
-                                        </div>
-</td>
-<td class="px-6 py-4 text-right">85.000</td>
-<td class="px-6 py-4 text-right font-medium">85.000</td>
-<td class="px-6 py-4 text-center">
-<span class="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200 dark:border-green-800">100%</span>
-</td>
-<td class="px-6 py-4 text-center">
-<button class="text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-</td>
-</tr>
-<tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
-<div class="flex items-center gap-3">
-<div class="size-2 rounded-full bg-yellow-500"></div>
-                                            0205 - Exames de Imagem
-                                        </div>
-</td>
-<td class="px-6 py-4 text-right">25.000</td>
-<td class="px-6 py-4 text-right font-medium text-yellow-600 dark:text-yellow-500">21.250</td>
-<td class="px-6 py-4 text-center">
-<span class="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold px-2.5 py-0.5 rounded border border-yellow-200 dark:border-yellow-800">85%</span>
-</td>
-<td class="px-6 py-4 text-center">
-<button class="text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-</td>
-</tr>
-<tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
-<div class="flex items-center gap-3">
-<div class="size-2 rounded-full bg-red-500"></div>
-                                            0401 - Pequenas Cirurgias
-                                        </div>
-</td>
-<td class="px-6 py-4 text-right">5.000</td>
-<td class="px-6 py-4 text-right font-medium text-red-600 dark:text-red-500">0</td>
-<td class="px-6 py-4 text-center">
-<span class="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs font-bold px-2.5 py-0.5 rounded border border-red-200 dark:border-red-800">Crítico</span>
-</td>
-<td class="px-6 py-4 text-center">
-<button class="text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-</td>
-</tr>
-<tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
-<div class="flex items-center gap-3">
-<div class="size-2 rounded-full bg-green-500"></div>
-                                            0211 - Métodos Diagnósticos
-                                        </div>
-</td>
-<td class="px-6 py-4 text-right">35.000</td>
-<td class="px-6 py-4 text-right font-medium">36.250</td>
-<td class="px-6 py-4 text-center">
-<span class="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200 dark:border-green-800">103%</span>
-</td>
-<td class="px-6 py-4 text-center">
-<button class="text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<!-- Secondary Chart/Graph Placeholder (Visual interest) -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm p-6 flex flex-col h-48 justify-center items-center relative overflow-hidden group">
-<div class="absolute inset-0 opacity-10 bg-gradient-to-br from-primary to-transparent"></div>
-<h4 class="text-sm font-semibold text-slate-500 dark:text-slate-400 absolute top-4 left-6">Tendência de Oferta (Semanal)</h4>
-<!-- Abstract Chart Representation -->
-<div class="flex items-end gap-2 w-full h-24 px-8 pt-8">
-<div class="w-1/6 bg-primary/30 h-[40%] rounded-t-sm"></div>
-<div class="w-1/6 bg-primary/40 h-[60%] rounded-t-sm"></div>
-<div class="w-1/6 bg-primary/50 h-[50%] rounded-t-sm"></div>
-<div class="w-1/6 bg-primary/60 h-[75%] rounded-t-sm"></div>
-<div class="w-1/6 bg-primary/80 h-[85%] rounded-t-sm"></div>
-<div class="w-1/6 bg-primary h-[90%] rounded-t-sm"></div>
-</div>
-</div>
-<div class="bg-primary text-white rounded-lg shadow-sm p-6 flex flex-col justify-between relative overflow-hidden">
-<div class="z-10">
-<h4 class="text-sm font-semibold opacity-90 mb-2">Orçamento Disponível</h4>
-<p class="text-3xl font-bold">R$ 1.2M</p>
-<p class="text-xs opacity-80 mt-1">Saldo restante para alocação</p>
-</div>
-<div class="z-10 mt-4">
-<button class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-4 rounded transition-colors w-fit backdrop-blur-sm">
-                                Nova Alocação
-                             </button>
-</div>
-<!-- Abstract Pattern -->
-<div class="absolute -right-6 -bottom-10 opacity-20 transform rotate-12">
-<span class="material-symbols-outlined text-[140px]">account_balance_wallet</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Side Column: Alerts -->
-<div class="xl:col-span-1">
-<div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm flex flex-col h-full">
-<div class="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-[#151e2a] rounded-t-lg">
-<h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-<span class="material-symbols-outlined text-orange-500">notifications_active</span>
-                            Alertas de Gestão
-                        </h2>
-<span class="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs font-bold px-2 py-1 rounded-full">3 Novos</span>
-</div>
-<div class="flex flex-col p-4 gap-3 flex-1">
-<!-- Alert Item 1 (Critical) -->
-<div class="flex gap-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-<div class="shrink-0">
-<div class="flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-800/30 text-red-600 dark:text-red-400 size-10">
-<span class="material-symbols-outlined">error</span>
-</div>
-</div>
-<div class="flex flex-col flex-1 gap-1">
-<div class="flex justify-between items-start">
-<p class="text-slate-900 dark:text-white font-bold text-sm">Cardiologia</p>
-<span class="text-[10px] font-bold uppercase text-red-600 bg-white dark:bg-red-900/40 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50">Crítico</span>
-</div>
-<p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Sem oferta cadastrada para o período atual. Bloqueia agendamentos.</p>
-<button class="mt-2 text-xs font-bold text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 px-3 py-1.5 rounded w-fit transition-colors shadow-sm">
-                                    Corrigir Oferta
-                                </button>
-</div>
-</div>
-<!-- Alert Item 2 (Warning) -->
-<div class="flex gap-4 p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30">
-<div class="shrink-0">
-<div class="flex items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-800/30 text-yellow-600 dark:text-yellow-400 size-10">
-<span class="material-symbols-outlined">warning</span>
-</div>
-</div>
-<div class="flex flex-col flex-1 gap-1">
-<div class="flex justify-between items-start">
-<p class="text-slate-900 dark:text-white font-bold text-sm">Exames de Imagem</p>
-<span class="text-[10px] font-bold uppercase text-yellow-700 bg-white dark:bg-yellow-900/40 px-1.5 py-0.5 rounded border border-yellow-200 dark:border-yellow-900/50">Atenção</span>
-</div>
-<p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Oferta 15% abaixo da meta estabelecida no pacto.</p>
-<button class="mt-2 text-xs font-bold text-yellow-700 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 bg-white dark:bg-slate-800 border border-yellow-200 dark:border-yellow-900/50 px-3 py-1.5 rounded w-fit transition-colors shadow-sm">
-                                    Analisar Meta
-                                </button>
-</div>
-</div>
-<!-- Alert Item 3 (Warning) -->
-<div class="flex gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-<div class="shrink-0">
-<div class="flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 size-10">
-<span class="material-symbols-outlined">info</span>
-</div>
-</div>
-<div class="flex flex-col flex-1 gap-1">
-<div class="flex justify-between items-start">
-<p class="text-slate-900 dark:text-white font-bold text-sm">Incentivo Federal</p>
-<span class="text-[10px] font-bold uppercase text-slate-600 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">Info</span>
-</div>
-<p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Novo portaria publicada. Atualização de valores necessária.</p>
-<button class="mt-2 text-xs font-bold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-3 py-1.5 rounded w-fit transition-colors shadow-sm">
-                                    Ler Portaria
-                                </button>
-</div>
-</div>
-</div>
-<div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#151e2a] rounded-b-lg">
-<button class="w-full text-center text-sm font-bold text-primary hover:underline">Ver todos os alertas</button>
-</div>
-</div>
-</div>
-</div>
-</main>
-</body></html>
+                <script type="module" src="/src/js/auth-guard.js"></script>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+            <div class="flex flex-col gap-1">
+                <h1 class="text-3xl md:text-4xl font-black tracking-tight">Visão Geral do Orçamento</h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Acompanhamento consolidado de metas e produção
+                    mensal.</p>
+            </div>
+            <div class="flex gap-3">
+                <select id="month-selector"
+                    class="h-10 pl-4 pr-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold shadow-sm focus:ring-primary">
+                    <option value="2023-11">Novembro / 2023</option>
+                    <option value="2023-10" selected>Outubro / 2023</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div
+                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                <div
+                    class="size-10 bg-blue-50 dark:bg-blue-900/20 text-primary rounded-lg flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined icon-filled">handshake</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total
+                    Pactuado</p>
+                <h3 id="kpi-pactuado" class="text-2xl font-black">---</h3>
+            </div>
+            <div
+                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                <div
+                    class="size-10 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined icon-filled">inventory_2</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total
+                    Ofertado</p>
+                <h3 id="kpi-ofertado" class="text-2xl font-black">---</h3>
+            </div>
+            <div
+                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                <div class="flex justify-between items-start mb-4">
+                    <div
+                        class="size-10 bg-teal-50 dark:bg-teal-900/20 text-teal-600 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined icon-filled">donut_large</span>
+                    </div>
+                    <span id="kpi-atingimento-percent" class="text-sm font-black text-teal-600">---</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+                    Atingimento</p>
+                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                    <div id="kpi-atingimento-bar" class="bg-teal-500 h-2 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+            <div
+                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                <div
+                    class="size-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined icon-filled">payments</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Impacto
+                    Financeiro</p>
+                <h3 id="kpi-financeiro" class="text-2xl font-black truncate">---</h3>
+                <p id="kpi-financeiro-detail" class="text-[10px] text-slate-400 mt-1">Calculando...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div class="xl:col-span-2">
+                <div
+                    class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                        <h3 class="font-bold">Execução por Procedimento</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/30">
+                                <tr>
+                                    <th class="px-6 py-3">Procedimento</th>
+                                    <th class="px-6 py-3 text-right">Pactuado</th>
+                                    <th class="px-6 py-3 text-right">Ofertado</th>
+                                    <th class="px-6 py-3 text-center">Execução</th>
+                                    <th class="px-6 py-3 text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <!-- Carregado via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="xl:col-span-1 flex flex-col gap-6">
+                <div
+                    class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-orange-500">warning</span>
+                        <h3 class="font-bold">Alertas Operacionais</h3>
+                    </div>
+                    <div id="alerts-container" class="p-4 flex flex-col gap-4">
+                        <!-- Carregado via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="/src/js/dashboard-logic.js"></script>
+</body>
+
+</html>

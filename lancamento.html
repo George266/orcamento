@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 
-<html class="light" lang="pt-BR"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Portal de Gestão SUS - Lançamento de Ofertas</title>
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Theme Configuration -->
-<script id="tailwind-config">
+<html class="light" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Portal de Gestão SUS - Lançamento de Ofertas</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Theme Configuration -->
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -27,379 +35,474 @@
                     fontFamily: {
                         "display": ["Public Sans", "sans-serif"]
                     },
-                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
                 },
             },
         }
     </script>
-<style>
+    <style>
         /* Custom scrollbar for better aesthetics in tables */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
+
         ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
+            background: #f1f1f1;
         }
+
         ::-webkit-scrollbar-thumb {
-            background: #c1c1c1; 
+            background: #c1c1c1;
             border-radius: 4px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8; 
+            background: #a8a8a8;
         }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 font-display antialiased min-h-screen flex flex-col">
-<!-- TopNavBar -->
-<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 px-10 py-3 shadow-sm sticky top-0 z-50">
-<div class="flex items-center gap-4 text-slate-900 dark:text-white">
-<div class="size-8 text-primary">
-<span class="material-symbols-outlined text-3xl">local_hospital</span>
-</div>
-<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Portal de Gestão SUS</h2>
-</div>
-<div class="flex flex-1 justify-end gap-8 items-center">
-<div class="hidden md:flex items-center gap-6 lg:gap-9">
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Início</a>
-<a class="text-primary text-sm font-bold leading-normal border-b-2 border-primary pb-0.5" href="#">Lançamentos</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Relatórios</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Configurações</a>
-</div>
-<div class="flex items-center gap-4 pl-4 border-l border-slate-200 dark:border-slate-700">
-<button class="text-slate-500 hover:text-primary transition-colors relative">
-<span class="material-symbols-outlined">notifications</span>
-<span class="absolute top-0 right-0 size-2 bg-red-500 rounded-full"></span>
-</button>
-<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-slate-100 dark:border-slate-800 cursor-pointer" data-alt="User profile picture placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCyS4e04rCSF2D7JliMZuQCcuaxg2JKlUuJqyByZgfayiybPk6BHaykEW3hKz3QYyraSK7fRllw1cUoXCMVzjyPIB0GPB4xpGk730a7ff2bzKQEz4t2yqkmmZiwWVAlAhZ_V1mTS4Acesfu7Cu69ACptIVTxDlo1_uRP7qXj1m92QTE_PfFo75QUopNvGeM4rw5LowwsRbRRdI-v8Rtt8kQaVNcVAunu0D6VrJN72Vw5pUrpTt5kInc0DhjjZRP4bQRlWA4qB53H4g");'></div>
-</div>
-</div>
-</header>
-<div class="flex-1 w-full max-w-[1440px] mx-auto p-6 md:p-8 lg:p-10 flex flex-col gap-6">
-<!-- Breadcrumbs -->
-<nav aria-label="breadcrumb">
-<ol class="flex flex-wrap items-center gap-2">
-<li>
-<a class="text-slate-500 hover:text-primary transition-colors text-sm font-medium flex items-center gap-1" href="#">
-<span class="material-symbols-outlined text-lg">home</span>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 font-display antialiased min-h-screen flex flex-col">
+    <!-- TopNavBar -->
+    <header
+        class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
+        <div class="px-4 md:px-8 flex items-center justify-between h-16">
+            <div class="flex items-center gap-4 text-slate-900 dark:text-white">
+                <div class="size-10 flex items-center justify-center overflow-hidden">
+                    <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Módulo Orçamento</p>
+                </div>
+            </div>
+            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                    href="dashboard_orcamento.html">Dashboard</a>
+                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
+                    href="lancamento.html">Ofertas</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                    href="acompanhamento_orcamento.html">Relatórios</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                    href="configuracao.html">Configurações</a>
+            </nav>
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:flex flex-col items-end mr-2">
+                    <span class="text-sm font-semibold text-slate-900 dark:text-white">Recursos e Orçamento</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">FELUMA</span>
+                </div>
+                <div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-white dark:border-slate-700 shadow-sm"
+                    data-alt="Profile picture"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCyS4e04rCSF2D7JliMZuQCcuaxg2JKlUuJqyByZgfayiybPk6BHaykEW3hKz3QYyraSK7fRllw1cUoXCMVzjyPIB0GPB4xpGk730a7ff2bzKQEz4t2yqkmmZiwWVAlAhZ_V1mTS4Acesfu7Cu69ACptIVTxDlo1_uRP7qXj1m92QTE_PfFo75QUopNvGeM4rw5LowwsRbRRdI-v8Rtt8kQaVNcVAunu0D6VrJN72Vw5pUrpTt5kInc0DhjjZRP4bQRlWA4qB53H4g");'>
+                </div>
+                <button id="logout-btn"
+                    class="hidden sm:flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onclick="handleLogout()">
+                    <span class="material-symbols-outlined">logout</span>
+                </button>
+                <script type="module" src="/src/js/auth-guard.js"></script>
+            </div>
+        </div>
+    </header>
+    <div class="flex-1 w-full max-w-[1440px] mx-auto p-6 md:p-8 lg:p-10 flex flex-col gap-6">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb">
+            <ol class="flex flex-wrap items-center gap-2">
+                <li>
+                    <a class="text-slate-500 hover:text-primary transition-colors text-sm font-medium flex items-center gap-1"
+                        href="#">
+                        <span class="material-symbols-outlined text-lg">home</span>
                         Início
                     </a>
-</li>
-<li class="text-slate-400 text-sm">/</li>
-<li>
-<a class="text-slate-500 hover:text-primary transition-colors text-sm font-medium" href="#">Lançamentos</a>
-</li>
-<li class="text-slate-400 text-sm">/</li>
-<li>
-<span aria-current="page" class="text-slate-900 dark:text-white text-sm font-semibold">Ofertas de Exames</span>
-</li>
-</ol>
-</nav>
-<!-- Page Heading & Filters Area -->
-<div class="flex flex-col xl:flex-row gap-6 items-start">
-<!-- Left Column: Context & Selection (Sticky on XL screens) -->
-<div class="w-full xl:w-1/4 xl:sticky xl:top-24 flex flex-col gap-6">
-<!-- Title Block -->
-<div class="flex flex-col gap-2">
-<h1 class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-tight">Lançamento de Ofertas</h1>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Instituto de Cardiologia</p>
-<div class="flex items-center gap-2 mt-2">
-<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-<span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
+                </li>
+                <li class="text-slate-400 text-sm">/</li>
+                <li>
+                    <a class="text-slate-500 hover:text-primary transition-colors text-sm font-medium"
+                        href="#">Lançamentos</a>
+                </li>
+                <li class="text-slate-400 text-sm">/</li>
+                <li>
+                    <span aria-current="page" class="text-slate-900 dark:text-white text-sm font-semibold">Ofertas de
+                        Exames</span>
+                </li>
+            </ol>
+        </nav>
+        <!-- Page Heading & Filters Area -->
+        <div class="flex flex-col xl:flex-row gap-6 items-start">
+            <!-- Left Column: Context & Selection (Sticky on XL screens) -->
+            <div class="w-full xl:w-1/4 xl:sticky xl:top-24 flex flex-col gap-6">
+                <!-- Title Block -->
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-tight">
+                        Lançamento de Ofertas</h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Instituto de Cardiologia</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span
+                            class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                            <span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
                             Contrato Ativo
                         </span>
-</div>
-</div>
-<!-- Filters Card -->
-<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col gap-5">
-<div class="flex flex-col gap-1">
-<label class="text-slate-700 dark:text-slate-300 text-sm font-semibold" for="competencia">Mês de Referência</label>
-<div class="relative">
-<select class="w-full appearance-none rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white py-2.5 pl-3 pr-10 text-sm focus:border-primary focus:ring-primary shadow-sm" id="competencia">
-<option>Setembro 2023</option>
-<option>Outubro 2023</option>
-<option>Novembro 2023</option>
-</select>
-<span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500">
-<span class="material-symbols-outlined">expand_more</span>
-</span>
-</div>
-</div>
-<div class="flex flex-col gap-1">
-<label class="text-slate-700 dark:text-slate-300 text-sm font-semibold" for="semana">Semana de Oferta</label>
-<div class="relative">
-<select class="w-full appearance-none rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white py-2.5 pl-3 pr-10 text-sm focus:border-primary focus:ring-primary shadow-sm" id="semana">
-<option>Semana 1 (01/09 - 07/09)</option>
-<option>Semana 2 (08/09 - 14/09)</option>
-<option>Semana 3 (15/09 - 21/09)</option>
-<option>Semana 4 (22/09 - 30/09)</option>
-</select>
-<span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500">
-<span class="material-symbols-outlined">expand_more</span>
-</span>
-</div>
-</div>
-<div class="pt-4 border-t border-slate-100 dark:border-slate-700">
-<button class="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-<span class="material-symbols-outlined text-lg">history</span>
+                    </div>
+                </div>
+                <!-- Filters Card -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col gap-5">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold" for="competencia">Mês de
+                            Referência</label>
+                        <div class="relative">
+                            <select
+                                class="w-full appearance-none rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white py-2.5 pl-3 pr-10 text-sm focus:border-primary focus:ring-primary shadow-sm"
+                                id="competencia">
+                                <option>Setembro 2023</option>
+                                <option>Outubro 2023</option>
+                                <option>Novembro 2023</option>
+                            </select>
+                            <span
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500">
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold" for="semana">Semana de
+                            Oferta</label>
+                        <div class="relative">
+                            <select
+                                class="w-full appearance-none rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white py-2.5 pl-3 pr-10 text-sm focus:border-primary focus:ring-primary shadow-sm"
+                                id="semana">
+                                <option>Semana 1 (01/09 - 07/09)</option>
+                                <option>Semana 2 (08/09 - 14/09)</option>
+                                <option>Semana 3 (15/09 - 21/09)</option>
+                                <option>Semana 4 (22/09 - 30/09)</option>
+                            </select>
+                            <span
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500">
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <button
+                            class="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                            <span class="material-symbols-outlined text-lg">history</span>
                             Ver Histórico
                         </button>
-</div>
-</div>
-<!-- Helper Card -->
-<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800/50">
-<div class="flex items-start gap-3">
-<span class="material-symbols-outlined text-primary mt-0.5">info</span>
-<div>
-<h4 class="text-sm font-bold text-blue-900 dark:text-blue-100 mb-1">Dica Importante</h4>
-<p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
-                                Lembre-se que as ofertas devem ser submetidas até 48h antes do início da semana de referência para aprovação automática.
+                    </div>
+                </div>
+                <!-- Helper Card -->
+                <div
+                    class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800/50">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+                        <div>
+                            <h4 class="text-sm font-bold text-blue-900 dark:text-blue-100 mb-1">Dica Importante</h4>
+                            <p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                                Lembre-se que as ofertas devem ser submetidas até 48h antes do início da semana de
+                                referência para aprovação automática.
                             </p>
-</div>
-</div>
-</div>
-</div>
-<!-- Right Column: Stats & Data Entry -->
-<div class="flex-1 w-full flex flex-col gap-6">
-<!-- Stats Row -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-<div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-<span class="material-symbols-outlined text-6xl">contract</span>
-</div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Total Pactuado (Mês)</p>
-<div class="z-10">
-<p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">2.500</p>
-<p class="text-xs text-slate-500 mt-1">Procedimentos totais</p>
-</div>
-</div>
-<div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-<div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-<span class="material-symbols-outlined text-6xl">check_circle</span>
-</div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Total Já Ofertado</p>
-<div class="z-10">
-<p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">1.200</p>
-<div class="flex items-center gap-1 mt-1 text-green-600 text-xs font-bold">
-<span class="material-symbols-outlined text-sm">trending_up</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Column: Stats & Data Entry -->
+            <div class="flex-1 w-full flex flex-col gap-6">
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div
+                        class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <span class="material-symbols-outlined text-6xl">contract</span>
+                        </div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Total Pactuado (Mês)</p>
+                        <div class="z-10">
+                            <p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">2.500</p>
+                            <p class="text-xs text-slate-500 mt-1">Procedimentos totais</p>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <span class="material-symbols-outlined text-6xl">check_circle</span>
+                        </div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Total Já Ofertado</p>
+                        <div class="z-10">
+                            <p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">1.200</p>
+                            <div class="flex items-center gap-1 mt-1 text-green-600 text-xs font-bold">
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
                                 48% da meta
                             </div>
-</div>
-</div>
-<div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-<div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-<span class="material-symbols-outlined text-6xl">target</span>
-</div>
-<p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Meta Restante</p>
-<div class="z-10">
-<p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">1.300</p>
-<div class="flex items-center gap-1 mt-1 text-orange-600 text-xs font-bold">
-<span class="material-symbols-outlined text-sm">warning</span>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <span class="material-symbols-outlined text-6xl">target</span>
+                        </div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium z-10">Meta Restante</p>
+                        <div class="z-10">
+                            <p class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">1.300</p>
+                            <div class="flex items-center gap-1 mt-1 text-orange-600 text-xs font-bold">
+                                <span class="material-symbols-outlined text-sm">warning</span>
                                 Atenção ao prazo
                             </div>
-</div>
-</div>
-</div>
-<!-- Main Data Table -->
-<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-<div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
-<h3 class="text-slate-900 dark:text-white text-lg font-bold">Procedimentos Disponíveis</h3>
-<!-- Search/Filter within table -->
-<div class="relative w-full sm:w-64">
-<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-<span class="material-symbols-outlined text-slate-400 text-sm">search</span>
-</div>
-<input class="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar código ou nome..." type="text"/>
-</div>
-</div>
-<div class="overflow-x-auto">
-<table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-<thead class="bg-slate-50 dark:bg-slate-900">
-<tr>
-<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/3" scope="col">Procedimento</th>
-<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Complexidade</th>
-<th class="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Meta (Mês)</th>
-<th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4" scope="col">Progresso</th>
-<th class="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Oferta (Qtd)</th>
-</tr>
-</thead>
-<tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-<!-- Row 1 -->
-<tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-<td class="px-6 py-4">
-<div class="flex flex-col">
-<span class="text-sm font-semibold text-slate-900 dark:text-white">Ressonância Magnética de Crânio</span>
-<span class="text-xs text-slate-500 font-mono mt-0.5">Cód: 02.04.01.016-1</span>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap">
-<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        </div>
+                    </div>
+                </div>
+                <!-- Main Data Table -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+                    <div
+                        class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
+                        <h3 class="text-slate-900 dark:text-white text-lg font-bold">Procedimentos Disponíveis</h3>
+                        <!-- Search/Filter within table -->
+                        <div class="relative w-full sm:w-64">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="material-symbols-outlined text-slate-400 text-sm">search</span>
+                            </div>
+                            <input
+                                class="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                                placeholder="Buscar código ou nome..." type="text" />
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead class="bg-slate-50 dark:bg-slate-900">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/3"
+                                        scope="col">Procedimento</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Complexidade</th>
+                                    <th class="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Meta (Mês)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4"
+                                        scope="col">Progresso</th>
+                                    <th class="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Oferta (Qtd)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                                <!-- Row 1 -->
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-sm font-semibold text-slate-900 dark:text-white">Ressonância
+                                                Magnética de Crânio</span>
+                                            <span class="text-xs text-slate-500 font-mono mt-0.5">Cód:
+                                                02.04.01.016-1</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                                             Alta Complexidade
                                         </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
                                         500
                                     </td>
-<td class="px-6 py-4 align-middle">
-<div class="flex flex-col gap-1">
-<div class="flex justify-between text-xs mb-1">
-<span class="text-slate-600 dark:text-slate-400">350 realizados</span>
-<span class="font-bold text-primary">70%</span>
-</div>
-<div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
-<div class="bg-primary h-2.5 rounded-full" style="width: 70%"></div>
-</div>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<input class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white" min="0" placeholder="0" type="number"/>
-</td>
-</tr>
-<!-- Row 2 -->
-<tr class="bg-slate-50/50 dark:bg-slate-700/20 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-<td class="px-6 py-4">
-<div class="flex flex-col">
-<span class="text-sm font-semibold text-slate-900 dark:text-white">Ecocardiografia Transtorácica</span>
-<span class="text-xs text-slate-500 font-mono mt-0.5">Cód: 02.05.01.003-2</span>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap">
-<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span class="text-slate-600 dark:text-slate-400">350 realizados</span>
+                                                <span class="font-bold text-primary">70%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
+                                                <div class="bg-primary h-2.5 rounded-full" style="width: 70%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <input
+                                            class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white"
+                                            min="0" placeholder="0" type="number" />
+                                    </td>
+                                </tr>
+                                <!-- Row 2 -->
+                                <tr
+                                    class="bg-slate-50/50 dark:bg-slate-700/20 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-sm font-semibold text-slate-900 dark:text-white">Ecocardiografia
+                                                Transtorácica</span>
+                                            <span class="text-xs text-slate-500 font-mono mt-0.5">Cód:
+                                                02.05.01.003-2</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                             Média Complexidade
                                         </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
                                         1.200
                                     </td>
-<td class="px-6 py-4 align-middle">
-<div class="flex flex-col gap-1">
-<div class="flex justify-between text-xs mb-1">
-<span class="text-slate-600 dark:text-slate-400">600 realizados</span>
-<span class="font-bold text-yellow-600 dark:text-yellow-500">50%</span>
-</div>
-<div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
-<div class="bg-yellow-500 h-2.5 rounded-full" style="width: 50%"></div>
-</div>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<input class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white" min="0" placeholder="0" type="number"/>
-</td>
-</tr>
-<!-- Row 3 -->
-<tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-<td class="px-6 py-4">
-<div class="flex flex-col">
-<span class="text-sm font-semibold text-slate-900 dark:text-white">Cateterismo Cardíaco Eletivo</span>
-<span class="text-xs text-slate-500 font-mono mt-0.5">Cód: 02.11.02.001-5</span>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap">
-<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span class="text-slate-600 dark:text-slate-400">600 realizados</span>
+                                                <span class="font-bold text-yellow-600 dark:text-yellow-500">50%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
+                                                <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 50%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <input
+                                            class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white"
+                                            min="0" placeholder="0" type="number" />
+                                    </td>
+                                </tr>
+                                <!-- Row 3 -->
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-sm font-semibold text-slate-900 dark:text-white">Cateterismo
+                                                Cardíaco Eletivo</span>
+                                            <span class="text-xs text-slate-500 font-mono mt-0.5">Cód:
+                                                02.11.02.001-5</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                                             Alta Complexidade
                                         </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
                                         300
                                     </td>
-<td class="px-6 py-4 align-middle">
-<div class="flex flex-col gap-1">
-<div class="flex justify-between text-xs mb-1">
-<span class="text-slate-600 dark:text-slate-400">285 realizados</span>
-<span class="font-bold text-green-600">95%</span>
-</div>
-<div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
-<div class="bg-green-600 h-2.5 rounded-full" style="width: 95%"></div>
-</div>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<input class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white disabled:bg-slate-100 disabled:text-slate-400" disabled="" min="0" placeholder="0" title="Meta quase atingida" type="number"/>
-</td>
-</tr>
-<!-- Row 4 -->
-<tr class="bg-slate-50/50 dark:bg-slate-700/20 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-<td class="px-6 py-4">
-<div class="flex flex-col">
-<span class="text-sm font-semibold text-slate-900 dark:text-white">Teste Ergométrico</span>
-<span class="text-xs text-slate-500 font-mono mt-0.5">Cód: 02.05.02.002-1</span>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap">
-<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span class="text-slate-600 dark:text-slate-400">285 realizados</span>
+                                                <span class="font-bold text-green-600">95%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
+                                                <div class="bg-green-600 h-2.5 rounded-full" style="width: 95%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <input
+                                            class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white disabled:bg-slate-100 disabled:text-slate-400"
+                                            disabled="" min="0" placeholder="0" title="Meta quase atingida"
+                                            type="number" />
+                                    </td>
+                                </tr>
+                                <!-- Row 4 -->
+                                <tr
+                                    class="bg-slate-50/50 dark:bg-slate-700/20 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-semibold text-slate-900 dark:text-white">Teste
+                                                Ergométrico</span>
+                                            <span class="text-xs text-slate-500 font-mono mt-0.5">Cód:
+                                                02.05.02.002-1</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                             Média Complexidade
                                         </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-medium">
                                         500
                                     </td>
-<td class="px-6 py-4 align-middle">
-<div class="flex flex-col gap-1">
-<div class="flex justify-between text-xs mb-1">
-<span class="text-slate-600 dark:text-slate-400">50 realizados</span>
-<span class="font-bold text-red-600">10%</span>
-</div>
-<div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
-<div class="bg-red-500 h-2.5 rounded-full" style="width: 10%"></div>
-</div>
-</div>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<input class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white" min="0" placeholder="0" type="number"/>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!-- Pagination -->
-<div class="bg-white dark:bg-slate-800 px-4 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 sm:px-6">
-<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-<div>
-<p class="text-sm text-slate-700 dark:text-slate-400">
-                                    Mostrando <span class="font-medium">1</span> até <span class="font-medium">4</span> de <span class="font-medium">24</span> resultados
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span class="text-slate-600 dark:text-slate-400">50 realizados</span>
+                                                <span class="font-bold text-red-600">10%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
+                                                <div class="bg-red-500 h-2.5 rounded-full" style="width: 10%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <input
+                                            class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-900 dark:text-white"
+                                            min="0" placeholder="0" type="number" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination -->
+                    <div
+                        class="bg-white dark:bg-slate-800 px-4 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 sm:px-6">
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-slate-700 dark:text-slate-400">
+                                    Mostrando <span class="font-medium">1</span> até <span class="font-medium">4</span>
+                                    de <span class="font-medium">24</span> resultados
                                 </p>
-</div>
-<div>
-<nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-<a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700" href="#">
-<span class="sr-only">Anterior</span>
-<span class="material-symbols-outlined text-lg">chevron_left</span>
-</a>
-<a aria-current="page" class="z-10 bg-primary/10 border-primary text-primary relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                            </div>
+                            <div>
+                                <nav aria-label="Pagination"
+                                    class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                    <a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                        href="#">
+                                        <span class="sr-only">Anterior</span>
+                                        <span class="material-symbols-outlined text-lg">chevron_left</span>
+                                    </a>
+                                    <a aria-current="page"
+                                        class="z-10 bg-primary/10 border-primary text-primary relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                        href="#">
                                         1
                                     </a>
-<a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                                    <a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                        href="#">
                                         2
                                     </a>
-<a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                                    <a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                        href="#">
                                         3
                                     </a>
-<a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700" href="#">
-<span class="sr-only">Próximo</span>
-<span class="material-symbols-outlined text-lg">chevron_right</span>
-</a>
-</nav>
-</div>
-</div>
-</div>
-</div>
-<!-- Footer Actions -->
-<div class="sticky bottom-0 z-40 -mx-6 -mb-6 p-6 md:p-8 md:mx-0 md:mb-0 md:rounded-t-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-<div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-<span class="material-symbols-outlined text-lg">save_as</span>
-<span>Último salvamento automático: 14:32</span>
-</div>
-<div class="flex items-center gap-3 w-full sm:w-auto">
-<button class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                    <a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                        href="#">
+                                        <span class="sr-only">Próximo</span>
+                                        <span class="material-symbols-outlined text-lg">chevron_right</span>
+                                    </a>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Footer Actions -->
+                <div
+                    class="sticky bottom-0 z-40 -mx-6 -mb-6 p-6 md:p-8 md:mx-0 md:mb-0 md:rounded-t-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                    <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                        <span class="material-symbols-outlined text-lg">save_as</span>
+                        <span>Último salvamento automático: 14:32</span>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button
+                            class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                             Salvar Rascunho
                         </button>
-<button class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
-<span class="material-symbols-outlined text-lg">send</span>
+                        <button
+                            class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">send</span>
                             Confirmar Lançamento
                         </button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</body></html>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

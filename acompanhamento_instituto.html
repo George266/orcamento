@@ -1,21 +1,30 @@
 <!DOCTYPE html>
 
-<html class="light" lang="pt-BR"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Gestão SUS - Acompanhamento Instituto</title>
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<!-- Material Symbols -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Tailwind Config -->
-<script id="tailwind-config">
+<html class="light" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Gestão SUS - Acompanhamento Instituto</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind Config -->
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -45,391 +54,535 @@
             },
         }
     </script>
-<style>
+    <style>
         body {
             font-family: 'Public Sans', sans-serif;
         }
+
         /* Custom scrollbar for table */
         .custom-scrollbar::-webkit-scrollbar {
             height: 8px;
             width: 8px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
     </style>
 </head>
+
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
-<!-- Navigation Header -->
-<header class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark sticky top-0 z-20">
-<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-<div class="flex items-center justify-between h-16">
-<!-- Logo & Brand -->
-<div class="flex items-center gap-3">
-<div class="size-8 text-primary flex items-center justify-center">
-<span class="material-symbols-outlined text-3xl">local_hospital</span>
-</div>
-<div class="flex flex-col">
-<span class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">Gestão SUS</span>
-<span class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wide">Módulo Institutos</span>
-</div>
-</div>
-<!-- Nav Links -->
-<nav class="hidden md:flex items-center gap-1">
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#">Início</a>
-<a class="bg-primary/10 text-primary px-3 py-2 rounded-md text-sm font-bold transition-colors" href="#">Acompanhamento</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#">Financeiro</a>
-<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#">Relatórios</a>
-</nav>
-<!-- User Profile & Actions -->
-<div class="flex items-center gap-4">
-<div class="hidden sm:flex items-center gap-3 border-r border-border-light dark:border-border-dark pr-4 mr-1">
-<div class="text-right hidden lg:block">
-<p class="text-sm font-semibold text-slate-900 dark:text-white">Instituto Alfa de Saúde</p>
-<p class="text-xs text-slate-500 dark:text-slate-400">CNPJ: 12.345.678/0001-90</p>
-</div>
-<div class="size-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border border-slate-300 dark:border-slate-600" data-alt="User avatar placeholder">
-<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 w-full h-full flex items-center justify-center">person</span>
-</div>
-</div>
-<button aria-label="Sair" class="text-slate-500 hover:text-red-600 transition-colors flex items-center justify-center">
-<span class="material-symbols-outlined">logout</span>
-</button>
-</div>
-</div>
-</div>
-</header>
-<!-- Main Content -->
-<main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-<!-- Breadcrumbs -->
-<nav aria-label="Breadcrumb" class="flex mb-6">
-<ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
-<li class="inline-flex items-center">
-<a class="inline-flex items-center text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white" href="#">
-<span class="material-symbols-outlined text-[18px] mr-1">home</span>
+    <!-- Navigation Header -->
+    <header
+        class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark sticky top-0 z-20">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <div class="size-10 flex items-center justify-center overflow-hidden">
+                        <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </div>
+                    <div class="flex flex-col">
+                        <span
+                            class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">Gestão
+                            SUS</span>
+                        <span
+                            class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wide">Módulo
+                            Institutos</span>
+                    </div>
+                </div>
+                <!-- Nav Links -->
+                <nav class="hidden md:flex items-center gap-1">
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                        href="dashboard_instituto.html">Início</a>
+                    <a class="bg-primary/10 text-primary px-3 py-2 rounded-md text-sm font-bold transition-colors"
+                        href="acompanhamento_instituto.html">Acompanhamento</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                        href="acompanhamento_instituto.html">Financeiro</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                        href="configuracao.html">Relatórios</a>
+                </nav>
+                <!-- User Profile & Actions -->
+                <div class="flex items-center gap-4">
+                    <div
+                        class="hidden sm:flex items-center gap-3 border-r border-border-light dark:border-border-dark pr-4 mr-1">
+                        <div class="text-right hidden lg:block">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white">Instituto Alfa de Saúde</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">CNPJ: 12.345.678/0001-90</p>
+                        </div>
+                        <div class="size-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border border-slate-300 dark:border-slate-600"
+                            data-alt="User avatar placeholder">
+                            <span
+                                class="material-symbols-outlined text-slate-400 dark:text-slate-500 w-full h-full flex items-center justify-center">person</span>
+                        </div>
+                    </div>
+                    <button aria-label="Sair"
+                        class="text-slate-500 hover:text-red-600 transition-colors flex items-center justify-center">
+                        <span class="material-symbols-outlined">logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Breadcrumbs -->
+        <nav aria-label="Breadcrumb" class="flex mb-6">
+            <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+                <li class="inline-flex items-center">
+                    <a class="inline-flex items-center text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white"
+                        href="#">
+                        <span class="material-symbols-outlined text-[18px] mr-1">home</span>
                         Início
                     </a>
-</li>
-<li>
-<div class="flex items-center">
-<span class="material-symbols-outlined text-slate-400 text-lg mx-1">chevron_right</span>
-<a class="ml-1 text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white md:ml-2" href="#">Acompanhamento</a>
-</div>
-</li>
-<li aria-current="page">
-<div class="flex items-center">
-<span class="material-symbols-outlined text-slate-400 text-lg mx-1">chevron_right</span>
-<span class="ml-1 text-sm font-medium text-slate-900 dark:text-white md:ml-2">Instituto</span>
-</div>
-</li>
-</ol>
-</nav>
-<!-- Page Heading & Actions -->
-<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-<div class="flex-1">
-<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Acompanhamento de Metas e Produção</h1>
-<p class="text-slate-500 dark:text-slate-400 max-w-2xl text-base">
-                    Visão detalhada dos procedimentos pactuados, ofertas e produção financeira do <strong class="font-semibold text-slate-700 dark:text-slate-200">Instituto Alfa</strong>.
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <span class="material-symbols-outlined text-slate-400 text-lg mx-1">chevron_right</span>
+                        <a class="ml-1 text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white md:ml-2"
+                            href="#">Acompanhamento</a>
+                    </div>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <span class="material-symbols-outlined text-slate-400 text-lg mx-1">chevron_right</span>
+                        <span class="ml-1 text-sm font-medium text-slate-900 dark:text-white md:ml-2">Instituto</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+        <!-- Page Heading & Actions -->
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Acompanhamento de
+                    Metas e Produção</h1>
+                <p class="text-slate-500 dark:text-slate-400 max-w-2xl text-base">
+                    Visão detalhada dos procedimentos pactuados, ofertas e produção financeira do <strong
+                        class="font-semibold text-slate-700 dark:text-slate-200">Instituto Alfa</strong>.
                 </p>
-</div>
-<div class="flex gap-3">
-<button class="inline-flex items-center justify-center rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-<span class="material-symbols-outlined mr-2 text-[20px]">download</span>
+            </div>
+            <div class="flex gap-3">
+                <button
+                    class="inline-flex items-center justify-center rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    <span class="material-symbols-outlined mr-2 text-[20px]">download</span>
                     Exportar CSV
                 </button>
-<button class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-<span class="material-symbols-outlined mr-2 text-[20px]">print</span>
+                <button
+                    class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    <span class="material-symbols-outlined mr-2 text-[20px]">print</span>
                     Imprimir Relatório
                 </button>
-</div>
-</div>
-<!-- Summary Stats Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-<!-- Stat 1 -->
-<div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
-<div class="flex items-center justify-between mb-4">
-<h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Pactuado (Qtd)</h3>
-<div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-<span class="material-symbols-outlined text-primary text-xl">assignment</span>
-</div>
-</div>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold text-slate-900 dark:text-white">1.250</span>
-<span class="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center">
-<span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> +2%
+            </div>
+        </div>
+        <!-- Summary Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Stat 1 -->
+            <div
+                class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Pactuado (Qtd)</h3>
+                    <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <span class="material-symbols-outlined text-primary text-xl">assignment</span>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-slate-900 dark:text-white">1.250</span>
+                    <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center">
+                        <span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> +2%
                     </span>
-</div>
-</div>
-<!-- Stat 2 -->
-<div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
-<div class="flex items-center justify-between mb-4">
-<h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Produção Realizada</h3>
-<div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-<span class="material-symbols-outlined text-emerald-600 text-xl">check_circle</span>
-</div>
-</div>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold text-slate-900 dark:text-white">980</span>
-<span class="text-sm font-medium text-slate-500 dark:text-slate-400">78.4% da meta</span>
-</div>
-</div>
-<!-- Stat 3 -->
-<div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
-<div class="flex items-center justify-between mb-4">
-<h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Pendente de Oferta</h3>
-<div class="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-<span class="material-symbols-outlined text-amber-600 text-xl">pending_actions</span>
-</div>
-</div>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold text-slate-900 dark:text-white">120</span>
-<span class="text-sm font-medium text-red-600 dark:text-red-400">Atenção Necessária</span>
-</div>
-</div>
-<!-- Stat 4 -->
-<div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
-<div class="flex items-center justify-between mb-4">
-<h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Financeiro Estimado</h3>
-<div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-<span class="material-symbols-outlined text-purple-600 text-xl">payments</span>
-</div>
-</div>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold text-slate-900 dark:text-white">R$ 145.200,00</span>
-</div>
-</div>
-</div>
-<!-- Filter Bar -->
-<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm mb-6 flex flex-wrap gap-4 items-end">
-<div class="flex-1 min-w-[280px]">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="search-procedure">Buscar Procedimento</label>
-<div class="relative">
-<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-<span class="material-symbols-outlined text-slate-400 text-[20px]">search</span>
-</div>
-<input class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition duration-150 ease-in-out" id="search-procedure" placeholder="Ex: Ressonância Magnética..." type="text"/>
-</div>
-</div>
-<div class="w-full sm:w-[200px]">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="filter-status">Filtrar por Status</label>
-<div class="relative">
-<select class="block w-full pl-3 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm appearance-none cursor-pointer" id="filter-status">
-<option value="all">Todos os Status</option>
-<option value="success">Atingido</option>
-<option value="warning">Verificar</option>
-<option value="error">Sem oferta</option>
-</select>
-<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-<span class="material-symbols-outlined text-slate-400 text-[20px]">expand_more</span>
-</div>
-</div>
-</div>
-<div class="w-full sm:w-[200px]">
-<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="filter-period">Período</label>
-<div class="relative">
-<select class="block w-full pl-3 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm appearance-none cursor-pointer" id="filter-period">
-<option>Outubro 2023</option>
-<option>Setembro 2023</option>
-<option>Agosto 2023</option>
-</select>
-<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-<span class="material-symbols-outlined text-slate-400 text-[20px]">calendar_month</span>
-</div>
-</div>
-</div>
-<button class="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors flex items-center justify-center gap-2">
+                </div>
+            </div>
+            <!-- Stat 2 -->
+            <div
+                class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Produção Realizada</h3>
+                    <div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                        <span class="material-symbols-outlined text-emerald-600 text-xl">check_circle</span>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-slate-900 dark:text-white">980</span>
+                    <span class="text-sm font-medium text-slate-500 dark:text-slate-400">78.4% da meta</span>
+                </div>
+            </div>
+            <!-- Stat 3 -->
+            <div
+                class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Pendente de Oferta</h3>
+                    <div class="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                        <span class="material-symbols-outlined text-amber-600 text-xl">pending_actions</span>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-slate-900 dark:text-white">120</span>
+                    <span class="text-sm font-medium text-red-600 dark:text-red-400">Atenção Necessária</span>
+                </div>
+            </div>
+            <!-- Stat 4 -->
+            <div
+                class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Financeiro Estimado</h3>
+                    <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <span class="material-symbols-outlined text-purple-600 text-xl">payments</span>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-slate-900 dark:text-white">R$ 145.200,00</span>
+                </div>
+            </div>
+        </div>
+        <!-- Filter Bar -->
+        <div
+            class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm mb-6 flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[280px]">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                    for="search-procedure">Buscar Procedimento</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">search</span>
+                    </div>
+                    <input
+                        class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition duration-150 ease-in-out"
+                        id="search-procedure" placeholder="Ex: Ressonância Magnética..." type="text" />
+                </div>
+            </div>
+            <div class="w-full sm:w-[200px]">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                    for="filter-status">Filtrar por Status</label>
+                <div class="relative">
+                    <select
+                        class="block w-full pl-3 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm appearance-none cursor-pointer"
+                        id="filter-status">
+                        <option value="all">Todos os Status</option>
+                        <option value="success">Atingido</option>
+                        <option value="warning">Verificar</option>
+                        <option value="error">Sem oferta</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">expand_more</span>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full sm:w-[200px]">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                    for="filter-period">Período</label>
+                <div class="relative">
+                    <select
+                        class="block w-full pl-3 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm appearance-none cursor-pointer"
+                        id="filter-period">
+                        <option>Outubro 2023</option>
+                        <option>Setembro 2023</option>
+                        <option>Agosto 2023</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">calendar_month</span>
+                    </div>
+                </div>
+            </div>
+            <button
+                class="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors flex items-center justify-center gap-2">
                 Filtrar
             </button>
-</div>
-<!-- Data Table -->
-<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden flex flex-col">
-<div class="overflow-x-auto custom-scrollbar">
-<table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
-<thead class="bg-slate-50 dark:bg-slate-800/50">
-<tr>
-<th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Instituto</th>
-<th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[200px]" scope="col">Procedimento</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Pactuado (PO)</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Ofertado</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Produzido</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Vlr. SIGTAP</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Vlr. Incentivo</th>
-<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Total Financeiro</th>
-<th class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" scope="col">Status</th>
-<th class="relative px-6 py-3" scope="col">
-<span class="sr-only">Ações</span>
-</th>
-</tr>
-</thead>
-<tbody class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
-<!-- Row 1: Success -->
-<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">Inst. Alfa</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">Ressonância Magnética</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">100</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">100</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">98</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 200,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 50,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">R$ 24.500,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+        </div>
+        <!-- Data Table -->
+        <div
+            class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden flex flex-col">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Instituto</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[200px]"
+                                scope="col">Procedimento</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Pactuado (PO)</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Ofertado</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Produzido</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Vlr. SIGTAP</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Vlr. Incentivo</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Total Financeiro</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                scope="col">Status</th>
+                            <th class="relative px-6 py-3" scope="col">
+                                <span class="sr-only">Ações</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
+                        <!-- Row 1: Success -->
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                                Inst. Alfa</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                Ressonância Magnética</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                100</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                100</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">
+                                98</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 200,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 50,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">
+                                R$ 24.500,00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
                                     Atingido
                                 </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-<button class="text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 2: Warning -->
-<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">Inst. Alfa</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">Tomografia Computadorizada</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">50</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">40</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">10</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 150,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 30,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">R$ 1.800,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-slate-400 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- Row 2: Warning -->
+                        <tr
+                            class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                                Inst. Alfa</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                Tomografia Computadorizada</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                50</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                40</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">
+                                10</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 150,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 30,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">
+                                R$ 1.800,00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
                                     Verificar
                                 </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-<button class="text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 3: Error -->
-<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">Inst. Alfa</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">Ultrassonografia</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">200</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">0</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">0</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 80,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 10,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">R$ 0,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-slate-400 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- Row 3: Error -->
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                                Inst. Alfa</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                Ultrassonografia</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                200</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                0</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">
+                                0</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 80,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 10,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">
+                                R$ 0,00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     Sem oferta
                                 </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-<button class="text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 4: Success -->
-<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">Inst. Alfa</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">Mamografia</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">80</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">80</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">75</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 45,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 5,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">R$ 3.750,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-slate-400 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- Row 4: Success -->
+                        <tr
+                            class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                                Inst. Alfa</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                Mamografia</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                80</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                80</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">
+                                75</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 45,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 5,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">
+                                R$ 3.750,00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
                                     Atingido
                                 </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-<button class="text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 5: Success -->
-<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">Inst. Alfa</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">Ecocardiografia</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">150</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">150</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">148</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 130,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">R$ 20,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">R$ 22.200,00</td>
-<td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-slate-400 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- Row 5: Success -->
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                                Inst. Alfa</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                Ecocardiografia</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                150</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                150</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold text-right font-mono">
+                                148</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 130,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono">
+                                R$ 20,00</td>
+                            <td
+                                class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right font-mono">
+                                R$ 22.200,00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
                                     Atingido
                                 </span>
-</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-<button class="text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">more_vert</span>
-</button>
-</td>
-</tr>
-</tbody>
-<!-- Footer Summation -->
-<tfoot class="bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-600">
-<tr>
-<td class="px-6 py-3 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right uppercase" colspan="5">Total Geral do Período</td>
-<td class="px-6 py-3 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono" colspan="2"></td>
-<td class="px-6 py-3 whitespace-nowrap text-sm font-black text-primary text-right font-mono">R$ 52.250,00</td>
-<td colspan="2"></td>
-</tr>
-</tfoot>
-</table>
-</div>
-<!-- Pagination -->
-<div class="bg-white dark:bg-surface-dark px-4 py-3 border-t border-border-light dark:border-border-dark flex items-center justify-between sm:px-6">
-<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-<div>
-<p class="text-sm text-slate-700 dark:text-slate-300">
-                            Mostrando <span class="font-medium text-slate-900 dark:text-white">1</span> a <span class="font-medium text-slate-900 dark:text-white">5</span> de <span class="font-medium text-slate-900 dark:text-white">24</span> resultados
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-slate-400 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <!-- Footer Summation -->
+                    <tfoot class="bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-600">
+                        <tr>
+                            <td class="px-6 py-3 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white text-right uppercase"
+                                colspan="5">Total Geral do Período</td>
+                            <td class="px-6 py-3 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400 text-right font-mono"
+                                colspan="2"></td>
+                            <td
+                                class="px-6 py-3 whitespace-nowrap text-sm font-black text-primary text-right font-mono">
+                                R$ 52.250,00</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div
+                class="bg-white dark:bg-surface-dark px-4 py-3 border-t border-border-light dark:border-border-dark flex items-center justify-between sm:px-6">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-slate-700 dark:text-slate-300">
+                            Mostrando <span class="font-medium text-slate-900 dark:text-white">1</span> a <span
+                                class="font-medium text-slate-900 dark:text-white">5</span> de <span
+                                class="font-medium text-slate-900 dark:text-white">24</span> resultados
                         </p>
-</div>
-<div>
-<nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-<a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700" href="#">
-<span class="sr-only">Anterior</span>
-<span class="material-symbols-outlined text-[20px]">chevron_left</span>
-</a>
-<a aria-current="page" class="z-10 bg-primary/10 border-primary text-primary relative inline-flex items-center px-4 py-2 border text-sm font-bold" href="#">
+                    </div>
+                    <div>
+                        <nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                href="#">
+                                <span class="sr-only">Anterior</span>
+                                <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                            </a>
+                            <a aria-current="page"
+                                class="z-10 bg-primary/10 border-primary text-primary relative inline-flex items-center px-4 py-2 border text-sm font-bold"
+                                href="#">
                                 1
                             </a>
-<a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                            <a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                href="#">
                                 2
                             </a>
-<a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                            <a class="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                href="#">
                                 3
                             </a>
-<span class="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700">
+                            <span
+                                class="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700">
                                 ...
                             </span>
-<a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700" href="#">
-<span class="sr-only">Próximo</span>
-<span class="material-symbols-outlined text-[20px]">chevron_right</span>
-</a>
-</nav>
-</div>
-</div>
-<!-- Mobile Pagination -->
-<div class="flex items-center justify-between sm:hidden w-full">
-<a class="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50" href="#">
+                            <a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                href="#">
+                                <span class="sr-only">Próximo</span>
+                                <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+                <!-- Mobile Pagination -->
+                <div class="flex items-center justify-between sm:hidden w-full">
+                    <a class="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                        href="#">
                         Anterior
                     </a>
-<a class="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50" href="#">
+                    <a class="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                        href="#">
                         Próximo
                     </a>
-</div>
-</div>
-</div>
-</main>
-</body></html>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>
