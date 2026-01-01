@@ -132,14 +132,38 @@ export const Repository = {
         const uniqueInsts = new Map();
         const uniqueProcs = new Map();
 
+        // Helper to get value from row regardless of trailing space, case, accents or symbols in header
+        const getCol = (row, ...names) => {
+            const keys = Object.keys(row);
+            const clean = (t) => t.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+            for (let name of names) {
+                const target = clean(name);
+                if (!target) continue;
+                const foundKey = keys.find(k => clean(k).includes(target));
+                if (foundKey !== undefined) return row[foundKey];
+            }
+            return '';
+        };
+
         data.forEach(item => {
-            const pNome = (item['Programa'] || '').trim();
-            const iNome = (item['Instituto '] || '').trim();
-            const sCod = (item['Código SIGTAP '] || '').toString().trim();
+            const pNome = getCol(item, 'Programa').toString().trim();
+            const iNome = getCol(item, 'Instituto').toString().trim();
+            let sCod = getCol(item, 'SIGTAP').toString().trim();
+
+            // Pad SIGTAP code with zeros (should be 10 digits)
+            if (sCod && /^\d+$/.test(sCod)) {
+                sCod = sCod.padStart(10, '0');
+            }
 
             if (pNome) uniqueProgs.set(normalizeId(pNome), pNome);
             if (iNome) uniqueInsts.set(normalizeId(iNome), iNome);
-            if (sCod) uniqueProcs.set(sCod, (item['Procedimento '] || '').trim());
+            if (sCod) {
+                const pNomeProc = getCol(item, 'Procedimento', 'Proc', 'Desc').toString().trim();
+                const vBaseRaw = getCol(item, 'Valor Sigtap', 'Valor Unitário').toString().replace(',', '.');
+                const vBase = parseFloat(vBaseRaw || 0);
+                uniqueProcs.set(sCod, { nome: pNomeProc, vlr: vBase });
+            }
         });
 
         // Save metadata groups first
@@ -149,16 +173,25 @@ export const Repository = {
         uniqueInsts.forEach((nome, id) => {
             batch.set(doc(db, COLL_INSTITUTOS, id), { nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
         });
-        uniqueProcs.forEach((nome, id) => {
-            batch.set(doc(db, COLL_PROCEDIMENTOS, id), { sigtap: id, nome, status: 'Ativo' }, { merge: true });
+        uniqueProcs.forEach((info, id) => {
+            batch.set(doc(db, COLL_PROCEDIMENTOS, id), {
+                sigtap: id,
+                nome: info.nome,
+                vlrSigtap: info.vlr,
+                status: 'Ativo'
+            }, { merge: true });
         });
 
         // Save relations
         data.forEach(row => {
-            const pNome = (row['Programa'] || '').trim();
-            const iNome = (row['Instituto '] || '').trim();
-            const sCod = (row['Código SIGTAP '] || '').toString().trim();
-            const comp = row['Competência'] || row['Mês'] || 'Geral';
+            const pNome = getCol(row, 'Programa').toString().trim();
+            const iNome = getCol(row, 'Instituto').toString().trim();
+            let sCod = getCol(row, 'SIGTAP').toString().trim();
+            const comp = getCol(row, 'Competência', 'Mês').toString().trim() || 'Geral';
+
+            if (sCod && /^\d+$/.test(sCod)) {
+                sCod = sCod.padStart(10, '0');
+            }
 
             if (!pNome || !iNome || !sCod) return;
 
@@ -174,30 +207,30 @@ export const Repository = {
                 competencia: comp,
 
                 // Metadata
-                processamento: row['Processamento'] || '',
-                responsavel: row['Responsável'] || '',
-                mes: row['Mês'] || '',
-                indicacaoFeriado: row['Indicação Feriado'] || '',
-                statusLinha: row['STATUS'] || '',
+                processamento: getCol(row, 'Processamento'),
+                responsavel: getCol(row, 'Responsável'),
+                mes: getCol(row, 'Mês'),
+                indicacaoFeriado: getCol(row, 'Indicação Feriado'),
+                statusLinha: getCol(row, 'STATUS'),
 
                 // Quantification
-                ofertado: row['Ofertado'] || 0,
-                ofertaMinima: row['Oferta Mínima mensal SIGRAH'] || 0,
-                totalOferta: row['Total Oferta'] || 0,
+                ofertado: getCol(row, 'Ofertado') || 0,
+                ofertaMinima: getCol(row, 'SIGRAH', 'Minima', 'Pactuado') || 0,
+                totalOferta: getCol(row, 'Total Oferta') || 0,
 
                 // Values (Auditing)
-                vlrSigtapBase: parseFloat(row['Valor Sigtap '] || row['Valor Sigtap'] || 0),
-                vlrIncentivo: parseFloat(row['Valor do Incentivo '] || row['Valor Incentivo '] || 0),
-                vlrTotalLinha: parseFloat(row['Valor TOTAL '] || row['Valor TOTAL'] || 0),
+                vlrSigtapBase: parseFloat(getCol(row, 'Valor Sigtap', 'Valor Unitário').toString().replace(',', '.') || 0),
+                vlrIncentivo: parseFloat(getCol(row, 'Incentivo').toString().replace(',', '.') || 0),
+                vlrTotalLinha: parseFloat(getCol(row, 'TOTAL').toString().replace(',', '.') || 0),
 
                 // Weekly Production
                 producao: {
-                    sem1: row['1º'] || 0,
-                    sem2: row['2º'] || 0,
-                    sem3: row['3º'] || 0,
-                    sem4: row['4º'] || 0,
-                    sem5: row['5º'] || 0,
-                    realizada: row['Qtd Produção'] || 0
+                    sem1: getCol(row, '1º') || 0,
+                    sem2: getCol(row, '2º') || 0,
+                    sem3: row['3º'] || 0, // Fallback to direct access if needed
+                    sem4: getCol(row, '4º') || 0,
+                    sem5: getCol(row, '5º') || 0,
+                    realizada: getCol(row, 'Qtd Produção') || 0
                 },
 
                 importedAt: new Date()
@@ -205,5 +238,12 @@ export const Repository = {
         });
 
         await batch.commit();
+
+        return {
+            progs: uniqueProgs.size,
+            insts: uniqueInsts.size,
+            procs: uniqueProcs.size,
+            rows: data.length
+        };
     }
 };

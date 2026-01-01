@@ -318,7 +318,7 @@
                     <div>
                         <h3 class="text-xl font-bold" id="item-modal-title">Itens do Programa</h3>
                         <p class="text-xs text-slate-500 mt-1" id="item-modal-subtitle">Vincule procedimentos e defina
-                            metas para este incentivo.</p>
+                            a oferta mínima para este incentivo.</p>
                     </div>
                     <button onclick="closeModal('modal-itens-incentivo')"
                         class="text-slate-400 hover:text-slate-600 transition-colors">
@@ -350,7 +350,8 @@
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Oferta</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Oferta
+                                Mínima</label>
                             <input type="number" id="item-qtd"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
@@ -377,7 +378,7 @@
                                 <th class="px-4 py-3">Instituto</th>
                                 <th class="px-4 py-3">Procedimento</th>
                                 <th class="px-4 py-3 text-center">Competência</th>
-                                <th class="px-4 py-3 text-right">Meta</th>
+                                <th class="px-4 py-3 text-right">Oferta Mínima</th>
                                 <th class="px-4 py-3 text-right">Incentivo</th>
                                 <th class="px-4 py-3 text-center">Ações</th>
                             </tr>
@@ -845,7 +846,7 @@
                                         <th class="px-6 py-3">Instituto</th>
                                         <th class="px-6 py-3">Procedimento</th>
                                         <th class="px-6 py-3 text-center">Comp.</th>
-                                        <th class="px-6 py-3 text-right">Meta</th>
+                                        <th class="px-6 py-3 text-right">Oferta Mínima</th>
                                         <th class="px-6 py-3 text-right">Incentivo</th>
                                         <th class="px-6 py-3 text-center">Ações</th>
                                     </tr>
@@ -883,6 +884,12 @@
             ]).then(([insts, procs]) => {
                 localInstitutos = insts;
                 localProcedimentos = procs;
+
+                // Render initial tables
+                window.renderInstitutos();
+                window.renderProcedimentos();
+
+                // Load Plano Operativo
                 window.loadPO();
             });
 

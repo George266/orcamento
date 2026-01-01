@@ -461,6 +461,8 @@
 
                     if (jsonData.length === 0) throw new Error('Planilha vazia');
 
+                    const detectedCols = Object.keys(jsonData[0]);
+                    addLog(`Colunas detectadas: ${detectedCols.join(', ')}`, 'text-xs text-slate-500 italic');
                     addLog(`Detectadas ${jsonData.length} linhas de dados.`, 'text-green-400');
                     processImportData(jsonData);
                 } catch (err) {
@@ -494,12 +496,12 @@
                 const chunkSize = 100;
                 for (let i = 0; i < data.length; i += chunkSize) {
                     const chunk = data.slice(i, i + chunkSize);
-                    await Repository.batchSaveImport(chunk);
+                    const stats = await Repository.batchSaveImport(chunk);
 
                     const p = Math.round((Math.min(i + chunkSize, data.length) / data.length) * 100);
                     bar.style.width = `${p}%`;
                     percent.textContent = `${p}%`;
-                    addLog(`Enviado lote ${Math.floor(i / chunkSize) + 1} (${chunk.length} linhas)...`);
+                    addLog(`Lote ${Math.floor(i / chunkSize) + 1}: ${chunk.length} linhas enviadas. (${stats.procs} procs detectados)`);
                 }
 
                 addLog('IMPORTAÇÃO CONCLUÍDA COM SUCESSO! 🎉', 'text-green-500 font-bold');

@@ -81,10 +81,6 @@
                         <span class="text-sm font-semibold text-slate-900 dark:text-white">Recursos e Orçamento</span>
                         <span class="text-xs text-slate-500 dark:text-slate-400">FELUMA</span>
                     </div>
-                    <div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-white dark:border-slate-700 shadow-sm"
-                        data-alt="Profile picture"
-                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCe8jkuTbAdPspJEhKiJaVHNEQqQOon8wwMJIreTjcEN_fbctI1LzGHDt0MaaGE5ljK-JFUnHmUpnG2yHmS4i2fibPg4uKpFvqZhustg1OgKkMjcZUgyeRTSOg9gBn0NypTmo0sACg_SOy4aY-OED9bgH2rJY1l_Hk8XqYJgRtGRfpehHCeo0EHVifxzwrfar18ihU8JRNYXTpsrti_4frtPAYNE__1AC5M0nellGinVIx4PE86d-ETrJkUMkp3ITW6IIN7TcWT8cA");'>
-                    </div>
                     <button id="logout-btn"
                         class="hidden sm:flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         onclick="handleLogout()">
@@ -102,7 +98,8 @@
                     <h1 class="text-text-main dark:text-white text-[32px] font-bold leading-tight tracking-tight">
                         Acompanhamento Geral de Ofertas e Produção</h1>
                     <p class="text-text-secondary dark:text-slate-400 text-base font-normal max-w-2xl">
-                        Visão consolidada de metas físicas e financeiras por instituto. Acompanhe o status de execução
+                        Visão consolidada de ofertas mínimas e produção assistencial por instituto. Acompanhe o status
+                        de execução
                         orçamentária e produção assistencial.
                     </p>
                 </div>
@@ -112,7 +109,7 @@
                     <div
                         class="flex flex-col gap-1 rounded-xl bg-surface-light dark:bg-surface-dark p-5 border border-border-light dark:border-border-dark shadow-sm">
                         <div class="flex items-center justify-between">
-                            <p class="text-text-secondary dark:text-slate-400 text-sm font-medium">Total Pactuado (PO)
+                            <p class="text-text-secondary dark:text-slate-400 text-sm font-medium">Total Oferta Mínima
                             </p>
                             <span class="material-symbols-outlined text-primary text-[20px]">assignment</span>
                         </div>
@@ -132,7 +129,7 @@
                         <p class="text-text-main dark:text-white text-2xl font-bold mt-1">14.150</p>
                         <div class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
                             <span class="material-symbols-outlined text-[16px]">trending_up</span>
-                            <span>91.7% da meta</span>
+                            <span>91.7% da oferta mínima</span>
                         </div>
                     </div>
                     <!-- Stat 3 -->
@@ -172,12 +169,9 @@
                             <label
                                 class="text-xs font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wide">Instituto</label>
                             <div class="relative">
-                                <select
+                                <select id="filter-inst"
                                     class="w-full appearance-none rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-main dark:text-white px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
                                     <option value="">Todos os Institutos</option>
-                                    <option value="santacasa">Hospital Santa Casa</option>
-                                    <option value="regional">Hospital Regional Sul</option>
-                                    <option value="infantil">Hospital Infantil</option>
                                 </select>
                                 <span
                                     class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
@@ -188,12 +182,9 @@
                             <label
                                 class="text-xs font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wide">Procedimento</label>
                             <div class="relative">
-                                <select
+                                <select id="filter-proc"
                                     class="w-full appearance-none rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-main dark:text-white px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
                                     <option value="">Todos os Procedimentos</option>
-                                    <option value="consultas">Consultas Especializadas</option>
-                                    <option value="exames">Exames de Imagem</option>
-                                    <option value="cirurgias">Cirurgias Eletivas</option>
                                 </select>
                                 <span
                                     class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
@@ -203,25 +194,21 @@
                         <div class="flex flex-col gap-1.5 min-w-[200px]">
                             <label
                                 class="text-xs font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wide">Período</label>
-                            <div class="relative">
-                                <div
-                                    class="flex items-center rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 px-3 py-2.5">
-                                    <span
-                                        class="material-symbols-outlined text-text-secondary text-[20px] mr-2">calendar_today</span>
-                                    <input
-                                        class="w-full border-none bg-transparent p-0 text-sm text-text-main dark:text-white focus:ring-0 placeholder:text-text-secondary"
-                                        placeholder="Selecione o período" type="text" value="Jan 2024 - Mar 2024" />
-                                </div>
-                            </div>
+                            <select id="filter-period"
+                                class="w-full appearance-none rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-main dark:text-white px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                                <option value="">Todo o Período</option>
+                            </select>
+                            <span
+                                class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
                         </div>
                     </div>
                     <div class="flex gap-3 w-full sm:w-auto">
-                        <button
+                        <button id="btn-clear"
                             class="flex flex-1 sm:flex-none h-[42px] items-center justify-center gap-2 rounded-lg border border-border-light dark:border-border-dark px-4 text-sm font-semibold text-text-main dark:text-white hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                             <span class="material-symbols-outlined text-[20px]">filter_alt_off</span>
                             Limpar
                         </button>
-                        <button
+                        <button id="btn-filter"
                             class="flex flex-1 sm:flex-none h-[42px] items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-dark text-white px-6 text-sm font-bold shadow-sm transition-colors">
                             <span class="material-symbols-outlined text-[20px]">search</span>
                             Filtrar
@@ -243,7 +230,7 @@
                                         Procedimento</th>
                                     <th
                                         class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Pactuado (PO)</th>
+                                        Oferta Mínima</th>
                                     <th
                                         class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
                                         Ofertado</th>
