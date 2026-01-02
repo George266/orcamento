@@ -12,16 +12,43 @@ export function initAuthGuard() {
                 window.location.href = 'login.html';
             }
         } else {
-            // Se logado, verifica o perfil no Firestore
             try {
-                // Import dinâmico para evitar dependência circular se houver
                 const { Repository } = await import('./repository.js');
                 const profile = await Repository.getUserByEmail(user.email);
 
-                if (!profile || profile.role !== 'Orçamento') {
+                if (!profile) {
                     if (!isPublicPage) {
-                        console.warn('Acesso negado: Perfil insuficiente.');
-                        alert('Seu perfil não tem permissão para acessar esta área.');
+                        alert('Perfil não encontrado. Entre em contato com o administrador.');
+                        await signOut(auth);
+                        window.location.href = 'login.html';
+                    }
+                    return;
+                }
+
+                // Definir áreas permitidas
+                const isAdminPage = currentPage.includes('dashboard_orcamento.html') ||
+                    currentPage.includes('acompanhamento_orcamento.html') ||
+                    currentPage.includes('configuracao.html') ||
+                    currentPage.includes('usuarios.html');
+
+                const isInstitutePage = currentPage.includes('dashboard_instituto.html') ||
+                    currentPage.includes('acompanhamento_instituto.html');
+
+                if (profile.role === 'Orçamento') {
+                    // Admin can access everything, but if on login/index, send to dashboard
+                    if (isPublicPage) window.location.href = 'dashboard_orcamento.html';
+                } else if (profile.role === 'Institutos') {
+                    // Institute restricted to their pages
+                    if (isAdminPage) {
+                        alert('Acesso restrito à área administrativa.');
+                        window.location.href = 'dashboard_instituto.html';
+                    } else if (isPublicPage) {
+                        window.location.href = 'dashboard_instituto.html';
+                    }
+                } else {
+                    // Other roles or undefined
+                    if (!isPublicPage) {
+                        alert('Perfil sem permissão de acesso.');
                         await signOut(auth);
                         window.location.href = 'login.html';
                     }

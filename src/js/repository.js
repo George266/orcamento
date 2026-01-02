@@ -2,6 +2,7 @@ import { db, auth } from './firebase-config';
 import {
     collection,
     addDoc,
+    getDoc,
     setDoc,
     doc,
     getDocs,
@@ -69,6 +70,11 @@ export const Repository = {
     async getInstitutos() {
         const snapshot = await getDocs(collection(db, COLL_INSTITUTOS));
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async getInstitutoById(id) {
+        const d = await getDoc(doc(db, COLL_INSTITUTOS, id));
+        return d.exists() ? { id: d.id, ...d.data() } : null;
     },
 
     async saveInstituto(inst) {

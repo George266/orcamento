@@ -78,11 +78,11 @@
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
                     href="acompanhamento_instituto.html">
                     <span
-                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">description</span>
-                    <span class="text-sm font-medium leading-normal">Ofertas</span>
+                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">edit_document</span>
+                    <span class="text-sm font-medium leading-normal">Lançamentos</span>
                 </a>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                    href="acompanhamento_instituto.html">
+                    href="financeiro_instituto.html">
                     <span
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">payments</span>
                     <span class="text-sm font-medium leading-normal">Financeiro</span>
@@ -111,11 +111,15 @@
         <!-- Top Header -->
         <header
             class="h-16 bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
-            <div class="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-                <span class="material-symbols-outlined text-[20px]">search</span>
-                <input
-                    class="bg-transparent border-none focus:ring-0 text-sm w-64 text-slate-700 dark:text-slate-200 placeholder-slate-400"
-                    placeholder="Buscar ofertas, exames..." type="text" />
+            <div class="flex flex-col">
+                <h2 id="inst-welcome-name" class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Painel do Instituto</h2>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="material-symbols-outlined text-slate-400 text-[14px]">calendar_today</span>
+                    <select id="periodo-select"
+                        class="bg-transparent border-none text-xs font-bold text-slate-500 dark:text-slate-400 outline-none cursor-pointer hover:text-primary transition-colors">
+                    </select>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <button
@@ -125,16 +129,38 @@
                         class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-surface-dark"></span>
                 </button>
                 <div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
-                <button class="flex items-center gap-2 text-left">
-                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 bg-slate-200"
-                        data-alt="User profile avatar gradient"
-                        style="background-image: linear-gradient(135deg, #136dec 0%, #60a5fa 100%);"></div>
-                    <div class="hidden md:block">
-                        <p class="text-sm font-semibold text-slate-900 dark:text-white leading-none">Admin Instituto</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-none mt-1">Gestor</p>
+                <div class="relative">
+                    <button id="profile-menu-btn" class="flex items-center gap-3 text-right group">
+                        <div class="flex flex-col">
+                            <p id="user-name-header"
+                                class="text-sm font-bold text-slate-900 dark:text-white leading-none group-hover:text-primary transition-colors">
+                                Usuário</p>
+                            <p id="user-inst-header"
+                                class="text-[10px] text-slate-500 dark:text-slate-400 leading-none mt-1 uppercase tracking-tight font-black">
+                                Instituto</p>
+                        </div>
+                        <div
+                            class="size-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                            <span class="material-symbols-outlined text-[20px]">person</span>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="profile-dropdown"
+                        class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-50">
+                        <a href="perfil.html"
+                            class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">person</span>
+                            Meu Perfil
+                        </a>
+                        <hr class="my-1 border-slate-100 dark:border-slate-700">
+                        <button id="logout-btn"
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">logout</span>
+                            Sair do Sistema
+                        </button>
                     </div>
-                    <span class="material-symbols-outlined text-slate-400 text-[18px]">expand_more</span>
-                </button>
+                </div>
             </div>
         </header>
         <!-- Content Scroll Area -->
@@ -154,11 +180,7 @@
                             <span class="material-symbols-outlined text-[18px]">download</span>
                             Relatório
                         </button>
-                        <button
-                            class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
-                            <span class="material-symbols-outlined text-[18px]">add</span>
-                            Nova Oferta
-                        </button>
+                        <!-- Button removed: Nova Oferta (Phase 12 Refinement) -->
                     </div>
                 </div>
                 <!-- Stats Cards -->
@@ -168,8 +190,10 @@
                         class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4 relative overflow-hidden group">
                         <div class="flex justify-between items-start z-10">
                             <div class="flex flex-col gap-1">
-                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Minhas Ofertas</p>
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">142</p>
+                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Minhas Ofertas (Itens)
+                                </p>
+                                <p id="stat-ofertas-qtd"
+                                    class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">0</p>
                             </div>
                             <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-primary">
                                 <span class="material-symbols-outlined">description</span>
@@ -189,7 +213,8 @@
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col gap-1">
                                 <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Progresso da Meta</p>
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">78%</p>
+                                <p id="stat-progress-val"
+                                    class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">0%</p>
                             </div>
                             <div
                                 class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
@@ -197,7 +222,8 @@
                             </div>
                         </div>
                         <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="bg-purple-600 h-1.5 rounded-full" style="width: 78%"></div>
+                            <div id="stat-progress-bar" class="bg-purple-600 h-1.5 rounded-full" style="width: 0%">
+                            </div>
                         </div>
                         <p class="text-slate-500 dark:text-slate-400 text-xs mt-[-8px]">+2% vs mês anterior</p>
                     </div>
@@ -206,9 +232,10 @@
                         class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4">
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col gap-1">
-                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Status Geral</p>
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">3 <span
-                                        class="text-lg font-normal text-slate-500">Pendentes</span></p>
+                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Alertas Críticos</p>
+                                <p id="stat-alertas-qtd"
+                                    class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">0 <span
+                                        class="text-lg font-normal text-slate-500">Items</span></p>
                             </div>
                             <div
                                 class="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
@@ -226,9 +253,10 @@
                         class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4">
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col gap-1">
-                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Faturamento Estimado
+                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Produção Realizada
                                 </p>
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">R$ 45.200
+                                <p id="stat-financeiro"
+                                    class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">R$ 0,00
                                 </p>
                             </div>
                             <div
@@ -246,107 +274,19 @@
                     </div>
                 </div>
                 <!-- Main Content Grid: Charts and Table -->
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <!-- Chart Section -->
-                    <div
-                        class="xl:col-span-2 bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col h-full">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Desempenho Semestral</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Ofertas vs. Exames Executados</p>
-                            </div>
-                            <select
-                                class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-lg px-3 py-2 focus:ring-primary focus:border-primary">
-                                <option>Últimos 6 meses</option>
-                                <option>Este ano</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col flex-1 min-h-[300px]">
-                            <!-- Stats in Chart -->
-                            <div class="mb-6">
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">1,245 <span
-                                        class="text-base font-normal text-slate-500 dark:text-slate-400">Exames
-                                        Totais</span></p>
-                            </div>
-                            <!-- Bar Chart Representation -->
-                            <div class="flex-1 grid grid-cols-6 gap-4 items-end px-2">
-                                <!-- Jan -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[40%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[70%]"
-                                            title="Executados: 70%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Jan</p>
-                                </div>
-                                <!-- Fev -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[60%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[85%]"
-                                            title="Executados: 85%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Fev</p>
-                                </div>
-                                <!-- Mar -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[80%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[60%]"
-                                            title="Executados: 60%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Mar</p>
-                                </div>
-                                <!-- Abr -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[50%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[90%]"
-                                            title="Executados: 90%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Abr</p>
-                                </div>
-                                <!-- Mai -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[90%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[75%]"
-                                            title="Executados: 75%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Mai</p>
-                                </div>
-                                <!-- Jun -->
-                                <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                                    <div
-                                        class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[75%] transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50">
-                                        <div class="absolute bottom-0 w-full bg-primary rounded-t-sm h-[95%]"
-                                            title="Executados: 95%"></div>
-                                    </div>
-                                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Jun</p>
-                                </div>
-                            </div>
-                            <!-- Legend -->
-                            <div class="flex justify-center gap-6 mt-4">
-                                <div class="flex items-center gap-2">
-                                    <div class="size-3 bg-blue-100 dark:bg-blue-900/30 rounded-full"></div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Ofertas Disponíveis</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <div class="size-3 bg-primary rounded-full"></div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Exames Executados</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-1 gap-6">
                     <!-- Recent Activity / List -->
                     <div
-                        class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full overflow-hidden">
+                        class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden">
                         <div
                             class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                             <h3 class="text-lg font-bold text-slate-900 dark:text-white">Atividade Recente</h3>
-                            <a class="text-primary text-sm font-medium hover:underline" href="#">Ver tudo</a>
+                            <a class="bg-primary/10 text-primary px-3 py-2 rounded-md text-sm font-bold transition-colors"
+                                href="acompanhamento_instituto.html">Lançamentos</a>
+                            <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                href="financeiro_instituto.html">Financeiro</a>
                         </div>
-                        <div class="flex-1 overflow-auto">
+                        <div class="flex-1 overflow-auto max-h-[400px]">
                             <table class="w-full text-left border-collapse">
                                 <thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0">
                                     <tr>
@@ -358,112 +298,61 @@
                                             Status</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                    <!-- Row 1 -->
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-sm font-semibold text-slate-900 dark:text-white">Mamografia
-                                                    Bilateral</span>
-                                                <span class="text-xs text-slate-500 dark:text-slate-400">12 Ago,
-                                                    14:30</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                                                Pendente
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <!-- Row 2 -->
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-sm font-semibold text-slate-900 dark:text-white">Raio-X
-                                                    Tórax</span>
-                                                <span class="text-xs text-slate-500 dark:text-slate-400">12 Ago,
-                                                    10:15</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                Aprovado
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <!-- Row 3 -->
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-sm font-semibold text-slate-900 dark:text-white">Ultrassom
-                                                    Abdominal</span>
-                                                <span class="text-xs text-slate-500 dark:text-slate-400">11 Ago,
-                                                    16:45</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                Aprovado
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <!-- Row 4 -->
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-sm font-semibold text-slate-900 dark:text-white">Tomografia
-                                                    Computadorizada</span>
-                                                <span class="text-xs text-slate-500 dark:text-slate-400">10 Ago,
-                                                    09:00</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                                Rejeitado
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <!-- Row 5 -->
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-sm font-semibold text-slate-900 dark:text-white">Hemograma
-                                                    Completo</span>
-                                                <span class="text-xs text-slate-500 dark:text-slate-400">09 Ago,
-                                                    11:20</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                Aprovado
-                                            </span>
-                                        </td>
-                                    </tr>
+                                <tbody id="table-prazos-itens" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <!-- JS populated -->
                                 </tbody>
                             </table>
                         </div>
                         <div class="p-4 border-t border-slate-100 dark:border-slate-800">
-                            <button
+                            <button onclick="window.location.href='acompanhamento_instituto.html'"
                                 class="w-full py-2 flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
                                 <span class="material-symbols-outlined text-[18px]">history</span>
                                 Ver histórico completo
                             </button>
                         </div>
                     </div>
+
+                    <!-- Chart Section -->
+                    <div
+                        class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Desempenho Semestral</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">Ofertas vs. Produção Executada</p>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <p id="chart-total-exams"
+                                    class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">0</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Produção Total no Período</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col flex-1 min-h-[300px]">
+                            <!-- Bar Chart Representation -->
+                            <div id="chart-bars-container"
+                                class="flex-1 grid grid-cols-6 gap-4 items-end px-2 h-[250px]">
+                                <!-- JS Populated Bars -->
+                            </div>
+                            <!-- Legend -->
+                            <div class="flex justify-center gap-6 mt-8">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-3 bg-blue-100 dark:bg-blue-900/40 rounded-full"></div>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Ofertas Disponíveis</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="size-3 bg-primary rounded-full"></div>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Produção Realizada</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+    <!-- Modal removed: Nova Oferta (Phase 12 Refinement) -->
+
+    <script type="module" src="src/js/auth-guard.js"></script>
+    <script type="module" src="src/js/instituto-logic.js"></script>
 </body>
 
 </html>

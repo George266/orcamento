@@ -24,9 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
+                // Get user profile to determine redirection
+                const { Repository } = await import('./repository.js');
+                const profile = await Repository.getUserByEmail(user.email);
+
                 // Log the login activity
                 try {
-                    const { Repository } = await import('./repository.js');
                     await Repository.logActivity('LOGIN', { email: user.email });
                 } catch (logErr) {
                     console.error('Falha ao logar atividade:', logErr);
@@ -34,8 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 console.log('Login realizado com sucesso:', user);
 
-                // Redirecionar para o dashboard
-                window.location.href = 'dashboard_orcamento.html';
+                // Smart Redirection
+                if (profile && profile.role === 'Institutos') {
+                    window.location.href = 'dashboard_instituto.html';
+                } else {
+                    window.location.href = 'dashboard_orcamento.html';
+                }
             } catch (error) {
                 console.error('Erro ao fazer login:', error.code, error.message);
 

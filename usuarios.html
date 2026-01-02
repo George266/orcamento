@@ -66,16 +66,73 @@
                     href="usuarios.html">Administração</a>
             </nav>
             <div class="flex items-center gap-4">
-                <div class="hidden sm:flex flex-col items-end mr-2">
-                    <span class="text-sm font-semibold text-slate-900">Recursos e Orçamento</span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">FELUMA</span>
+                <div class="relative">
+                    <button id="profile-menu-btn" class="flex items-center gap-3 text-right group">
+                        <div class="hidden sm:flex flex-col items-end mr-1">
+                            <span id="user-name-header"
+                                class="text-sm font-semibold text-slate-900 group-hover:text-primary transition-colors">Administrador</span>
+                            <span id="user-inst-header"
+                                class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Secretaria de
+                                Saúde</span>
+                        </div>
+                        <div
+                            class="size-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="profile-dropdown"
+                        class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50">
+                        <a href="perfil.html"
+                            class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">person</span>
+                            Meu Perfil
+                        </a>
+                        <hr class="my-1 border-slate-100">
+                        <button id="logout-btn"
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">logout</span>
+                            Sair do Sistema
+                        </button>
+                    </div>
                 </div>
-                <button id="logout-btn"
-                    class="size-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    onclick="handleLogout()">
-                    <span class="material-symbols-outlined">logout</span>
-                </button>
                 <script type="module" src="/src/js/auth-guard.js"></script>
+                <script type="module">
+                    import { auth } from './src/js/firebase-config.js';
+                    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+                    import { Repository } from './src/js/repository.js';
+
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            const profile = await Repository.getUserByEmail(user.email);
+                            if (profile) {
+                                document.getElementById('user-name-header').textContent = profile.name || user.email;
+                                if (profile.instId) {
+                                    const inst = await Repository.getInstitutoById(profile.instId);
+                                    document.getElementById('user-inst-header').textContent = inst?.sigla || inst?.nome || 'Instituto';
+                                }
+                            }
+                        }
+                    });
+
+                    // Dropdown toggle
+                    const btn = document.getElementById('profile-menu-btn');
+                    const dropdown = document.getElementById('profile-dropdown');
+                    const logoutBtn = document.getElementById('logout-btn');
+
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        dropdown.classList.toggle('hidden');
+                    });
+
+                    document.addEventListener('click', () => dropdown.classList.add('hidden'));
+
+                    logoutBtn.addEventListener('click', async () => {
+                        const { logout } = await import('./src/js/auth-guard.js');
+                        await logout();
+                    });
+                </script>
             </div>
         </div>
     </header>
@@ -396,7 +453,7 @@
                     <div>
                         <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Perfil de
                             Acesso</label>
-                        <select id="user-role"
+                        <select id="user-role" onchange="toggleInstSelector()"
                             class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none">
                             <option value="Orçamento">Orçamento</option>
                             <option value="Institutos">Institutos</option>
@@ -410,6 +467,14 @@
                             <option value="Inativo">Inativo</option>
                         </select>
                     </div>
+                </div>
+                <div id="inst-selector-container" class="hidden">
+                    <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Instituto
+                        Vinculado</label>
+                    <select id="user-inst-id"
+                        class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none">
+                        <!-- JS Dynamic -->
+                    </select>
                 </div>
                 <div id="password-container">
                     <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Senha
@@ -607,6 +672,21 @@
             document.getElementById('user-role').value = 'Orçamento';
             document.getElementById('user-status').value = 'Ativo';
             document.getElementById('password-container').classList.remove('hidden');
+            window.toggleInstSelector();
+        };
+
+        window.toggleInstSelector = async () => {
+            const role = document.getElementById('user-role').value;
+            const container = document.getElementById('inst-selector-container');
+            if (role === 'Institutos') {
+                container.classList.remove('hidden');
+                // Load institutes if not loaded
+                const insts = await Repository.getInstitutos();
+                const select = document.getElementById('user-inst-id');
+                select.innerHTML = insts.map(i => `<option value="${i.id}">${i.sigla} - ${i.nome}</option>`).join('');
+            } else {
+                container.classList.add('hidden');
+            }
         };
 
         window.saveUser = async () => {
@@ -615,10 +695,12 @@
             const role = document.getElementById('user-role').value;
             const status = document.getElementById('user-status').value;
             const password = document.getElementById('user-password').value;
+            const instId = document.getElementById('user-inst-id').value;
 
             if (!name || !email) return alert('Por favor, preencha nome e e-mail.');
 
             const userData = { name, email, role, status, updatedAt: new Date() };
+            if (role === 'Institutos') userData.instId = instId;
 
             try {
                 // If it's a NEW user, we need to create their login in Auth
@@ -669,6 +751,11 @@
             document.getElementById('user-role').value = user.role;
             document.getElementById('user-status').value = user.status;
             document.getElementById('password-container').classList.add('hidden');
+
+            window.toggleInstSelector().then(() => {
+                if (user.instId) document.getElementById('user-inst-id').value = user.instId;
+            });
+
             openModal('modal-usuario');
         };
 
@@ -798,6 +885,7 @@
         }
         window.processImportData = processImportData;
     </script>
+    <script type="module" src="src/js/auth-guard.js"></script>
 </body>
 
 </html>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Lançamentos de Produção - Instituto de Saúde</title>
+    <title>Financeiro - Instituto de Saúde</title>
     <link rel="icon" type="image/png" href="/logo.png" />
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap"
@@ -85,16 +85,16 @@
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">dashboard</span>
                     <span class="text-sm font-medium leading-normal">Dashboard</span>
                 </a>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 group"
-                    href="acompanhamento_instituto.html">
-                    <span class="material-symbols-outlined text-[24px]">edit_document</span>
-                    <span class="text-sm font-semibold leading-normal">Lançamentos</span>
-                </a>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                    href="financeiro_instituto.html">
+                    href="acompanhamento_instituto.html">
                     <span
-                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">payments</span>
-                    <span class="text-sm font-medium leading-normal">Financeiro</span>
+                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">edit_document</span>
+                    <span class="text-sm font-medium leading-normal">Lançamentos</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 group"
+                    href="financeiro_instituto.html">
+                    <span class="material-symbols-outlined text-[24px]">payments</span>
+                    <span class="text-sm font-semibold leading-normal">Financeiro</span>
                 </a>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
                     href="configuracao.html">
@@ -172,13 +172,19 @@
                 <!-- Page Title -->
                 <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div class="flex-1">
-                        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Lançamentos de
-                            Produção</h1>
+                        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Relatórios
+                            Financeiros</h1>
                         <p class="text-slate-500 dark:text-slate-400 max-w-2xl text-base">
-                            Preencha a produção semanal dos procedimentos pactuados no Plano Operativo do <strong
-                                id="inst-page-name"
+                            Consolidação dos valores de produção do <strong id="inst-page-name"
                                 class="font-semibold text-slate-700 dark:text-slate-200">Carregando...</strong>.
                         </p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="btn-export-fin"
+                            class="inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-dark px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <span class="material-symbols-outlined mr-2 text-[20px]">download</span>
+                            Exportar Relatório
+                        </button>
                     </div>
                 </div>
 
@@ -186,26 +192,20 @@
                 <div
                     class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-end">
                     <div class="flex-1 min-w-[280px]">
-                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Buscar
-                            Procedimento</label>
-                        <div class="relative">
-                            <input type="text" id="buscainteligente"
-                                class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm text-slate-700 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary shadow-sm"
-                                placeholder="Nome ou código SIGTAP..." />
-                            <span
-                                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                        </div>
-                    </div>
-                    <div class="w-full sm:w-[200px]">
                         <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Competência</label>
                         <div class="relative">
-                            <select id="filter-competencia"
+                            <select id="filter-competencia-fin"
                                 class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-white appearance-none cursor-pointer focus:ring-2 focus:ring-primary shadow-sm">
                             </select>
                             <span
                                 class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
                         </div>
                     </div>
+
+                    <button id="filter-button-fin"
+                        class="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors flex items-center justify-center gap-2">
+                        Filtrar Resultados
+                    </button>
                 </div>
 
                 <!-- Table -->
@@ -215,36 +215,38 @@
                         <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
                             <thead class="bg-slate-50 dark:bg-slate-800/50">
                                 <tr>
-                                    <th class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Linha Cuidado</th>
-                                    <th class="px-2 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[80px]"
-                                        scope="col">SIGTAP</th>
-                                    <th class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px]"
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[300px]"
                                         scope="col">Procedimento</th>
-                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[70px]"
-                                        scope="col">Oferta Min (PO)</th>
-                                    <th class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Vlr SIGTAP (Unit)</th>
-                                    <th class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Vlr Incentivo (Unit)</th>
-
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
-                                        scope="col">Sem 1</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
-                                        scope="col">Sem 2</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
-                                        scope="col">Sem 3</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
-                                        scope="col">Sem 4</th>
-
-                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Status</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Qtd Produzida</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Vlr SIGTAP (Total)</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Vlr Incentivo (Total)</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Total Geral</th>
                                 </tr>
                             </thead>
-                            <tbody id="table-acompanhamento-inst"
+                            <tbody id="table-financeiro-inst"
                                 class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
                                 <!-- Dynamic Content -->
                             </tbody>
+                            <tfoot
+                                class="bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-600">
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white uppercase"
+                                        colspan="2">Consolidado do Período</td>
+                                    <td id="foot-sigtap"
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-400 text-right font-mono">
+                                        R$ 0,00</td>
+                                    <td id="foot-incentivo"
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-400 text-right font-mono">
+                                        R$ 0,00</td>
+                                    <td id="foot-total"
+                                        class="px-6 py-4 whitespace-nowrap text-base font-black text-primary text-right font-mono">
+                                        R$ 0,00</td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -254,7 +256,7 @@
     </main>
 
     <script type="module" src="src/js/auth-guard.js"></script>
-    <script type="module" src="src/js/acompanhamento-inst-logic.js"></script>
+    <script type="module" src="src/js/financeiro-inst-logic.js"></script>
 </body>
 
 </html>
