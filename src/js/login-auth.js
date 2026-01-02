@@ -24,6 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
+                // Log the login activity
+                try {
+                    const { Repository } = await import('./repository.js');
+                    await Repository.logActivity('LOGIN', { email: user.email });
+                } catch (logErr) {
+                    console.error('Falha ao logar atividade:', logErr);
+                }
+
                 console.log('Login realizado com sucesso:', user);
 
                 // Redirecionar para o dashboard

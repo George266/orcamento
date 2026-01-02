@@ -21,12 +21,22 @@ export async function initAcompanhamento() {
     // Populate Filters
     populateFilters();
 
-    // Event Listeners
+    // Event Listeners for immediate reaction
+    document.getElementById('filter-inst')?.addEventListener('change', renderTable);
+    document.getElementById('filter-proc')?.addEventListener('change', renderTable);
+    document.getElementById('filter-period')?.addEventListener('change', renderTable);
+
     document.getElementById('btn-filter')?.addEventListener('click', renderTable);
     document.getElementById('btn-clear')?.addEventListener('click', () => {
         document.getElementById('filter-inst').value = '';
         document.getElementById('filter-proc').value = '';
-        document.getElementById('filter-period').value = '';
+        const periodSelect = document.getElementById('filter-period');
+        if (periodSelect) {
+            // Re-select the latest competence on clear
+            const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort().reverse();
+            if (competencias.length > 0) periodSelect.value = competencias[0];
+            else periodSelect.value = '';
+        }
         renderTable();
     });
 
@@ -55,8 +65,14 @@ function populateFilters() {
     const periodSelect = document.getElementById('filter-period');
     if (periodSelect) {
         const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort().reverse();
-        periodSelect.innerHTML = `<option value="">Todo o Período</option>` +
-            competencias.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        // Strictly by competence, no "All" option to avoid confusion with "Geral"
+        if (competencias.length > 0) {
+            periodSelect.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
+            periodSelect.value = competencias[0];
+        } else {
+            periodSelect.innerHTML = `<option value="">Nenhuma Competência</option>`;
+        }
     }
 }
 
@@ -138,7 +154,7 @@ function renderTable() {
         `;
     }).join('');
 
-    updateStats(statsTotalPact, statsTotalReal, statsTotalFinanceiro);
+    updateStats(statsTotalPact, statsTotalReal, statsTotalFinanceiro, filtered);
 }
 
 function itemProgress(percent) {
@@ -153,7 +169,7 @@ function itemProgress(percent) {
     `;
 }
 
-function updateStats(pact, real, fin) {
+function updateStats(pact, real, fin, filteredList = []) {
     // Stats cards in acompanhamento_orcamento.html
     const elements = document.querySelectorAll('.text-2xl.font-bold');
     if (elements.length >= 3) {
@@ -161,9 +177,13 @@ function updateStats(pact, real, fin) {
         elements[1].textContent = formatNumber(real);
         elements[2].textContent = formatCurrency(fin);
 
-        // Critical institutes count (mock for now or calculated if context exists)
+        // Critical institutes count based on CURRENT filtered list
         if (elements[3]) {
-            const criticalCount = allPactuacoes.filter(p => (p.producao?.realizada / p.ofertaMinima) < 0.7).length;
+            const criticalCount = filteredList.filter(p => {
+                const pactVal = parseInt(p.ofertaMinima || 0);
+                const realVal = parseInt(p.producao?.realizada || 0);
+                return pactVal > 0 && (realVal / pactVal) < 0.7;
+            }).length;
             elements[3].textContent = criticalCount;
         }
     }

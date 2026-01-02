@@ -1,14 +1,33 @@
 import { auth } from './firebase-config';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
-// Proteção de rota: Se não estiver logado, redireciona para o login
+// Proteção de rota: Se não estiver logado ou perfil for insuficiente, redireciona
 export function initAuthGuard() {
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
+        const currentPage = window.location.pathname;
+        const isPublicPage = currentPage.includes('login.html') || currentPage.includes('index.html') || currentPage === '/';
+
         if (!user) {
-            // Se a página atual não for login.html ou index.html, redireciona
-            const currentPage = window.location.pathname;
-            if (!currentPage.includes('login.html') && !currentPage.includes('index.html') && currentPage !== '/') {
+            if (!isPublicPage) {
                 window.location.href = 'login.html';
+            }
+        } else {
+            // Se logado, verifica o perfil no Firestore
+            try {
+                // Import dinâmico para evitar dependência circular se houver
+                const { Repository } = await import('./repository.js');
+                const profile = await Repository.getUserByEmail(user.email);
+
+                if (!profile || profile.role !== 'Orçamento') {
+                    if (!isPublicPage) {
+                        console.warn('Acesso negado: Perfil insuficiente.');
+                        alert('Seu perfil não tem permissão para acessar esta área.');
+                        await signOut(auth);
+                        window.location.href = 'login.html';
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao verificar permissões:', err);
             }
         }
     });

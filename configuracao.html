@@ -119,9 +119,6 @@
                 SIGTAP</button>
             <button id="btn-tab-po" onclick="switchTab('tab-po')"
                 class="tab-btn px-6 py-4 text-slate-500 font-medium border-b-2 border-transparent hover:text-primary transition-all">Incentivos</button>
-            <button id="btn-tab-parametros" onclick="switchTab('tab-parametros')"
-                class="tab-btn px-6 py-4 text-slate-500 font-medium border-b-2 border-transparent hover:text-primary transition-all">Parâmetros
-                Gerais</button>
         </div>
         </div>
 
@@ -391,29 +388,6 @@
             </div>
         </div>
 
-        <div id="tab-parametros" class="tab-content hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div
-                    class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6">
-                    <h3 class="font-bold mb-6">Configurações de Alerta</h3>
-                    <div class="space-y-6">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Limite Crítico de
-                                Atingimento (%)</label>
-                            <input type="number" value="70"
-                                class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg">
-                        </div>
-                        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                            <div>
-                                <p class="text-sm font-bold">Trava de Teto Financeiro</p>
-                                <p class="text-xs text-slate-500">Impedir ofertas acima do valor pactuado.</p>
-                            </div>
-                            <input type="checkbox" checked class="rounded text-primary focus:ring-primary size-5">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
 
     <!-- MODAL: INSTITUTO -->

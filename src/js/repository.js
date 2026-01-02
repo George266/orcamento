@@ -1,4 +1,4 @@
-import { db } from './firebase-config';
+import { db, auth } from './firebase-config';
 import {
     collection,
     addDoc,
@@ -8,7 +8,9 @@ import {
     query,
     where,
     deleteDoc,
-    writeBatch
+    writeBatch,
+    orderBy,
+    limit
 } from "firebase/firestore";
 
 // --- COLLECTIONS NAMES ---
@@ -18,6 +20,7 @@ const COLL_PROGRAMAS = "programas"; // Level 1 (Groups)
 const COLL_USUARIOS = "usuarios";
 const COLL_PACTUACOES = "pactuacoes"; // Level 2 (Relations)
 const COLL_PRODUCAO = "producao";
+const COLL_LOGS = "logs";
 
 // --- HELPERS ---
 const normalizeId = (text) => {
@@ -38,6 +41,14 @@ export const Repository = {
     async getUsers() {
         const snapshot = await getDocs(collection(db, COLL_USUARIOS));
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async getUserByEmail(email) {
+        if (!email) return null;
+        const q = query(collection(db, COLL_USUARIOS), where("email", "==", email));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return null;
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
     },
 
     async saveUser(user) {
@@ -114,6 +125,56 @@ export const Repository = {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     },
 
+    // --- LOGS & ANALYTICS ---
+    async logActivity(action, details = {}) {
+        try {
+            const user = auth.currentUser;
+            await addDoc(collection(db, COLL_LOGS), {
+                action,
+                details,
+                userEmail: user?.email || 'Sistema',
+                userName: user?.displayName || 'Anônimo',
+                timestamp: new Date()
+            });
+        } catch (err) {
+            console.error('Erro ao registrar log:', err);
+        }
+    },
+
+    async getLogs(limitCount = 50) {
+        const q = query(
+            collection(db, COLL_LOGS),
+            orderBy('timestamp', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async getSystemStats() {
+        const [insts, procs, pacts, logs] = await Promise.all([
+            getDocs(collection(db, COLL_INSTITUTOS)),
+            getDocs(collection(db, COLL_PROCEDIMENTOS)),
+            getDocs(collection(db, COLL_PACTUACOES)),
+            getDocs(query(collection(db, COLL_LOGS), where('action', 'in', ['LOGIN', 'IMPORT_DATA'])))
+        ]);
+
+        const totalProcs = procs.docs.length;
+        const procsWithValues = procs.docs.filter(d => d.data().baseValue > 0).length;
+
+        const pactInsts = new Set(pacts.docs.map(d => d.data().instId));
+        const totalInsts = insts.docs.length;
+
+        return {
+            totalInsts,
+            activeInsts: pactInsts.size,
+            totalProcs,
+            procsWithValues,
+            logins: logs.docs.filter(d => d.data().action === 'LOGIN').length,
+            imports: logs.docs.filter(d => d.data().action === 'IMPORT_DATA').length
+        };
+    },
+
     async savePactuacao(pact) {
         const id = pact.id || Date.now().toString();
         const ref = doc(db, COLL_PACTUACOES, id);
@@ -149,6 +210,7 @@ export const Repository = {
         data.forEach(item => {
             const pNome = getCol(item, 'Programa').toString().trim();
             const iNome = getCol(item, 'Instituto').toString().trim();
+            const comp = getCol(item, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
             let sCod = getCol(item, 'SIGTAP').toString().trim();
 
             // Pad SIGTAP code with zeros (should be 10 digits)
@@ -187,7 +249,7 @@ export const Repository = {
             const pNome = getCol(row, 'Programa').toString().trim();
             const iNome = getCol(row, 'Instituto').toString().trim();
             let sCod = getCol(row, 'SIGTAP').toString().trim();
-            const comp = getCol(row, 'Competência', 'Mês').toString().trim() || 'Geral';
+            const comp = getCol(row, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
 
             if (sCod && /^\d+$/.test(sCod)) {
                 sCod = sCod.padStart(10, '0');
@@ -238,6 +300,13 @@ export const Repository = {
         });
 
         await batch.commit();
+
+        // Log the import activity
+        await this.logActivity('IMPORT_DATA', {
+            lines: data.length,
+            procs: uniqueProcs.size,
+            insts: uniqueInsts.size
+        });
 
         return {
             progs: uniqueProgs.size,

@@ -71,9 +71,11 @@
                     <span class="text-xs text-slate-500 dark:text-slate-400">FELUMA</span>
                 </div>
                 <button id="logout-btn"
-                    class="size-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    class="size-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onclick="handleLogout()">
                     <span class="material-symbols-outlined">logout</span>
                 </button>
+                <script type="module" src="/src/js/auth-guard.js"></script>
             </div>
         </div>
     </header>
@@ -85,146 +87,279 @@
                 <h1 class="text-3xl font-black tracking-tight text-slate-900">Administração</h1>
                 <p class="text-slate-500 mt-1">Gerencie os usuários e perfis de acesso (Orçamento e Institutos).</p>
             </div>
-            <button onclick="openModal('modal-usuario')"
-                class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-[20px]">person_add</span>
-                Cadastrar Novo Usuário
+            <div class="flex items-center gap-3">
+                <button onclick="openModal('modal-usuario')"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[20px]">person_add</span>
+                    Novo Usuário
+                </button>
+            </div>
+        </div>
+
+        <!-- TABS NAVIGATION -->
+        <div class="flex items-center gap-2 mb-8 border-b border-slate-200">
+            <button onclick="switchTab('tab-users')" id="btn-tab-users"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-primary text-primary">
+                Gestão de Usuários
+            </button>
+            <button onclick="switchTab('tab-import')" id="btn-tab-import"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800">
+                Importação de Dados
+            </button>
+            <button onclick="switchTab('tab-analytics')" id="btn-tab-analytics"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                Analytics & Monitoramento
+                <span class="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-black">NOVO</span>
             </button>
         </div>
 
-        <!-- USERS TABLE -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden animate-fade-in">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-                <h3 class="font-bold text-slate-800">Usuários Ativos no Sistema</h3>
-                <div class="relative w-72">
-                    <span
-                        class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[20px]">search</span>
-                    <input type="text" id="user-search" onkeyup="loadUsers()" placeholder="Buscar por nome ou e-mail..."
-                        class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+        <!-- TAB: USERS -->
+        <div id="tab-users" class="tab-content">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden animate-fade-in">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                    <h3 class="font-bold text-slate-800">Usuários Ativos no Sistema</h3>
+                    <div class="relative w-72">
+                        <span
+                            class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[20px]">search</span>
+                        <input type="text" id="user-search" onkeyup="loadUsers()"
+                            placeholder="Buscar por nome ou e-mail..."
+                            class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    </div>
                 </div>
-            </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 uppercase bg-slate-50/50">
-                        <tr>
-                            <th class="px-6 py-4">Usuário</th>
-                            <th class="px-6 py-4">Email</th>
-                            <th class="px-6 py-4">Perfil</th>
-                            <th class="px-6 py-4 text-center">Status</th>
-                            <th class="px-6 py-4 text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-users" class="divide-y divide-slate-100">
-                        <!-- Dynamic rows here -->
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50/50">
+                            <tr>
+                                <th class="px-6 py-4">Usuário</th>
+                                <th class="px-6 py-4">Email</th>
+                                <th class="px-6 py-4">Perfil</th>
+                                <th class="px-6 py-4 text-center">Status</th>
+                                <th class="px-6 py-4 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-users" class="divide-y divide-slate-100">
+                            <!-- Dynamic rows here -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- DATA IMPORT SECTION -->
-        <div class="mt-12 bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden animate-fade-in">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
-                <h3 class="font-bold text-slate-800">Importação de Dados Avançada</h3>
-                <p class="text-xs text-slate-500 mt-1">Carregue planilhas de pactuações e produção para atualizar o
-                    sistema.</p>
-            </div>
+        <!-- TAB: IMPORT -->
+        <div id="tab-import" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden animate-fade-in">
+                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
+                    <h3 class="font-bold text-slate-800">Importação de Dados Avançada</h3>
+                    <p class="text-xs text-slate-500 mt-1">Carregue planilhas de pactuações e produção para atualizar o
+                        sistema.</p>
+                </div>
 
-            <div class="p-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Dropzone -->
-                    <div id="drop-zone"
-                        class="border-2 border-dashed border-slate-200 rounded-3xl p-10 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-blue-50/30 hover:border-blue-300 transition-all cursor-pointer group">
-                        <div
-                            class="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <span class="material-symbols-outlined text-blue-600 text-3xl">upload_file</span>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Dropzone -->
+                        <div id="drop-zone"
+                            class="border-2 border-dashed border-slate-200 rounded-3xl p-10 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-blue-50/30 hover:border-blue-300 transition-all cursor-pointer group">
+                            <div
+                                class="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-blue-600 text-3xl">upload_file</span>
+                            </div>
+                            <p class="text-sm font-bold text-slate-700">Arraste sua planilha aqui</p>
+                            <p class="text-[10px] text-slate-400 mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
+                            <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
+                            <button onclick="document.getElementById('file-input').click()"
+                                class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">Selecionar
+                                Arquivo</button>
                         </div>
-                        <p class="text-sm font-bold text-slate-700">Arraste sua planilha aqui</p>
-                        <p class="text-[10px] text-slate-400 mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
-                        <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
-                        <button onclick="document.getElementById('file-input').click()"
-                            class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">Selecionar
-                            Arquivo</button>
+
+                        <!-- Instructions -->
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-blue-600 text-lg">info</span>
+                                    Formato do Arquivo
+                                </h4>
+                                <a href="modelo_importacao.csv" download
+                                    class="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full transition-all">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Baixar Modelo Excel / CSV
+                                </a>
+                            </div>
+                            <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100/50">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="flex -space-x-1">
+                                        <div
+                                            class="bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                            XLSX</div>
+                                        <div
+                                            class="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                            CSV</div>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 italic">Suporte total a arquivos do Excel e
+                                        CSV.
+                                    </p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mb-4 italic">Certifique-se de que sua planilha
+                                    contenha
+                                    os cabeçalhos exatamente como no modelo:</p>
+                                <ul class="grid grid-cols-2 gap-y-2 gap-x-4">
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Processamento / Instituto
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Programa / Responsável
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Cód. SIGTAP / Proc.
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Ofertado / Meta
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Mês / Competência
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Vlr SIGTAP / Incentivo
+                                    </li>
+                                    <li class="text-[10px] text-slate-500 flex items-center gap-2 font-bold">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Produção Semana (1º-5º)
+                                    </li>
+                                    <li
+                                        class="text-[10px] text-slate-500 flex items-center gap-2 font-black text-blue-600">
+                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Totais & Status
+                                    </li>
+                                </ul>
+                                <div class="mt-6 p-4 bg-white/60 rounded-xl border border-blue-100">
+                                    <p class="text-[9px] text-blue-600 font-medium leading-relaxed">
+                                        <span class="font-bold">Nota:</span> O sistema processará automaticamente novos
+                                        institutos e procedimentos. Colunas de valores serão salvas detalhadamente no
+                                        banco
+                                        de dados para auditoria.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Instructions -->
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-blue-600 text-lg">info</span>
-                                Formato do Arquivo
-                            </h4>
-                            <a href="modelo_importacao.csv" download
-                                class="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full transition-all">
-                                <span class="material-symbols-outlined text-sm">download</span>
-                                Baixar Modelo Excel / CSV
-                            </a>
+                    <!-- Progress/Log area (hidden by default) -->
+                    <div id="import-status"
+                        class="hidden mt-8 p-4 bg-slate-900 rounded-2xl text-white font-mono text-[10px]">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-blue-400">Processando planilha...</span>
+                            <span id="import-percent">0%</span>
                         </div>
-                        <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100/50">
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="flex -space-x-1">
-                                    <div
-                                        class="bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                        XLSX</div>
-                                    <div
-                                        class="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                        CSV</div>
-                                </div>
-                                <p class="text-[10px] text-slate-400 italic">Suporte total a arquivos do Excel e CSV.
-                                </p>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="import-bar" class="bg-blue-500 h-full transition-all duration-300"
+                                style="width: 0%">
                             </div>
-                            <p class="text-[10px] text-slate-400 mb-4 italic">Certifique-se de que sua planilha contenha
-                                os cabeçalhos exatamente como no modelo:</p>
-                            <ul class="grid grid-cols-2 gap-y-2 gap-x-4">
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Processamento / Instituto
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Programa / Responsável
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Cód. SIGTAP / Proc.
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Ofertado / Meta
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Mês / Competência
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Vlr SIGTAP / Incentivo
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2 font-bold">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Produção Semana (1º-5º)
-                                </li>
-                                <li class="text-[10px] text-slate-500 flex items-center gap-2 font-black text-blue-600">
-                                    <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Totais & Status
-                                </li>
-                            </ul>
-                            <div class="mt-6 p-4 bg-white/60 rounded-xl border border-blue-100">
-                                <p class="text-[9px] text-blue-600 font-medium leading-relaxed">
-                                    <span class="font-bold">Nota:</span> O sistema processará automaticamente novos
-                                    institutos e procedimentos. Colunas de valores serão salvas detalhadamente no banco
-                                    de dados para auditoria.
-                                </p>
-                            </div>
+                        </div>
+                        <div id="import-log" class="mt-4 space-y-1 h-32 overflow-y-auto">
+                            <!-- Log lines -->
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Progress/Log area (hidden by default) -->
-                <div id="import-status"
-                    class="hidden mt-8 p-4 bg-slate-900 rounded-2xl text-white font-mono text-[10px]">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-blue-400">Processando planilha...</span>
-                        <span id="import-percent">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div id="import-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%">
+        <!-- TAB: ANALYTICS -->
+        <div id="tab-analytics" class="tab-content hidden animate-fade-in">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="size-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                            <span class="material-symbols-outlined">login</span>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Acessos (7 dias)</p>
+                            <h4 class="text-2xl font-black text-slate-800" id="stat-logins">--</h4>
                         </div>
                     </div>
-                    <div id="import-log" class="mt-4 space-y-1 h-32 overflow-y-auto">
-                        <!-- Log lines -->
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="size-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                            <span class="material-symbols-outlined">upload_file</span>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Planilhas Importadas
+                            </p>
+                            <h4 class="text-2xl font-black text-slate-800" id="stat-imports">--</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="size-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+                            <span class="material-symbols-outlined">database</span>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Saúde dos Dados</p>
+                            <h4 class="text-2xl font-black text-slate-800" id="stat-health">100%</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Activity Log -->
+                <div
+                    class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden text-sm">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                        <h3 class="font-bold text-slate-800">Log de Auditoria Recente</h3>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Últimos 50 eventos</span>
+                    </div>
+                    <div class="overflow-y-auto max-h-[500px]">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50/50 text-[10px] text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-6 py-3">Ação</th>
+                                    <th class="px-6 py-3">Usuário</th>
+                                    <th class="px-6 py-3">Detalhes</th>
+                                    <th class="px-6 py-3">Data/Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-log-table" class="divide-y divide-slate-100">
+                                <!-- Logs dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Engagement/System info -->
+                <div class="space-y-6">
+                    <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
+                        <h4 class="font-bold mb-4 text-blue-400">Atividade Mensal</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-[10px] mb-1">
+                                    <span>Cadastros de Usuários</span>
+                                    <span id="progress-users">--</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-blue-500 h-full" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[10px] mb-1">
+                                    <span>Cobertura de Institutos</span>
+                                    <span id="progress-insts">100%</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-emerald-500 h-full" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+                        <h4 class="font-bold text-slate-800 mb-2">Saúde da Base</h4>
+                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">Avaliação da integridade dos dados entre
+                            SIGTAP e Incentivos.</p>
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <p class="text-[10px] text-blue-700 font-medium">Todos os procedimentos importados possuem
+                                valores vinculados no catálogo SIGTAP.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -296,9 +431,118 @@
 
     <script type="module">
         import { Repository } from './src/js/repository.js';
+        import { firebaseConfig } from './src/js/firebase-config.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // Initialize secondary app for creating users without logging out current user
+        const secondaryApp = initializeApp(firebaseConfig, "secondary");
+        const secondaryAuth = getAuth(secondaryApp);
 
         let currentUserId = null;
         let localUsers = []; // Cache local for filtering
+
+        window.switchTab = (tabId) => {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Show selected
+            document.getElementById(tabId).classList.remove('hidden');
+
+            // Update buttons
+            document.querySelectorAll('[id^="btn-tab-"]').forEach(btn => {
+                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.add('border-primary', 'text-primary');
+            activeBtn.classList.remove('border-transparent', 'text-slate-500');
+
+            if (tabId === 'tab-analytics') {
+                window.loadAnalytics();
+            }
+        };
+
+        window.loadAnalytics = async () => {
+            const logs = await Repository.getLogs(50);
+            renderAuditLog(logs);
+            updateAnalyticsStats(logs);
+        };
+
+        function renderAuditLog(logs) {
+            const tbody = document.getElementById('audit-log-table');
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${getActionColor(log.action)}">
+                            ${getActionLabel(log.action)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-bold text-slate-700">${log.userName || log.userEmail}</td>
+                    <td class="px-6 py-4 text-slate-500 text-[11px]">${formatDetails(log)}</td>
+                    <td class="px-6 py-4 text-slate-400 text-[11px] font-mono">
+                        ${log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : '---'}
+                    </td>
+                </tr>
+            `).join('');
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400 italic">Nenhum evento registrado.</td></tr>`;
+            }
+        }
+
+        function formatDetails(log) {
+            if (log.action === 'LOGIN') return `Acesso ao sistema via ${log.details.email}`;
+            if (log.action === 'IMPORT_DATA') return `Importação: ${log.details.lines} linhas (${log.details.insts} inst. / ${log.details.procs} procs)`;
+            return JSON.stringify(log.details);
+        }
+
+        function getActionLabel(action) {
+            const map = {
+                'LOGIN': 'Acesso',
+                'IMPORT_DATA': 'Importação',
+                'SAVE_USER': 'Alteração Usuário',
+                'DELETE_USER': 'Exclusão Usuário'
+            };
+            return map[action] || action;
+        }
+
+        function getActionColor(action) {
+            const map = {
+                'LOGIN': 'bg-blue-100 text-blue-700',
+                'IMPORT_DATA': 'bg-emerald-100 text-emerald-700',
+                'SAVE_USER': 'bg-amber-100 text-amber-700',
+                'DELETE_USER': 'bg-red-100 text-red-700'
+            };
+            return map[action] || 'bg-slate-100 text-slate-700';
+        }
+
+        async function updateAnalyticsStats(logs) {
+            try {
+                const stats = await Repository.getSystemStats();
+
+                document.getElementById('stat-logins').textContent = stats.logins;
+                document.getElementById('stat-imports').textContent = stats.imports;
+
+                // Data Health: % of procedures with values
+                const health = stats.totalProcs > 0 ? Math.round((stats.procsWithValues / stats.totalProcs) * 100) : 100;
+                document.getElementById('stat-health').textContent = health + '%';
+
+                // Institute Coverage: % of institutes with pactuacoes
+                const coverage = stats.totalInsts > 0 ? Math.round((stats.activeInsts / stats.totalInsts) * 100) : 0;
+                document.getElementById('progress-insts').textContent = coverage + '%';
+
+                // Update Progress bars (visual)
+                const healthBar = document.querySelector('#tab-analytics .bg-emerald-500');
+                if (healthBar) healthBar.style.width = health + '%';
+
+                const coverageBar = document.querySelector('#tab-analytics .bg-blue-500');
+                if (coverageBar) coverageBar.style.width = coverage + '%';
+
+                document.getElementById('progress-users').textContent = localUsers.length;
+            } catch (err) {
+                console.error('Erro ao atualizar estatísticas:', err);
+            }
+        }
 
         window.loadUsers = async () => {
             localUsers = await Repository.getUsers();
@@ -370,18 +614,49 @@
             const email = document.getElementById('user-email').value;
             const role = document.getElementById('user-role').value;
             const status = document.getElementById('user-status').value;
+            const password = document.getElementById('user-password').value;
 
             if (!name || !email) return alert('Por favor, preencha nome e e-mail.');
 
             const userData = { name, email, role, status, updatedAt: new Date() };
-            if (currentUserId) userData.id = currentUserId;
 
             try {
+                // If it's a NEW user, we need to create their login in Auth
+                if (!currentUserId) {
+                    if (!password || password.length < 6) {
+                        return alert('Para novos usuários, a senha temporária é obrigatória (mín. 6 caracteres).');
+                    }
+
+                    addLog(`Criando credenciais de login para: ${email}...`, 'text-blue-500');
+                    try {
+                        await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                        addLog('Login criado com sucesso no Firebase Auth!', 'text-green-500');
+                    } catch (authErr) {
+                        if (authErr.code === 'auth/email-already-in-use') {
+                            addLog('Aviso: E-mail já possui cadastro no Auth. Vinculando apenas perfil.', 'text-yellow-500');
+                        } else {
+                            throw authErr;
+                        }
+                    }
+                }
+
+                if (currentUserId) userData.id = currentUserId;
+
                 await Repository.saveUser(userData);
+
+                // Log activity
+                await Repository.logActivity(currentUserId ? 'SAVE_USER' : 'CREATE_USER', {
+                    target: email,
+                    role: role
+                });
+
                 window.loadUsers();
                 window.closeModal('modal-usuario');
+                alert('Usuário salvo com sucesso!');
             } catch (err) {
-                alert('Erro ao salvar no Firebase: ' + err.message);
+                console.error(err);
+                alert('Erro ao salvar usuário: ' + err.message);
+                addLog(`ERRO: ${err.message}`, 'text-red-500');
             }
         };
 
@@ -402,7 +677,13 @@
             try {
                 // Assuming COLL_USUARIOS is available or using a repository method if I added one.
                 // I'll add deleteUser to Repository if not there, or use a general one.
+                const userToDelete = localUsers.find(u => u.id === id);
                 await Repository.deleteUser(id);
+
+                await Repository.logActivity('DELETE_USER', {
+                    target: userToDelete?.email || id
+                });
+
                 window.loadUsers();
             } catch (err) {
                 alert('Erro ao excluir: ' + err.message);
