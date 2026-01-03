@@ -57,13 +57,13 @@
             </a>
             <nav class="hidden md:flex items-center gap-6 lg:gap-8">
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="dashboard_orcamento.html">Dashboard</a>
+                    href="dashboard_orcamento.html">Visão Geral</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="acompanhamento_orcamento.html">Relatórios</a>
+                    href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="configuracao.html">Configurações</a>
-                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
-                    href="usuarios.html">Administração</a>
+                    href="configuracao.html">Parâmetros do Incentivo</a>
+                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="usuarios.html">Gestão de
+                    Usuários</a>
             </nav>
             <div class="flex items-center gap-4">
                 <div class="relative">
@@ -72,8 +72,8 @@
                             <span id="user-name-header"
                                 class="text-sm font-semibold text-slate-900 group-hover:text-primary transition-colors">Administrador</span>
                             <span id="user-inst-header"
-                                class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Secretaria de
-                                Saúde</span>
+                                class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Orçamento e Gestão
+                                de Recursos</span>
                         </div>
                         <div
                             class="size-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
@@ -159,10 +159,6 @@
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-primary text-primary">
                 Gestão de Usuários
             </button>
-            <button onclick="switchTab('tab-import')" id="btn-tab-import"
-                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800">
-                Importação de Dados
-            </button>
             <button onclick="switchTab('tab-analytics')" id="btn-tab-analytics"
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
                 Analytics & Monitoramento
@@ -190,6 +186,7 @@
                             <tr>
                                 <th class="px-6 py-4">Usuário</th>
                                 <th class="px-6 py-4">Email</th>
+                                <th class="px-6 py-4">Instituto</th>
                                 <th class="px-6 py-4">Perfil</th>
                                 <th class="px-6 py-4 text-center">Status</th>
                                 <th class="px-6 py-4 text-center">Ações</th>
@@ -203,120 +200,7 @@
             </div>
         </div>
 
-        <!-- TAB: IMPORT -->
-        <div id="tab-import" class="tab-content hidden">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden animate-fade-in">
-                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
-                    <h3 class="font-bold text-slate-800">Importação de Dados Avançada</h3>
-                    <p class="text-xs text-slate-500 mt-1">Carregue planilhas de pactuações e produção para atualizar o
-                        sistema.</p>
-                </div>
-
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <!-- Dropzone -->
-                        <div id="drop-zone"
-                            class="border-2 border-dashed border-slate-200 rounded-3xl p-10 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-blue-50/30 hover:border-blue-300 transition-all cursor-pointer group">
-                            <div
-                                class="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <span class="material-symbols-outlined text-blue-600 text-3xl">upload_file</span>
-                            </div>
-                            <p class="text-sm font-bold text-slate-700">Arraste sua planilha aqui</p>
-                            <p class="text-[10px] text-slate-400 mt-2">Formatos aceitos: .xlsx, .xls, .csv</p>
-                            <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
-                            <button onclick="document.getElementById('file-input').click()"
-                                class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">Selecionar
-                                Arquivo</button>
-                        </div>
-
-                        <!-- Instructions -->
-                        <div>
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-blue-600 text-lg">info</span>
-                                    Formato do Arquivo
-                                </h4>
-                                <a href="modelo_importacao.csv" download
-                                    class="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full transition-all">
-                                    <span class="material-symbols-outlined text-sm">download</span>
-                                    Baixar Modelo Excel / CSV
-                                </a>
-                            </div>
-                            <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100/50">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <div class="flex -space-x-1">
-                                        <div
-                                            class="bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                            XLSX</div>
-                                        <div
-                                            class="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                            CSV</div>
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 italic">Suporte total a arquivos do Excel e
-                                        CSV.
-                                    </p>
-                                </div>
-                                <p class="text-[10px] text-slate-400 mb-4 italic">Certifique-se de que sua planilha
-                                    contenha
-                                    os cabeçalhos exatamente como no modelo:</p>
-                                <ul class="grid grid-cols-2 gap-y-2 gap-x-4">
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Processamento / Instituto
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Programa / Responsável
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Cód. SIGTAP / Proc.
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Ofertado / Meta
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Mês / Competência
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Vlr SIGTAP / Incentivo
-                                    </li>
-                                    <li class="text-[10px] text-slate-500 flex items-center gap-2 font-bold">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Produção Semana (1º-5º)
-                                    </li>
-                                    <li
-                                        class="text-[10px] text-slate-500 flex items-center gap-2 font-black text-blue-600">
-                                        <div class="w-1 h-1 bg-blue-400 rounded-full"></div> Totais & Status
-                                    </li>
-                                </ul>
-                                <div class="mt-6 p-4 bg-white/60 rounded-xl border border-blue-100">
-                                    <p class="text-[9px] text-blue-600 font-medium leading-relaxed">
-                                        <span class="font-bold">Nota:</span> O sistema processará automaticamente novos
-                                        institutos e procedimentos. Colunas de valores serão salvas detalhadamente no
-                                        banco
-                                        de dados para auditoria.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Progress/Log area (hidden by default) -->
-                    <div id="import-status"
-                        class="hidden mt-8 p-4 bg-slate-900 rounded-2xl text-white font-mono text-[10px]">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-blue-400">Processando planilha...</span>
-                            <span id="import-percent">0%</span>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div id="import-bar" class="bg-blue-500 h-full transition-all duration-300"
-                                style="width: 0%">
-                            </div>
-                        </div>
-                        <div id="import-log" class="mt-4 space-y-1 h-32 overflow-y-auto">
-                            <!-- Log lines -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Import Tab Removed -->
 
         <!-- TAB: ANALYTICS -->
         <div id="tab-analytics" class="tab-content hidden animate-fade-in">
@@ -506,6 +390,7 @@
 
         let currentUserId = null;
         let localUsers = []; // Cache local for filtering
+        let localInstitutosCache = [];
 
         window.switchTab = (tabId) => {
             // Hide all contents
@@ -609,8 +494,15 @@
             }
         }
 
+
         window.loadUsers = async () => {
-            localUsers = await Repository.getUsers();
+            // Parallel fetch for speed
+            const [users, insts] = await Promise.all([
+                Repository.getUsers(),
+                Repository.getInstitutos()
+            ]);
+            localUsers = users;
+            localInstitutosCache = insts;
             window.renderUsersTable();
         };
 
@@ -627,6 +519,9 @@
                 <tr class="hover:bg-slate-50/50 transition-colors">
                     <td class="px-6 py-4 font-bold text-slate-800">${user.name}</td>
                     <td class="px-6 py-4 text-slate-500 font-medium">${user.email}</td>
+                    <td class="px-6 py-4 text-slate-600 text-xs">
+                        ${getInstituteName(user)}
+                    </td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${user.role === 'Orçamento' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">
                             ${user.role}
@@ -651,9 +546,15 @@
             `).join('');
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 italic">Nenhum usuário encontrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-20 text-center text-slate-400 italic">Nenhum usuário encontrado.</td></tr>`;
             }
         };
+
+        function getInstituteName(user) {
+            if (user.role === 'Orçamento' || !user.instId) return '<span class="text-slate-300">-</span>';
+            const inst = localInstitutosCache.find(i => i.id === user.instId);
+            return inst ? `<span class="font-bold underline decoration-slate-300 decoration-dotted" title="${inst.nome}">${inst.sigla}</span>` : '<span class="text-red-400 italic">Não encontrado</span>';
+        }
 
         window.openModal = (id) => {
             document.getElementById(id).classList.remove('hidden');
@@ -779,111 +680,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             window.loadUsers();
-            initImportFeature();
         });
 
-        // ---------------- ARCHIVE IMPORT LOGIC ----------------
-        function initImportFeature() {
-            const dropZone = document.getElementById('drop-zone');
-            const fileInput = document.getElementById('file-input');
-
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('border-blue-500', 'bg-blue-50');
-            });
-
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-                const files = e.dataTransfer.files;
-                if (files.length) handleFile(files[0]);
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length) handleFile(e.target.files[0]);
-            });
-        }
-
-        function handleFile(file) {
-            const reader = new FileReader();
-            const statusArea = document.getElementById('import-status');
-            const logArea = document.getElementById('import-log');
-            const progressBar = document.getElementById('import-bar');
-            const progressPercent = document.getElementById('import-percent');
-
-            logArea.innerHTML = '';
-            statusArea.classList.remove('hidden');
-            addLog(`Iniciando leitura de: ${file.name}`, 'text-blue-400');
-
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                    if (jsonData.length === 0) throw new Error('Planilha vazia');
-
-                    const detectedCols = Object.keys(jsonData[0]);
-                    addLog(`Colunas detectadas: ${detectedCols.join(', ')}`, 'text-xs text-slate-500 italic');
-                    addLog(`Detectadas ${jsonData.length} linhas de dados.`, 'text-green-400');
-                    processImportData(jsonData);
-                } catch (err) {
-                    addLog(`ERRO: ${err.message}`, 'text-red-500');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        window.addLog = addLog;
-        window.handleFile = handleFile;
-
-        function addLog(msg, color = 'text-slate-300') {
-            const logArea = document.getElementById('import-log');
-            const line = document.createElement('div');
-            line.className = color;
-            line.textContent = `> [${new Date().toLocaleTimeString()}] ${msg}`;
-            logArea.prepend(line);
-        }
-
-        async function processImportData(data) {
-            const bar = document.getElementById('import-bar');
-            const percent = document.getElementById('import-percent');
-
-            try {
-                addLog('Estruturando dados para o Firebase...', 'text-yellow-400');
-
-                // We send data in smaller chunks to avoid memory/batch limits if huge,
-                // but for ~500 rows a single batch commit is often fine in Firebase (max 500).
-                // Let's do it in chunks of 100 for safety.
-                const chunkSize = 100;
-                for (let i = 0; i < data.length; i += chunkSize) {
-                    const chunk = data.slice(i, i + chunkSize);
-                    const stats = await Repository.batchSaveImport(chunk);
-
-                    const p = Math.round((Math.min(i + chunkSize, data.length) / data.length) * 100);
-                    bar.style.width = `${p}%`;
-                    percent.textContent = `${p}%`;
-                    addLog(`Lote ${Math.floor(i / chunkSize) + 1}: ${chunk.length} linhas enviadas. (${stats.procs} procs detectados)`);
-                }
-
-                addLog('IMPORTAÇÃO CONCLUÍDA COM SUCESSO! 🎉', 'text-green-500 font-bold');
-                addLog('Os dados foram salvos permanentemente no Firebase.', 'text-blue-300');
-
-                // Refresh local data from Firebase
-                window.loadUsers();
-
-            } catch (err) {
-                console.error(err);
-                addLog(`FALHA NO FIREBASE: ${err.message}`, 'text-red-500 font-bold');
-            }
-        }
-        window.processImportData = processImportData;
     </script>
     <script type="module" src="src/js/auth-guard.js"></script>
 </body>

@@ -96,12 +96,6 @@
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">payments</span>
                     <span class="text-sm font-medium leading-normal">Financeiro</span>
                 </a>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                    href="configuracao.html">
-                    <span
-                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">settings</span>
-                    <span class="text-sm font-medium leading-normal">Configurações</span>
-                </a>
             </nav>
         </div>
         <div class="p-6">
@@ -121,10 +115,14 @@
         <!-- Top Header -->
         <header
             class="h-16 bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
-            <div class="flex flex-col">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Módulo Instituto</p>
-                <h2 id="inst-welcome-name" class="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                    Carregando...</h2>
+            <div class="flex items-center gap-4">
+                <button id="sidebar-toggle" class="text-slate-500 hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined">menu_open</span>
+                </button>
+                <div class="flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                        Módulo Instituto</h2>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <button
@@ -215,26 +213,68 @@
                         <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
                             <thead class="bg-slate-50 dark:bg-slate-800/50">
                                 <tr>
-                                    <th class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Linha Cuidado</th>
-                                    <th class="px-2 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[80px]"
-                                        scope="col">SIGTAP</th>
-                                    <th class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px]"
-                                        scope="col">Procedimento</th>
-                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[70px]"
-                                        scope="col">Oferta Min (PO)</th>
-                                    <th class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Vlr SIGTAP (Unit)</th>
-                                    <th class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Vlr Incentivo (Unit)</th>
+                                    <th data-sort="linha"
+                                        class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center gap-1">
+                                            Linha Cuidado
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="sigtap"
+                                        class="px-2 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[100px] cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center gap-1">
+                                            SIGTAP
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="procedimento"
+                                        class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px] cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center gap-1">
+                                            Procedimento
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="oferta"
+                                        class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[100px] cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center justify-center gap-1">
+                                            Oferta (PO)
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="vlrSigtap"
+                                        class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center justify-end gap-1">
+                                            Vlr SIGTAP
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="vlrIncentivo"
+                                        class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
+                                        scope="col">
+                                        <div class="flex items-center justify-end gap-1">
+                                            Vlr Incentivo
+                                            <span
+                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
+                                        </div>
+                                    </th>
 
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
+                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
                                         scope="col">Sem 1</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
+                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
                                         scope="col">Sem 2</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
+                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
                                         scope="col">Sem 3</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[50px]"
+                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
                                         scope="col">Sem 4</th>
 
                                     <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"

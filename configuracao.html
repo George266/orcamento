@@ -13,6 +13,7 @@
         rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -77,13 +78,13 @@
             </a>
             <nav class="hidden md:flex items-center gap-6 lg:gap-8">
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="dashboard_orcamento.html">Dashboard</a>
+                    href="dashboard_orcamento.html">Visão Geral</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="acompanhamento_orcamento.html">Relatórios</a>
+                    href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
                 <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
-                    href="configuracao.html">Configurações</a>
+                    href="configuracao.html">Parâmetros do Incentivo</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="usuarios.html">Administração</a>
+                    href="usuarios.html">Gestão de Usuários</a>
             </nav>
             <div class="flex items-center gap-4">
                 <div class="relative">
@@ -92,8 +93,9 @@
                             <span id="user-name-header"
                                 class="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Administrador</span>
                             <span id="user-inst-header"
-                                class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Secretaria
-                                de Saúde</span>
+                                class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Orçamento
+                                e Gestão
+                                de Recursos</span>
                         </div>
                         <div
                             class="size-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
@@ -167,18 +169,24 @@
         </div>
 
         <!-- Tabs Navigation -->
-        <div class="flex border-b border-slate-200 dark:border-slate-800 mb-8 overflow-x-auto no-scrollbar">
-            <button onclick="switchTab('tab-institutos')"
-                class="tab-btn active border-b-2 border-primary px-6 py-3 text-sm font-bold text-primary whitespace-nowrap"
-                id="btn-tab-institutos">Institutos</button>
-            <button id="btn-tab-procedimentos" onclick="switchTab('tab-procedimentos')"
-                class="tab-btn px-6 py-4 text-slate-500 font-medium border-b-2 border-transparent hover:text-primary transition-all">Procedimentos
-                SIGTAP</button>
-            <button id="btn-tab-po" onclick="switchTab('tab-po')"
-                class="tab-btn px-6 py-4 text-slate-500 font-medium border-b-2 border-transparent hover:text-primary transition-all">Incentivos</button>
+        <div class="flex items-center gap-2 mb-8 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+            <button onclick="switchTab('institutos')" id="btn-tab-institutos"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-primary text-primary whitespace-nowrap">
+                Institutos
+            </button>
+            <button onclick="switchTab('procedimentos')" id="btn-tab-procedimentos"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
+                Procedimentos SIGTAP
+            </button>
+            <button onclick="switchTab('incentivos')" id="btn-tab-incentivos"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
+                Incentivos
+            </button>
+            <button onclick="switchTab('importacao')" id="btn-tab-importacao"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">publish</span> Importação
+            </button>
         </div>
-        </div>
-
         <!-- TABS CONTENT -->
         <div id="tab-institutos" class="tab-content">
             <div
@@ -279,21 +287,52 @@
             <div
                 class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
                 <div
-                    class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50">
-                    <div>
-                        <h3 class="font-bold">Incentivos</h3>
-                        <p class="text-xs text-slate-500">Gestão de Programas e Pactuações por Unidade.</p>
+                    class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div class="mb-2 xl:mb-0">
+                        <h3 class="font-bold text-slate-800 dark:text-white">Incentivos</h3>
+                        <p class="text-xs text-slate-500">Gestão de Programas e Pactuações.</p>
                     </div>
-                    <div class="flex flex-wrap gap-3">
-                        <div class="relative">
+
+                    <!-- Unified Action Toolbar -->
+                    <div class="flex flex-col md:flex-row gap-3 w-full xl:w-auto">
+
+                        <!-- Search Program -->
+                        <div class="relative flex-1 md:w-64">
                             <span
                                 class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
-                            <input type="text" id="search-po" onkeyup="loadPO()" placeholder="Buscar programa..."
-                                class="pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-xs w-64">
+                            <input type="text" id="search-po" onkeyup="window.renderPO()"
+                                placeholder="Buscar programa..."
+                                class="pl-9 pr-4 py-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm">
                         </div>
-                        <button onclick="openModal('modal-po')"
-                            class="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-600 transition-all flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">add</span> Novo Programa
+
+                        <!-- Filter Institute -->
+                        <div class="relative flex-1 md:w-48">
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">apartment</span>
+                            <select id="main-filter-inst" onchange="window.renderPO()"
+                                class="pl-9 pr-8 py-2 w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm cursor-pointer text-slate-600 dark:text-slate-300">
+                                <option value="">Todos os Institutos</option>
+                            </select>
+                            <span
+                                class="material-symbols-outlined absolute right-2 top-2.5 text-slate-400 text-sm pointer-events-none">arrow_drop_down</span>
+                        </div>
+
+                        <!-- Filter Competence -->
+                        <div class="relative flex-1 md:w-36">
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">calendar_month</span>
+                            <input type="text" id="main-filter-comp" oninput="window.renderPO()"
+                                placeholder="Competência"
+                                class="pl-9 pr-4 py-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm">
+                        </div>
+
+                        <div class="hidden xl:block w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+                        <!-- New Program Button -->
+                        <button onclick="window.openModal('modal-po')"
+                            class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                            <span>Novo Programa</span>
                         </button>
                     </div>
                 </div>
@@ -311,6 +350,61 @@
                 </div>
                 <div id="po-history" class="p-4 space-y-3 max-h-60 overflow-y-auto text-xs">
                     <p class="text-slate-400 italic">Nenhuma alteração registrada recentemente.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-importacao" class="tab-content hidden">
+            <div
+                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden p-8">
+                <div class="mb-6 text-center">
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white">Importação de Dados</h2>
+                    <p class="text-sm text-slate-500">Arraste sua planilha ou clique para selecionar.</p>
+                </div>
+
+                <div id="drop-zone"
+                    class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group">
+                    <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
+                    <div
+                        class="size-16 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <span class="material-symbols-outlined text-[32px]">upload_file</span>
+                    </div>
+                    <p class="font-bold text-slate-700 dark:text-slate-200">Clique ou arraste o arquivo aqui</p>
+                    <p class="text-xs text-slate-400 mt-2">Suporta .xlsx, .xls e .csv</p>
+                </div>
+
+                <div id="import-status" class="hidden mt-8 space-y-4">
+                    <div class="flex items-center justify-between text-xs font-bold text-slate-500 uppercase">
+                        <span>Progresso da Importação</span>
+                        <span id="import-percent">0%</span>
+                    </div>
+                    <div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="import-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                    </div>
+                    <div id="import-log"
+                        class="bg-slate-900 text-slate-300 p-4 rounded-lg font-mono text-xs h-48 overflow-y-auto space-y-1">
+                        <!-- Log lines -->
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div
+                    class="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-yellow-800 dark:text-yellow-500 text-sm flex items-center gap-2">
+                            <span class="material-symbols-outlined">info</span> Instruções
+                        </h4>
+                        <button onclick="downloadTemplate()"
+                            class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm transition-colors">
+                            <span class="material-symbols-outlined text-[16px]">download</span> Baixar Modelo .xlsx
+                        </button>
+                    </div>
+                    <ul class="list-disc list-inside text-xs text-yellow-700 dark:text-yellow-600 space-y-1">
+                        <li>A planilha deve conter cabeçalhos na primeira linha.</li>
+                        <li>Colunas obrigatórias: <strong>Instituto, Procedimento, Competência, Oferta, Valor</strong>.
+                        </li>
+                        <li>Certifique-se que o arquivo não está protegido por senha.</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -387,6 +481,7 @@
                         Procedimento ao Escopo</h4>
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                         <input type="hidden" id="item-prog-id">
+                        <input type="hidden" id="item-id">
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Instituto</label>
                             <select id="item-inst"
@@ -400,7 +495,7 @@
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Competência</label>
-                            <input type="month" id="item-competencia"
+                            <input type="text" id="item-competencia" placeholder="Ex: Geral ou jan/26"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
                         <div class="md:col-span-2">
@@ -415,35 +510,18 @@
                             <input type="number" step="0.01" id="item-vlr"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
-                        <div class="md:col-span-1">
-                            <button onclick="saveItemIncentivo()" title="Vincular Procedimento"
+                        <div class="md:col-span-1 flex gap-2">
+                            <button id="btn-save-item" onclick="saveItemIncentivo()" title="Salvar"
                                 class="w-full bg-primary text-white font-bold py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center justify-center">
-                                <span class="material-symbols-outlined">add</span>
+                                <span class="material-symbols-outlined text-[18px]">check</span>
                             </button>
+                            <button id="btn-delete-item" onclick="deleteItemFromForm()" title="Excluir"
+                                class="hidden w-full bg-red-100 text-red-600 font-bold py-2 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+
+                                <!-- Table removed as per request -->
                         </div>
                     </div>
-                </div>
-
-                <!-- Table: Listagem de Itens -->
-                <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/30">
-                            <tr>
-                                <th class="px-4 py-3">Instituto</th>
-                                <th class="px-4 py-3">Procedimento</th>
-                                <th class="px-4 py-3 text-center">Competência</th>
-                                <th class="px-4 py-3 text-right">Oferta Mínima</th>
-                                <th class="px-4 py-3 text-right">Incentivo</th>
-                                <th class="px-4 py-3 text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-itens-incentivo" class="divide-y divide-slate-100 dark:divide-slate-800">
-                            <!-- JS populated -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
     </main>
 
@@ -543,21 +621,139 @@
         let localProcedimentos = [];
         let localProgramas = [];
         let localPactuacoes = [];
-
-        window.switchTab = (tabId) => {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active', 'border-b-2', 'border-primary', 'text-primary', 'font-bold', 'dark:text-primary');
-                btn.classList.add('text-slate-500', 'font-medium');
+        // Initialize Tabs
+        window.switchTab = (tab) => {
+            // Hide all contents
+            ['tab-institutos', 'tab-procedimentos', 'tab-po', 'tab-importacao'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
             });
-            const activeBtn = document.getElementById('btn-' + tabId);
-            activeBtn.classList.add('active', 'border-b-2', 'border-primary', 'text-primary', 'font-bold', 'dark:text-primary');
-            activeBtn.classList.remove('text-slate-500', 'font-medium');
 
-            if (tabId === 'tab-institutos') window.loadInstitutos();
-            if (tabId === 'tab-procedimentos') window.loadProcedimentos();
-            if (tabId === 'tab-po') window.loadPO();
+            // Show selected
+            // Mapping button tab to content ID if different
+            let contentId = `tab-${tab}`;
+            if (tab === 'incentivos') contentId = 'tab-po';
+
+            const selected = document.getElementById(contentId);
+            if (selected) selected.classList.remove('hidden');
+
+            // Update buttons
+            ['institutos', 'procedimentos', 'incentivos', 'importacao'].forEach(t => {
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if (btn) {
+                    if (t === tab) {
+                        btn.classList.add('border-primary', 'text-primary');
+                        btn.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+                    } else {
+                        btn.classList.remove('border-primary', 'text-primary');
+                        btn.classList.add('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+                    }
+                }
+            });
+
+            // Load specific data if needed
+            if (tab === 'institutos') window.loadInstitutos();
+            if (tab === 'procedimentos') window.loadProcedimentos();
+            if (tab === 'incentivos') window.loadPO();
+        };
+
+        // --- IMPORT LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        if (dropZone && fileInput) {
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+                const files = e.dataTransfer.files;
+                if (files.length) handleFile(files[0]);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) handleFile(e.target.files[0]);
+            });
+        }
+
+        async function handleFile(file) {
+            const statusDiv = document.getElementById('import-status');
+            const logDiv = document.getElementById('import-log');
+            const bar = document.getElementById('import-bar');
+            const percent = document.getElementById('import-percent');
+
+            // Reset UI
+            logDiv.innerHTML = '';
+            bar.classList.remove('bg-red-500');
+            bar.classList.add('bg-blue-500');
+
+            statusDiv.classList.remove('hidden');
+            logDiv.innerHTML = `<div class="text-blue-400">> Carregando arquivo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)...</div>`;
+            bar.style.width = '10%';
+            percent.textContent = '10%';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                logDiv.innerHTML += `<div class="text-emerald-400">> Planilha lida. ${jsonData.length} linhas encontradas.</div>`;
+                bar.style.width = '30%';
+                percent.textContent = '30%';
+
+                // Process Data via Repository
+                await Repository.importData(jsonData, (progress, message) => {
+                    bar.style.width = `${30 + (progress * 0.7)}%`;
+                    percent.textContent = `${Math.round(30 + (progress * 0.7))}%`;
+                    if (message) logDiv.innerHTML += `<div>${message}</div>`;
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                });
+
+                logDiv.innerHTML += `<div class="text-emerald-400 font-bold">> Importação concluída com sucesso!</div>`;
+                bar.style.width = '100%';
+                percent.textContent = '100%';
+                bar.classList.remove('bg-blue-500');
+                bar.classList.add('bg-green-500');
+
+            } catch (error) {
+                console.error(error);
+                logDiv.innerHTML += `<div class="text-red-500 font-bold">> Erro fatal: ${error.message}</div>`;
+                bar.classList.remove('bg-blue-500');
+                bar.classList.add('bg-red-500');
+            }
+        }
+
+        window.downloadTemplate = () => {
+            const wb = XLSX.utils.book_new();
+            const ws_data = [
+                [
+                    'Processamento', 'Instituto', 'Programa', 'Responsável', 'SIGTAP',
+                    'Procedimento', 'Ofertado', 'Oferta Mínima mensal SIGRAH', 'Mês', 'Competência',
+                    'Valor Sigtap', 'Incentivo', 'Indicação Feriado',
+                    '1º', '2º', '3º', '4º', '5º',
+                    'Total Oferta', 'STATUS', 'Qtd Produção', 'Valor TOTAL'
+                ],
+                [
+                    'Linha de Cuidado', 'HOSPITAL EXEMPLO', 'ONCOLOGIA', 'Fulano', '0412010101',
+                    'CONSULTA MEDICA', '100', '100', 'jan', 'jan/26',
+                    '10.00', '5.00', '',
+                    '20', '20', '20', '20', '20',
+                    '100', 'ATIVO', '0', '1500.00'
+                ]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            XLSX.utils.book_append_sheet(wb, ws, "Modelo Completo");
+            XLSX.writeFile(wb, "modelo_importacao_completo.xlsx");
         };
 
         // --- SORT LOGIC ---
@@ -664,29 +860,88 @@
             }
         };
 
-        window.openItensModal = (progId) => {
+        let currentSortItens = { field: 'instituto', direction: 'asc' };
+        let currentProgItens = [];
+
+        window.openItensModal = async (progId, editItemId = null) => {
             const prog = localProgramas.find(p => p.id === progId);
             document.getElementById('item-modal-title').textContent = `${prog.nome}`;
             document.getElementById('item-modal-subtitle').textContent = `${prog.processamento || ''}`;
             document.getElementById('item-prog-id').value = progId;
 
-            // Populate Inst Select
+            // Reset form
+            window.resetItemForm();
+
+            // Populate Inst Select (Form)
+            const activeInsts = localInstitutos.filter(i => i.status === 'Ativo');
             const instSelect = document.getElementById('item-inst');
             instSelect.innerHTML = `<option value="">Selecione o Instituto...</option>` +
-                localInstitutos.filter(i => i.status === 'Ativo').map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
+                activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
 
-            // Populate Proc Select
+            // Populate Proc Select (Form)
             const procSelect = document.getElementById('item-proc');
             procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
                 localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
 
-            window.loadItensIncentivo(progId);
+            // Populate Filter Select
+            const filterSelect = document.getElementById('filter-instituto');
+            filterSelect.innerHTML = `<option value="">Todos os Institutos</option>` +
+                activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
+
+            await window.loadItensIncentivo(progId);
             document.getElementById('modal-itens-incentivo').classList.remove('hidden');
+
+            // Copy logic: if editing, pre-fill form
+            if (editItemId) {
+                window.editItemIncentivo(editItemId);
+            }
         };
 
         window.closeModal = (modalId) => {
             document.getElementById(modalId).classList.add('hidden');
             currentEditId = null;
+        };
+
+        window.resetItemForm = () => {
+            document.getElementById('item-id').value = '';
+            document.getElementById('item-inst').value = '';
+            document.getElementById('item-proc').value = '';
+            document.getElementById('item-competencia').value = '';
+            document.getElementById('item-qtd').value = '';
+            document.getElementById('item-vlr').value = '';
+
+            document.getElementById('btn-delete-item').classList.add('hidden');
+            document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">add</span>';
+            document.getElementById('btn-save-item').title = "Adicionar";
+        };
+
+        window.editItemIncentivo = (id) => {
+            const item = currentProgItens.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('item-inst').value = item.instId;
+            document.getElementById('item-proc').value = item.sigtap;
+            document.getElementById('item-competencia').value = item.competencia;
+            document.getElementById('item-qtd').value = item.ofertaMinima;
+            document.getElementById('item-vlr').value = item.vlrIncentivo;
+
+            document.getElementById('btn-delete-item').classList.remove('hidden');
+            document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>';
+            document.getElementById('btn-save-item').title = "Salvar Alterações";
+        };
+
+        window.deleteItemFromForm = async () => {
+            const id = document.getElementById('item-id').value;
+            const progId = document.getElementById('item-prog-id').value;
+
+            if (!id) return;
+            if (!confirm('Tem certeza que deseja excluir este item?')) return;
+
+            await Repository.deletePactuacao(id);
+            window.loadItensIncentivo(progId);
+            window.resetItemForm();
+            window.loadPO(); // Update main counts
         };
 
         // --- SAVE FUNCTIONS ---
@@ -738,27 +993,66 @@
         };
 
         window.loadItensIncentivo = async (progId) => {
-            const tbody = document.getElementById('table-itens-incentivo');
-            const items = await Repository.getPactuacoes(progId);
+            currentProgItens = await Repository.getPactuacoes(progId);
+            window.renderItensIncentivo();
+        };
 
-            if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Nenhum item vinculado.</td></tr>`;
+        window.renderItensIncentivo = () => {
+            const tbody = document.getElementById('table-itens-incentivo');
+            const filterInstId = document.getElementById('filter-instituto').value;
+
+            // Filter
+            let filtered = currentProgItens;
+            if (filterInstId) {
+                filtered = filtered.filter(i => i.instId === filterInstId);
+            }
+
+            // Sort
+            filtered.sort((a, b) => {
+                let valA, valB;
+
+                if (currentSortItens.field === 'instituto') {
+                    const instA = localInstitutos.find(i => i.id == a.instId);
+                    const instB = localInstitutos.find(i => i.id == b.instId);
+                    valA = (instA?.nome || '').toLowerCase();
+                    valB = (instB?.nome || '').toLowerCase();
+                } else if (currentSortItens.field === 'sigtap') {
+                    const procA = localProcedimentos.find(p => p.id == a.sigtap);
+                    const procB = localProcedimentos.find(p => p.id == b.sigtap);
+                    valA = (procA?.nome || '').toLowerCase();
+                    valB = (procB?.nome || '').toLowerCase();
+                } else {
+                    valA = a[currentSortItens.field];
+                    valB = b[currentSortItens.field];
+                }
+
+                if (valA < valB) return currentSortItens.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortItens.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Update Sort Icons
+            document.querySelectorAll('.sort-icon').forEach(el => el.classList.add('invisible'));
+            // (Optional: Logic to show visible arrow, skipping for simplicity or can add later)
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Nenhum item encontrado.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = items.map(item => {
-                const proc = localProcedimentos.find(pr => pr.id == item.sigtap); // SIGTAP is used as ID
+            tbody.innerHTML = filtered.map(item => {
+                const proc = localProcedimentos.find(pr => pr.id == item.sigtap);
                 const inst = localInstitutos.find(i => i.id == item.instId);
                 return `
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td class="px-4 py-3 text-xs font-bold text-slate-900 dark:text-white">${inst?.nome || '???'}</td>
+                        <td class="px-4 py-3 text-xs font-bold text-slate-900 dark:text-white">${inst?.sigla || inst?.nome || '???'}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-900 dark:text-white">${proc?.nome || '???'}</td>
                         <td class="px-4 py-3 text-center text-[10px] font-black">${item.competencia || '-'}</td>
                         <td class="px-4 py-3 text-right font-mono text-xs">${parseInt(item.ofertaMinima || 0).toLocaleString()}</td>
                         <td class="px-4 py-3 text-right font-mono text-xs text-primary">R$ ${parseFloat(item.vlrIncentivo || 0).toFixed(2)}</td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="window.deleteItemIncentivo('${item.id}', '${progId}')" class="text-red-400 hover:text-red-600">
-                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            <button onclick="window.editItemIncentivo('${item.id}')" class="text-slate-400 hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
                             </button>
                         </td>
                     </tr>
@@ -766,8 +1060,20 @@
             }).join('');
         };
 
+        window.sortItens = (field) => {
+            if (currentSortItens.field === field) {
+                currentSortItens.direction = currentSortItens.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortItens.field = field;
+                currentSortItens.direction = 'asc';
+            }
+            window.renderItensIncentivo();
+        };
+
         window.saveItemIncentivo = async () => {
             const progId = document.getElementById('item-prog-id').value;
+            const itemId = document.getElementById('item-id').value;
+
             const item = {
                 progId,
                 instId: document.getElementById('item-inst').value,
@@ -778,17 +1084,15 @@
                 updatedAt: new Date()
             };
 
+            if (itemId) item.id = itemId;
+
             await Repository.savePactuacao(item);
             window.loadItensIncentivo(progId);
-            window.loadPO();
+            window.resetItemForm();
+            window.loadPO(); // Update main page counts
         };
 
-        window.deleteItemIncentivo = async (id, progId) => {
-            if (!confirm('Excluir item?')) return;
-            await Repository.deletePactuacao(id);
-            window.loadItensIncentivo(progId);
-            window.loadPO();
-        };
+        // window.deleteItemIncentivo removed (replaced by deleteItemFromForm)
 
         // --- LOADERS ---
         window.loadInstitutos = async () => {
@@ -846,65 +1150,202 @@
             window.renderPO();
         };
 
+        // Global state for sorting Items inside PO
+        let currentSortPO = { field: 'instituto', direction: 'asc' };
+        let expandedPrograms = new Set(); // Track expanded accordions
+
+        window.toggleProgram = (id) => {
+            if (expandedPrograms.has(id)) {
+                expandedPrograms.delete(id);
+            } else {
+                expandedPrograms.add(id);
+            }
+            window.renderPO();
+        };
+
         window.renderPO = () => {
             const query = document.getElementById('search-po').value.toLowerCase();
-            const container = document.getElementById('container-po');
-            let filtered = localProgramas.filter(p => (p.processamento || '').toLowerCase().includes(query) || (p.nome || '').toLowerCase().includes(query));
+            const filterInst = document.getElementById('main-filter-inst')?.value || '';
+            const filterComp = (document.getElementById('main-filter-comp')?.value || '').toLowerCase();
 
-            if (filtered.length === 0) {
+            const container = document.getElementById('container-po');
+
+            // Populating Main Filter if empty (only once)
+            const mainFilterEl = document.getElementById('main-filter-inst');
+            if (mainFilterEl && mainFilterEl.options.length <= 1 && localInstitutos.length > 0) {
+                const activeInsts = localInstitutos.filter(i => i.status === 'Ativo');
+                mainFilterEl.innerHTML = `<option value="">Todos os Institutos</option>` +
+                    activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
+            }
+
+            let filteredProgs = localProgramas.filter(p => (p.processamento || '').toLowerCase().includes(query) || (p.nome || '').toLowerCase().includes(query));
+
+            if (filteredProgs.length === 0) {
                 container.innerHTML = `<div class="bg-white dark:bg-[#101822] border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl py-20 text-center text-slate-400"><p>Nenhum programa encontrado.</p></div>`;
                 return;
             }
 
-            container.innerHTML = filtered.map(p => {
-                const progItens = localPactuacoes.filter(it => it.progId == p.id);
+            container.innerHTML = filteredProgs.map(p => {
+                let progItens = localPactuacoes.filter(it => it.progId == p.id);
+                const totalItens = progItens.length;
+
+                // Apply Global Item Filters
+                if (filterInst) {
+                    progItens = progItens.filter(it => it.instId == filterInst);
+                }
+                if (filterComp) {
+                    progItens = progItens.filter(it => (it.competencia || '').toLowerCase().includes(filterComp));
+                }
+
+                // Auto-expand if filtering items (usability)
+                const isFiltered = (filterInst !== '' || filterComp !== '');
+                const isExpanded = expandedPrograms.has(p.id) || (isFiltered && progItens.length > 0);
+
+                // Apply Sorting
+                progItens.sort((a, b) => {
+                    let valA, valB;
+                    if (currentSortPO.field === 'instituto') {
+                        const instA = localInstitutos.find(i => i.id == a.instId);
+                        const instB = localInstitutos.find(i => i.id == b.instId);
+                        valA = (instA?.nome || '').toLowerCase();
+                        valB = (instB?.nome || '').toLowerCase();
+                    } else if (currentSortPO.field === 'sigtap') {
+                        const procA = localProcedimentos.find(pr => pr.id == a.sigtap);
+                        const procB = localProcedimentos.find(pr => pr.id == b.sigtap);
+                        valA = (procA?.nome || '').toLowerCase();
+                        valB = (procB?.nome || '').toLowerCase();
+                    } else {
+                        valA = a[currentSortPO.field];
+                        valB = b[currentSortPO.field];
+                    }
+
+                    if (valA < valB) return currentSortPO.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSortPO.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
                 return `
-                    <div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden mb-6">
-                        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 flex items-center justify-between">
-                            <div>
-                                <h4 class="text-lg font-black text-slate-800 dark:text-white">${p.nome}</h4>
-                                <p class="text-xs text-slate-500">${p.processamento || ''} | Vigência: ${p.inicio || ''} a ${p.fim || ''}</p>
+                    <div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden mb-4">
+                        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors" onclick="window.toggleProgram('${p.id}')">
+                            <div class="flex items-center gap-4">
+                                <span class="material-symbols-outlined text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}">expand_more</span>
+                                <div>
+                                    <h4 class="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                        ${p.nome}
+                                        <span class="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">${totalItens} itens</span>
+                                    </h4>
+                                    <p class="text-xs text-slate-500">${p.processamento || ''} | Vigência: ${p.inicio || ''} a ${p.fim || ''}</p>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" onclick="event.stopPropagation()">
                                 <button onclick="window.openModal('modal-po', '${p.id}', 'po')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-white border border-slate-200 rounded-lg"><span class="material-symbols-outlined text-[18px]">edit</span></button>
                                 <button onclick="window.openItensModal('${p.id}')" class="bg-primary text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm"><span class="material-symbols-outlined text-[16px]">add_link</span> Novo Item</button>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="${isExpanded ? '' : 'hidden'} overflow-x-auto border-t border-slate-100 dark:border-slate-800">
                             <table class="w-full text-sm text-left">
                                 <thead class="text-[10px] text-slate-400 uppercase bg-slate-50/30">
                                     <tr>
-                                        <th class="px-6 py-3">Instituto</th>
-                                        <th class="px-6 py-3">Procedimento</th>
-                                        <th class="px-6 py-3 text-center">Comp.</th>
-                                        <th class="px-6 py-3 text-right">Oferta Mínima</th>
-                                        <th class="px-6 py-3 text-right">Incentivo</th>
+                                        <th class="px-6 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('instituto')">
+                                            Instituto <span class="sort-icon">${currentSortPO.field === 'instituto' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
+                                        </th>
+                                        <th class="px-6 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('sigtap')">
+                                            Procedimento <span class="sort-icon">${currentSortPO.field === 'sigtap' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
+                                        </th>
+                                        <th class="px-6 py-3 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('competencia')">
+                                            Comp. <span class="sort-icon">${currentSortPO.field === 'competencia' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
+                                        </th>
+                                        <th class="px-6 py-3 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('ofertaMinima')">
+                                            Oferta Mínima <span class="sort-icon">${currentSortPO.field === 'ofertaMinima' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
+                                        </th>
+                                        <th class="px-6 py-3 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('vlrIncentivo')">
+                                            Incentivo <span class="sort-icon">${currentSortPO.field === 'vlrIncentivo' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
+                                        </th>
                                         <th class="px-6 py-3 text-center">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${progItens.map(item => {
+                                    ${progItens.length > 0 ? progItens.map(item => {
                     const inst = localInstitutos.find(i => i.id == item.instId);
                     const proc = localProcedimentos.find(pr => pr.id == item.sigtap);
                     return `
-                                            <tr class="hover:bg-slate-50 transition-colors">
+                                            <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50/50">
                                                 <td class="px-6 py-4 text-xs font-bold">${inst?.sigla || inst?.nome || '???'}</td>
                                                 <td class="px-6 py-4 text-xs">${proc?.nome || '???'}</td>
                                                 <td class="px-6 py-4 text-center text-[10px]">${item.competencia || ''}</td>
                                                 <td class="px-6 py-4 text-right font-mono text-xs">${parseInt(item.ofertaMinima || 0).toLocaleString()}</td>
                                                 <td class="px-6 py-4 text-right font-mono text-xs text-primary">R$ ${parseFloat(item.vlrIncentivo || 0).toFixed(2)}</td>
                                                 <td class="px-6 py-4 text-center">
-                                                    <button onclick="window.deleteItemIncentivo('${item.id}', '${p.id}')" class="text-slate-300 hover:text-red-500"><span class="material-symbols-outlined text-[18px]">close</span></button>
+                                                    <button onclick="window.openItensModal('${p.id}', '${item.id}')" class="text-slate-400 hover:text-primary transition-colors">
+                                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         `;
-                }).join('')}
+                }).join('') : `<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400 text-xs italic">Nenhum item correspondente aos filtros.</td></tr>`}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 `;
             }).join('');
+        };
+
+        window.sortPOItems = (field) => {
+            if (currentSortPO.field === field) {
+                currentSortPO.direction = currentSortPO.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortPO.field = field;
+                currentSortPO.direction = 'asc';
+            }
+            window.renderPO();
+        };
+
+        window.openItensModal = async (progId, editItemId = null) => {
+            const prog = localProgramas.find(p => p.id === progId);
+            document.getElementById('item-modal-title').textContent = `${prog.nome}`;
+            document.getElementById('item-modal-subtitle').textContent = `${prog.processamento || ''}`;
+            document.getElementById('item-prog-id').value = progId;
+
+            // Reset form
+            window.resetItemForm();
+
+            // Populate Inst Select (Form)
+            const activeInsts = localInstitutos.filter(i => i.status === 'Ativo');
+            const instSelect = document.getElementById('item-inst');
+            instSelect.innerHTML = `<option value="">Selecione o Instituto...</option>` +
+                activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
+
+            // Populate Proc Select (Form)
+            const procSelect = document.getElementById('item-proc');
+            procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
+                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
+
+            // We do NOT render table anymore
+
+            // Need to fetch items if we are editing, but openItensModal signature relies on local data? 
+            // Previous logic loaded items for the table. Now we only need the specific item if editing.
+            // Items are presumably in localPactuacoes (loaded in loadPO).
+
+            // If editItemId is passed, find it in localPactuacoes
+            if (editItemId) {
+                const item = localPactuacoes.find(i => i.id === editItemId);
+                if (item) {
+                    // Pre-fill form
+                    document.getElementById('item-id').value = item.id;
+                    document.getElementById('item-inst').value = item.instId;
+                    document.getElementById('item-proc').value = item.sigtap;
+                    document.getElementById('item-competencia').value = item.competencia; // Text input now
+                    document.getElementById('item-qtd').value = item.ofertaMinima;
+                    document.getElementById('item-vlr').value = item.vlrIncentivo;
+
+                    document.getElementById('btn-delete-item').classList.remove('hidden');
+                    document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>';
+                    document.getElementById('btn-save-item').title = "Salvar Alterações";
+                }
+            }
+
+            document.getElementById('modal-itens-incentivo').classList.remove('hidden');
         };
 
         document.addEventListener('DOMContentLoaded', () => {

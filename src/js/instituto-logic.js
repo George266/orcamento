@@ -64,36 +64,103 @@ async function initInstituteDashboard() {
 }
 
 async function renderDashboard() {
-    const filtered = currentPeriod ? currentPactuacoes.filter(p => p.competencia === currentPeriod) : currentPactuacoes;
+    // 1. Determine Current and Previous Periods
+    const uniqueCompetencias = [...new Set(currentPactuacoes.map(p => p.competencia))].sort().reverse(); // e.g. ['ago-2025', 'jul-2025']
+    const currentIndex = uniqueCompetencias.indexOf(currentPeriod);
+    const prevPeriod = currentIndex !== -1 && currentIndex + 1 < uniqueCompetencias.length ? uniqueCompetencias[currentIndex + 1] : null;
 
-    let totalPactuado = 0;
-    let totalRealizado = 0;
-    let totalFinanceiro = 0;
-    let criticalItems = 0;
+    // 2. Helper to calculate stats for a specific period
+    const getStats = (period) => {
+        if (!period) return { pact: 0, real: 0, fin: 0, items: 0 };
+        const data = currentPactuacoes.filter(p => p.competencia === period);
+        let pact = 0, real = 0, fin = 0, items = data.length;
+        data.forEach(p => {
+            const vBase = parseFloat(p.vlrSigtapBase || 0);
+            const vInc = parseFloat(p.vlrIncentivo || 0);
+            const r = parseInt(p.producao?.realizada || 0);
+            pact += parseInt(p.ofertaMinima || 0);
+            real += r;
+            fin += (vBase + vInc) * r;
+        });
+        return { pact, real, fin, items };
+    };
 
+    const curStats = getStats(currentPeriod);
+    const prevStats = getStats(prevPeriod);
+
+    // 3. Logic for Critical Items (Split: Not Started vs In Progress)
+    let notStartedItems = 0;
+    let inProgressItems = 0;
+
+    // Using filtered (Current Period)
+    const filtered = currentPactuacoes.filter(p => p.competencia === currentPeriod);
     filtered.forEach(p => {
         const pact = parseInt(p.ofertaMinima || 0);
         const real = parseInt(p.producao?.realizada || 0);
-        const vBase = parseFloat(p.vlrSigtapBase || 0);
-        const vInc = parseFloat(p.vlrIncentivo || 0);
-
-        totalPactuado += pact;
-        totalRealizado += real;
-        totalFinanceiro += (vBase + vInc) * real;
-
         const atingimento = pact > 0 ? (real / pact) * 100 : 100;
-        if (atingimento < 70) criticalItems++;
+
+        if (pact > 0) {
+            if (real === 0) {
+                notStartedItems++;
+            } else if (atingimento < 100) {
+                inProgressItems++;
+            }
+        }
     });
 
-    // Update KPIs
-    document.getElementById('stat-ofertas-qtd').textContent = formatNumber(totalPactuado);
+    // 4. Update UI - Main Numbers
+    const statOfertas = document.getElementById('stat-ofertas-qtd');
+    if (statOfertas) statOfertas.textContent = formatNumber(curStats.pact);
 
-    const atingimentoGlobal = totalPactuado > 0 ? (totalRealizado / totalPactuado) * 100 : 0;
-    document.getElementById('stat-progress-val').textContent = Math.round(atingimentoGlobal) + '%';
-    document.getElementById('stat-progress-bar').style.width = Math.min(atingimentoGlobal, 100) + '%';
+    const curAtingimento = curStats.pact > 0 ? (curStats.real / curStats.pact) * 100 : 0;
+    const prevAtingimento = prevStats.pact > 0 ? (prevStats.real / prevStats.pact) * 100 : 0;
 
-    document.getElementById('stat-alertas-qtd').innerHTML = `${criticalItems} <span class="text-lg font-normal text-slate-500">Críticos</span>`;
-    document.getElementById('stat-financeiro').textContent = formatCurrency(totalFinanceiro);
+    document.getElementById('stat-progress-val').textContent = Math.round(curAtingimento) + '%';
+    document.getElementById('stat-progress-bar').style.width = Math.min(curAtingimento, 100) + '%';
+
+    // --- Card 3: Não Iniciados ---
+    const cardNotStarted = document.getElementById('card-not-started');
+    const iconNotStarted = document.getElementById('icon-not-started');
+    const labelNotStarted = document.getElementById('label-not-started');
+
+    if (cardNotStarted && iconNotStarted && labelNotStarted) {
+        document.getElementById('stat-not-started-val').textContent = notStartedItems;
+
+        if (notStartedItems === 0 && filtered.length > 0) {
+            // Celebration Mode 🎉
+            iconNotStarted.className = 'p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400';
+            iconNotStarted.innerHTML = '<span class="material-symbols-outlined">check_circle</span>';
+            labelNotStarted.className = 'text-emerald-700 dark:text-emerald-400 text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full';
+            labelNotStarted.textContent = 'Tudo iniciado! Parabéns 👏';
+        } else {
+            // Default Critical Mode 🚨
+            iconNotStarted.className = 'p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400';
+            iconNotStarted.innerHTML = '<span class="material-symbols-outlined">error</span>';
+            labelNotStarted.className = 'text-red-600 dark:text-red-400 text-xs font-medium bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-md';
+            labelNotStarted.textContent = 'Requer atenção imediata';
+        }
+    }
+
+    // --- Card 4: Em Andamento ---
+    const cardInProgress = document.getElementById('card-in-progress');
+    const iconInProgress = document.getElementById('icon-in-progress');
+
+    if (cardInProgress && iconInProgress) {
+        document.getElementById('stat-in-progress-val').textContent = inProgressItems;
+
+        if (inProgressItems === 0 && notStartedItems === 0 && filtered.length > 0) {
+            iconInProgress.className = 'p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400';
+            iconInProgress.innerHTML = '<span class="material-symbols-outlined">task_alt</span>';
+        } else {
+            iconInProgress.className = 'p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400';
+            iconInProgress.innerHTML = '<span class="material-symbols-outlined">pending_actions</span>';
+        }
+    }
+
+    // 5. Update Comparison Pills (Trends)
+    updateTrendPill('trend-ofertas', curStats.items, prevStats.items, 'itens');
+    updateTrendPill('trend-progress', curAtingimento, prevAtingimento, '% pontos');
+    // Removed Trend Financeiro pill update
 
     // Populate Table (Items with Prazos/Stats)
     const tbody = document.getElementById('table-prazos-itens');
@@ -111,7 +178,7 @@ async function renderDashboard() {
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                         <td class="px-6 py-4">
                             <div class="flex flex-col">
-                                <span class="text-sm font-semibold text-slate-900 dark:text-white">${proc?.nome || p.sigtap}</span>
+                                <span class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[280px]" title="${p.nome || proc?.nome || p.sigtap}">${p.nome || proc?.nome || p.sigtap}</span>
                                 <span class="text-[10px] text-slate-500 font-mono">${p.sigtap} | Oferta: ${formatNumber(pact)}</span>
                             </div>
                         </td>
@@ -127,6 +194,38 @@ async function renderDashboard() {
     }
 
     renderSemesterChart();
+}
+
+function updateTrendPill(elementId, current, previous, type) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    if (previous === 0) {
+        el.innerHTML = `<span class="text-slate-400 text-xs">-</span>`; // No data to compare
+        return;
+    }
+
+    let diff, percent;
+    if (type === '% pontos') {
+        diff = current - previous; // Absolute difference for percentages
+    } else {
+        diff = ((current - previous) / previous) * 100;
+    }
+
+    const isPositive = diff >= 0;
+    const formattedDiff = Math.abs(Math.round(diff));
+
+    // Logic: More items/money/progress is usually good (green), less is bad (red)
+    // For specific scenarios logic might invert, but general rule fits.
+    const colorClass = isPositive ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400';
+    const icon = isPositive ? 'trending_up' : 'trending_down';
+
+    el.innerHTML = `
+        <span class="${colorClass} text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+            <span class="material-symbols-outlined text-[12px]">${icon}</span> ${formattedDiff}%
+        </span>
+        <p class="text-slate-500 dark:text-slate-400 text-xs">vs mês anterior</p>
+    `;
 }
 
 function renderSemesterChart() {
@@ -207,6 +306,15 @@ function setupProfileMenu() {
         logoutBtn.addEventListener('click', async () => {
             const { logout } = await import('./auth-guard.js');
             await logout();
+        });
+    }
+
+    // Sidebar Toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('aside');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
         });
     }
 }

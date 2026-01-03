@@ -139,6 +139,15 @@ function setupProfileMenu() {
         });
     }
 
+    // Sidebar Toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('aside');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+        });
+    }
+
     // Export Button
     const exportBtn = document.getElementById('btn-export-fin');
     if (exportBtn) {

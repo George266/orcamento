@@ -35,7 +35,7 @@ async function updateUI(profile, email) {
     document.getElementById('profile-name-lg').textContent = profile.name || '---';
     document.getElementById('profile-role-badge').textContent = profile.role || '---';
     document.getElementById('profile-email').textContent = email;
-    document.getElementById('profile-inst-name').textContent = instituto?.nome || 'Secretaria de Saúde';
+    document.getElementById('profile-inst-name').textContent = instituto?.nome || 'Orçamento e Gestão de Recursos';
 
     // Update Details
     document.getElementById('detail-name').textContent = profile.name || '---';

@@ -65,7 +65,43 @@ async function initAcompanhamentoInst() {
 
         renderTable();
 
+        // Initialize Sort Listeners
+        setupSortListeners();
+
         renderTable();
+    });
+}
+
+let currentSort = { column: null, direction: 'asc' };
+
+function setupSortListeners() {
+    const headers = document.querySelectorAll('th[data-sort]');
+    headers.forEach(th => {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', () => {
+            const column = th.getAttribute('data-sort');
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            // Update Icons
+            headers.forEach(h => {
+                const icon = h.querySelector('.sort-icon');
+                if (icon) icon.textContent = 'unfold_more';
+                h.classList.remove('text-primary'); // Remove highlight
+            });
+
+            const activeIcon = th.querySelector('.sort-icon');
+            if (activeIcon) {
+                activeIcon.textContent = currentSort.direction === 'asc' ? 'expand_less' : 'expand_more';
+                th.classList.add('text-primary'); // Highlight active
+            }
+
+            renderTable();
+        });
     });
 }
 
@@ -159,6 +195,49 @@ function renderTable() {
 
     let filtered = localPactuacoes.filter(p => p.competencia === compValue);
 
+    // Sorting
+    if (currentSort.column) {
+        filtered.sort((a, b) => {
+            let valA, valB;
+
+            switch (currentSort.column) {
+                case 'linha':
+                    // TODO: Get real program name. Using placeholder for validation now.
+                    valA = "Programa Padrão";
+                    valB = "Programa Padrão";
+                    break;
+                case 'sigtap':
+                    valA = a.sigtap;
+                    valB = b.sigtap;
+                    break;
+                case 'procedimento':
+                    const procA = localProcs.find(pr => pr.sigtap === a.sigtap);
+                    const procB = localProcs.find(pr => pr.sigtap === b.sigtap);
+                    valA = procA?.nome || '';
+                    valB = procB?.nome || '';
+                    break;
+                case 'oferta':
+                    valA = parseInt(a.ofertaMinima || 0);
+                    valB = parseInt(b.ofertaMinima || 0);
+                    break;
+                case 'vlrSigtap':
+                    valA = parseFloat(a.vlrSigtapBase || 0);
+                    valB = parseFloat(b.vlrSigtapBase || 0);
+                    break;
+                case 'vlrIncentivo':
+                    valA = parseFloat(a.vlrIncentivo || 0);
+                    valB = parseFloat(b.vlrIncentivo || 0);
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
     if (searchValue) {
         filtered = filtered.filter(p => {
             const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
@@ -205,10 +284,10 @@ function renderTable() {
                     <td class="px-2 py-3 text-right font-mono text-xs text-slate-500">${formatCurrency(vInc)}</td>
                     
                     <!-- Week Inputs -->
-                    <td class="p-1"><input type="number" value="${prod.sem1 || 0}" onchange="autoSave('${p.id}', 'sem1', this.value)" class="w-full text-center text-xs border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1"><input type="number" value="${prod.sem2 || 0}" onchange="autoSave('${p.id}', 'sem2', this.value)" class="w-full text-center text-xs border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1"><input type="number" value="${prod.sem3 || 0}" onchange="autoSave('${p.id}', 'sem3', this.value)" class="w-full text-center text-xs border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1"><input type="number" value="${prod.sem4 || 0}" onchange="autoSave('${p.id}', 'sem4', this.value)" class="w-full text-center text-xs border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem1 || 0}" onchange="autoSave('${p.id}', 'sem1', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem2 || 0}" onchange="autoSave('${p.id}', 'sem2', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem3 || 0}" onchange="autoSave('${p.id}', 'sem3', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem4 || 0}" onchange="autoSave('${p.id}', 'sem4', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
 
                     <td class="px-2 py-3 text-center status-cell">
                         <!-- Populated by updateRowUI -->
@@ -248,6 +327,15 @@ function setupProfileMenu() {
         logoutBtn.addEventListener('click', async () => {
             const { logout } = await import('./auth-guard.js');
             await logout();
+        });
+    }
+
+    // Sidebar Toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('aside');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
         });
     }
 }

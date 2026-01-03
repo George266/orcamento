@@ -193,13 +193,14 @@ export const Repository = {
     },
 
     // BATCH IMPORT
-    async batchSaveImport(data) {
-        const batch = writeBatch(db);
+    async importData(data, onProgress) {
+        // 1. Analyze Data & Prepare Metadata
+        if (onProgress) onProgress(0, 'Analisando dados...');
+
         const uniqueProgs = new Map();
         const uniqueInsts = new Map();
         const uniqueProcs = new Map();
 
-        // Helper to get value from row regardless of trailing space, case, accents or symbols in header
         const getCol = (row, ...names) => {
             const keys = Object.keys(row);
             const clean = (t) => t.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -216,10 +217,8 @@ export const Repository = {
         data.forEach(item => {
             const pNome = getCol(item, 'Programa').toString().trim();
             const iNome = getCol(item, 'Instituto').toString().trim();
-            const comp = getCol(item, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
             let sCod = getCol(item, 'SIGTAP').toString().trim();
 
-            // Pad SIGTAP code with zeros (should be 10 digits)
             if (sCod && /^\d+$/.test(sCod)) {
                 sCod = sCod.padStart(10, '0');
             }
@@ -234,91 +233,98 @@ export const Repository = {
             }
         });
 
-        // Save metadata groups first
-        uniqueProgs.forEach((nome, id) => {
-            batch.set(doc(db, COLL_PROGRAMAS, id), { nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
-        });
-        uniqueInsts.forEach((nome, id) => {
-            batch.set(doc(db, COLL_INSTITUTOS, id), { nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
-        });
-        uniqueProcs.forEach((info, id) => {
-            batch.set(doc(db, COLL_PROCEDIMENTOS, id), {
-                sigtap: id,
-                nome: info.nome,
-                vlrSigtap: info.vlr,
-                status: 'Ativo'
-            }, { merge: true });
-        });
+        if (onProgress) onProgress(10, `Metadados identificados: ${uniqueProgs.size} Programas, ${uniqueInsts.size} Institutos.`);
 
-        // Save relations
-        data.forEach(row => {
+        // 2. Batch Processor Helper
+        const processBatch = async (items, processorFn, startProgress, endProgress) => {
+            const BATCH_SIZE = 450; // Safety margin below 500
+            const chunks = [];
+            for (let i = 0; i < items.length; i += BATCH_SIZE) {
+                chunks.push(items.slice(i, i + BATCH_SIZE));
+            }
+
+            for (let i = 0; i < chunks.length; i++) {
+                const batch = writeBatch(db);
+                chunks[i].forEach(item => processorFn(batch, item));
+                await batch.commit();
+
+                const percent = startProgress + ((i + 1) / chunks.length) * (endProgress - startProgress);
+                if (onProgress) onProgress(percent, `Processando lote ${i + 1} de ${chunks.length}...`);
+            }
+        };
+
+        // 3. Save Metadata (Programs, Institutes, Procedures)
+        const metadataItems = [
+            ...Array.from(uniqueProgs).map(([id, nome]) => ({ type: 'prog', id, nome })),
+            ...Array.from(uniqueInsts).map(([id, nome]) => ({ type: 'inst', id, nome })),
+            ...Array.from(uniqueProcs).map(([id, info]) => ({ type: 'proc', id, ...info }))
+        ];
+
+        await processBatch(metadataItems, (batch, item) => {
+            if (item.type === 'prog') {
+                batch.set(doc(db, COLL_PROGRAMAS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
+            } else if (item.type === 'inst') {
+                batch.set(doc(db, COLL_INSTITUTOS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
+            } else if (item.type === 'proc') {
+                batch.set(doc(db, COLL_PROCEDIMENTOS, item.id), { sigtap: item.id, nome: item.nome, vlrSigtap: item.vlr, status: 'Ativo' }, { merge: true });
+            }
+        }, 10, 30);
+
+        // 4. Save Pactuacoes (Main Data)
+        await processBatch(data, (batch, row) => {
             const pNome = getCol(row, 'Programa').toString().trim();
             const iNome = getCol(row, 'Instituto').toString().trim();
             let sCod = getCol(row, 'SIGTAP').toString().trim();
             const comp = getCol(row, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
 
-            if (sCod && /^\d+$/.test(sCod)) {
-                sCod = sCod.padStart(10, '0');
-            }
-
+            if (sCod && /^\d+$/.test(sCod)) sCod = sCod.padStart(10, '0');
             if (!pNome || !iNome || !sCod) return;
 
             const progId = normalizeId(pNome);
             const instId = normalizeId(iNome);
             const pactId = normalizeId(`${progId}_${instId}_${sCod}_${comp}`);
 
-            // Map ALL columns from the comprehensive SUS spreadsheet
-            batch.set(doc(db, COLL_PACTUACOES, pactId), {
+            const pactData = {
                 progId,
                 instId,
                 sigtap: sCod,
                 competencia: comp,
-
                 // Metadata
                 processamento: getCol(row, 'Processamento'),
                 responsavel: getCol(row, 'Responsável'),
                 mes: getCol(row, 'Mês'),
                 indicacaoFeriado: getCol(row, 'Indicação Feriado'),
                 statusLinha: getCol(row, 'STATUS'),
-
                 // Quantification
                 ofertado: getCol(row, 'Ofertado') || 0,
                 ofertaMinima: getCol(row, 'SIGRAH', 'Minima', 'Pactuado') || 0,
                 totalOferta: getCol(row, 'Total Oferta') || 0,
-
-                // Values (Auditing)
+                // Values
                 vlrSigtapBase: parseFloat(getCol(row, 'Valor Sigtap', 'Valor Unitário').toString().replace(',', '.') || 0),
                 vlrIncentivo: parseFloat(getCol(row, 'Incentivo').toString().replace(',', '.') || 0),
                 vlrTotalLinha: parseFloat(getCol(row, 'TOTAL').toString().replace(',', '.') || 0),
-
-                // Weekly Production
+                // Weekly Production - Fallback logic for various formats
                 producao: {
                     sem1: getCol(row, '1º') || 0,
                     sem2: getCol(row, '2º') || 0,
-                    sem3: row['3º'] || 0, // Fallback to direct access if needed
+                    sem3: getCol(row, '3º') || 0,
                     sem4: getCol(row, '4º') || 0,
                     sem5: getCol(row, '5º') || 0,
                     realizada: getCol(row, 'Qtd Produção') || 0
                 },
-
                 importedAt: new Date()
-            });
-        });
+            };
+            batch.set(doc(db, COLL_PACTUACOES, pactId), pactData, { merge: true });
 
-        await batch.commit();
+        }, 30, 100);
 
-        // Log the import activity
+        // Log Activity
         await this.logActivity('IMPORT_DATA', {
             lines: data.length,
             procs: uniqueProcs.size,
             insts: uniqueInsts.size
         });
 
-        return {
-            progs: uniqueProgs.size,
-            insts: uniqueInsts.size,
-            procs: uniqueProcs.size,
-            rows: data.length
-        };
+        return { success: true, rows: data.length };
     }
 };
