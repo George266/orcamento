@@ -183,6 +183,21 @@
                 <!-- Filter Bar -->
                 <div
                     class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-end">
+
+                    <!-- Institute Switcher (Hidden by default) -->
+                    <div id="container-filter-inst" class="hidden w-full sm:w-[220px]">
+                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Filtrar
+                            Instituto</label>
+                        <div class="relative">
+                            <select id="filter-instituto"
+                                class="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-slate-600 rounded-xl text-sm font-bold text-blue-700 dark:text-blue-400 appearance-none cursor-pointer focus:ring-2 focus:ring-primary shadow-sm">
+                                <option value="all">Todos os Vinculados</option>
+                            </select>
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-blue-500">domain</span>
+                        </div>
+                    </div>
+
                     <div class="flex-1 min-w-[280px]">
                         <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Buscar
                             Procedimento</label>
@@ -192,6 +207,19 @@
                                 placeholder="Nome ou código SIGTAP..." />
                             <span
                                 class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Filtrar
+                            Incentivo</label>
+                        <div class="relative">
+                            <select id="filter-programa"
+                                class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-white appearance-none cursor-pointer focus:ring-2 focus:ring-primary shadow-sm">
+                                <option value="">Todos os Incentivos</option>
+                            </select>
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">filter_alt</span>
                         </div>
                     </div>
                     <div class="w-full sm:w-[200px]">
@@ -217,7 +245,7 @@
                                         class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
                                         scope="col">
                                         <div class="flex items-center gap-1">
-                                            Linha Cuidado
+                                            Incentivo
                                             <span
                                                 class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
                                         </div>
@@ -244,25 +272,7 @@
                                         class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[100px] cursor-pointer group select-none"
                                         scope="col">
                                         <div class="flex items-center justify-center gap-1">
-                                            Oferta (PO)
-                                            <span
-                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
-                                        </div>
-                                    </th>
-                                    <th data-sort="vlrSigtap"
-                                        class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
-                                        scope="col">
-                                        <div class="flex items-center justify-end gap-1">
-                                            Vlr SIGTAP
-                                            <span
-                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
-                                        </div>
-                                    </th>
-                                    <th data-sort="vlrIncentivo"
-                                        class="px-2 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
-                                        scope="col">
-                                        <div class="flex items-center justify-end gap-1">
-                                            Vlr Incentivo
+                                            Oferta
                                             <span
                                                 class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
                                         </div>

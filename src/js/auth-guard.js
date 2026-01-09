@@ -37,10 +37,9 @@ export function initAuthGuard() {
                 if (profile.role === 'Orçamento') {
                     // Admin can access everything, but if on login/index, send to dashboard
                     if (isPublicPage) window.location.href = 'dashboard_orcamento.html';
-                } else if (profile.role === 'Institutos') {
+                } else if (profile.role.startsWith('Institutos')) {
                     // Institute restricted to their pages
                     if (isAdminPage) {
-                        alert('Acesso restrito à área administrativa.');
                         window.location.href = 'dashboard_instituto.html';
                     } else if (isPublicPage) {
                         window.location.href = 'dashboard_instituto.html';

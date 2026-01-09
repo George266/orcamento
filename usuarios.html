@@ -174,8 +174,8 @@
                     <div class="relative w-72">
                         <span
                             class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[20px]">search</span>
-                        <input type="text" id="user-search" onkeyup="loadUsers()"
-                            placeholder="Buscar por nome ou e-mail..."
+                        <input type="text" id="user-search" onkeyup="loadUsers()" autocomplete="off" readonly
+                            onfocus="this.removeAttribute('readonly');" placeholder="Buscar por nome ou e-mail..."
                             class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
                     </div>
                 </div>
@@ -310,7 +310,7 @@
     <!-- MODAL: USUÁRIO -->
     <div id="modal-usuario"
         class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-fade-in">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div class="flex items-start justify-between mb-8">
                 <div>
                     <h3 class="text-2xl font-black text-slate-900" id="modal-title">Novo Usuário</h3>
@@ -335,12 +335,27 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Telefone</label>
+                        <input type="text" id="user-phone" oninput="window.maskPhone(event)"
+                            placeholder="(xx) xxxxx-xxxx" maxlength="15"
+                            class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Ramal</label>
+                        <input type="text" id="user-extension" oninput="window.maskNumber(event)" placeholder="Ex: 1234"
+                            maxlength="6"
+                            class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Perfil de
                             Acesso</label>
                         <select id="user-role" onchange="toggleInstSelector()"
                             class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none">
                             <option value="Orçamento">Orçamento</option>
-                            <option value="Institutos">Institutos</option>
+                            <option value="Institutos_Editor">Institutos (Editor)</option>
+                            <option value="Institutos_Leitor">Institutos (Leitor)</option>
                         </select>
                     </div>
                     <div>
@@ -353,12 +368,13 @@
                     </div>
                 </div>
                 <div id="inst-selector-container" class="hidden">
-                    <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Instituto
-                        Vinculado</label>
-                    <select id="user-inst-id"
-                        class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none">
-                        <!-- JS Dynamic -->
-                    </select>
+                    <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Institutos
+                        Vinculados</label>
+                    <div id="user-inst-list"
+                        class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm max-h-40 overflow-y-auto space-y-2 border">
+                        <!-- JS Dynamic Checkboxes -->
+                        <p class="text-slate-400 italic text-xs">Selecione o perfil primeiro...</p>
+                    </div>
                 </div>
                 <div id="password-container">
                     <label class="block text-xs font-black text-slate-500 uppercase mb-1.5 ml-1">Senha
@@ -391,6 +407,9 @@
         let currentUserId = null;
         let localUsers = []; // Cache local for filtering
         let localInstitutosCache = [];
+
+        // Simple logging helper to avoid ReferenceError
+        const addLog = (msg, color) => console.log(`%c${msg}`, `color: ${color?.replace('text-', '') || 'black'}`);
 
         window.switchTab = (tabId) => {
             // Hide all contents
@@ -523,8 +542,8 @@
                         ${getInstituteName(user)}
                     </td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${user.role === 'Orçamento' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">
-                            ${user.role}
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${getRoleColor(user.role)}">
+                            ${formatRole(user.role)}
                         </span>
                     </td>
                     <td class="px-6 py-4 text-center">
@@ -550,6 +569,21 @@
             }
         };
 
+        function getRoleColor(role) {
+            if (role === 'Orçamento') return 'bg-blue-100 text-blue-700';
+            if (role === 'Institutos_Editor') return 'bg-purple-100 text-purple-700';
+            if (role === 'Institutos_Leitor') return 'bg-purple-50 text-purple-600';
+            // Fallback for old 'Institutos'
+            if (role === 'Institutos') return 'bg-purple-100 text-purple-700';
+            return 'bg-slate-100 text-slate-700';
+        }
+
+        function formatRole(role) {
+            if (role === 'Institutos_Editor') return 'Institutos (Editor)';
+            if (role === 'Institutos_Leitor') return 'Institutos (Leitor)';
+            return role;
+        }
+
         function getInstituteName(user) {
             if (user.role === 'Orçamento' || !user.instId) return '<span class="text-slate-300">-</span>';
             const inst = localInstitutosCache.find(i => i.id === user.instId);
@@ -570,38 +604,100 @@
             document.getElementById('modal-title').textContent = 'Novo Usuário';
             document.getElementById('user-name').value = '';
             document.getElementById('user-email').value = '';
+            document.getElementById('user-phone').value = '';
+            document.getElementById('user-extension').value = '';
             document.getElementById('user-role').value = 'Orçamento';
             document.getElementById('user-status').value = 'Ativo';
             document.getElementById('password-container').classList.remove('hidden');
+
+            // Uncheck all
+            document.querySelectorAll('input[name="chk-inst"]').forEach(chk => chk.checked = false);
+
             window.toggleInstSelector();
         };
 
         window.toggleInstSelector = async () => {
             const role = document.getElementById('user-role').value;
             const container = document.getElementById('inst-selector-container');
-            if (role === 'Institutos') {
+
+            if (role && role.startsWith('Institutos')) {
                 container.classList.remove('hidden');
-                // Load institutes if not loaded
-                const insts = await Repository.getInstitutos();
-                const select = document.getElementById('user-inst-id');
-                select.innerHTML = insts.map(i => `<option value="${i.id}">${i.sigla} - ${i.nome}</option>`).join('');
+
+                const listContainer = document.getElementById('user-inst-list');
+                // Only load if empty or if it contains the placeholder text
+                // We check if there are any input checkboxes
+                if (!listContainer.querySelector('input')) {
+                    const insts = await Repository.getInstitutos();
+                    // Sort alphabetically
+                    insts.sort((a, b) => a.sigla.localeCompare(b.sigla));
+
+                    listContainer.innerHTML = insts.map(i => `
+                        <label class="flex items-center gap-3 cursor-pointer hover:bg-slate-100 p-1 rounded transition-colors">
+                            <input type="checkbox" name="chk-inst" value="${i.id}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 size-4">
+                            <span class="text-slate-700 font-medium">${i.sigla} <span class="text-slate-400 font-normal text-xs ml-1">- ${i.nome}</span></span>
+                        </label>
+                     `).join('');
+                }
             } else {
                 container.classList.add('hidden');
             }
         };
 
+        // --- MASKS ---
+        window.maskPhone = (event) => {
+            let input = event.target;
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+
+            if (value.length > 10) {
+                // (XX) XXXXX-XXXX
+                value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+            } else if (value.length > 5) {
+                // (XX) XXXX-XXXX (incomplete)
+                value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+            } else if (value.length > 2) {
+                // (XX) ...
+                value = value.replace(/^(\d{2})(\d{0,5}).*/, '($1) $2');
+            } else {
+                value = value.replace(/^(\d*)/, '$1');
+            }
+            input.value = value;
+        };
+
+        window.maskNumber = (event) => {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        };
+        // -------------
+
         window.saveUser = async () => {
             const name = document.getElementById('user-name').value;
             const email = document.getElementById('user-email').value;
+            const phone = document.getElementById('user-phone').value;
+            const extension = document.getElementById('user-extension').value;
             const role = document.getElementById('user-role').value;
             const status = document.getElementById('user-status').value;
             const password = document.getElementById('user-password').value;
-            const instId = document.getElementById('user-inst-id').value;
+
+            // Gather selected IDs
+            let instIds = [];
+            document.querySelectorAll('input[name="chk-inst"]:checked').forEach(chk => {
+                instIds.push(chk.value);
+            });
 
             if (!name || !email) return alert('Por favor, preencha nome e e-mail.');
+            if (role.startsWith('Institutos') && instIds.length === 0) {
+                return alert('Por favor, selecione pelo menos um Instituto.');
+            }
 
-            const userData = { name, email, role, status, updatedAt: new Date() };
-            if (role === 'Institutos') userData.instId = instId;
+            const userData = { name, email, phone, extension, role, status, updatedAt: new Date() };
+
+            if (role.startsWith('Institutos')) {
+                userData.instIds = instIds;
+                userData.instId = null; // Deprecate single ID
+            } else {
+                userData.instIds = [];
+                userData.instId = null;
+            }
 
             try {
                 // If it's a NEW user, we need to create their login in Auth
@@ -649,12 +745,18 @@
             document.getElementById('modal-title').textContent = 'Editar Usuário';
             document.getElementById('user-name').value = user.name;
             document.getElementById('user-email').value = user.email;
+            document.getElementById('user-phone').value = user.phone || '';
+            document.getElementById('user-extension').value = user.extension || '';
             document.getElementById('user-role').value = user.role;
             document.getElementById('user-status').value = user.status;
             document.getElementById('password-container').classList.add('hidden');
 
             window.toggleInstSelector().then(() => {
-                if (user.instId) document.getElementById('user-inst-id').value = user.instId;
+                // Handle multi-select population
+                const ids = user.instIds || (user.instId ? [user.instId] : []);
+                document.querySelectorAll('input[name="chk-inst"]').forEach(chk => {
+                    chk.checked = ids.includes(chk.value);
+                });
             });
 
             openModal('modal-usuario');
@@ -679,6 +781,8 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Force clear search input to prevent browser autofill
+            document.getElementById('user-search').value = '';
             window.loadUsers();
         });
 

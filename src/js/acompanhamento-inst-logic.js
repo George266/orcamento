@@ -1,3 +1,4 @@
+
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -10,69 +11,200 @@ function formatNumber(value) {
     return new Intl.NumberFormat('pt-BR').format(value);
 }
 
+// Global State
 let localPactuacoes = [];
 let localProcs = [];
+let localProgs = [];
+let allPactuacoes = [];
+let currentSort = { column: null, direction: 'asc' };
 
 async function initAcompanhamentoInst() {
     onAuthStateChanged(auth, async (user) => {
         if (!user) return;
 
         const profile = await Repository.getUserByEmail(user.email);
-        if (!profile || profile.role !== 'Institutos' || !profile.instId) return;
+        // Allow both Institutos_Editor and Institutos_Leitor (and legacy Institutos)
+        if (!profile || !profile.role.startsWith('Institutos')) return;
 
-        const instId = profile.instId;
-        const instituto = await Repository.getInstitutoById(instId);
+        const canEdit = profile.role === 'Institutos_Editor' || profile.role === 'Institutos'; // Legacy support
 
-        // Update Headers
-        const nameHeader = document.getElementById('user-name-header');
-        if (nameHeader) nameHeader.textContent = profile.name || user.email;
+        // --- MULTI-INSTITUTE SUPPORT ---
+        const allowedIds = profile.instIds || (profile.instId ? [profile.instId] : []);
 
-        const instHeader = document.getElementById('inst-header-name');
-        if (instHeader) instHeader.textContent = instituto?.nome || 'Ponto de Pactuação';
+        if (allowedIds.length === 0) {
+            console.warn('Perfil de Instituto sem vínculos definidos.');
+            return;
+        }
 
-        const pageName = document.getElementById('inst-page-name');
-        if (pageName) pageName.textContent = instituto?.nome || 'Instituto';
+        allPactuacoes = await Repository.getPactuacoes();
+        localProcs = await Repository.getProcedimentos();
+        localProgs = await Repository.getProgramas();
 
+        // Hide old filter container if it exists
+        const instFilterContainer = document.getElementById('container-filter-inst');
+        if (instFilterContainer) instFilterContainer.classList.add('hidden');
+
+        // Initial Data Load
+        localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+
+        // --- HEADER & MENU SETUP ---
+        if (allowedIds.length > 1) {
+            const institutes = await Repository.getInstitutos();
+            const myInsts = institutes.filter(i => allowedIds.includes(i.id));
+
+            // Wait for DOM to assume profile menu is ready
+            const profileDropdown = document.getElementById('profile-dropdown');
+            if (profileDropdown && !profileDropdown.querySelector('.inst-switcher-container')) {
+
+                // Construct Switcher HTML
+                const switcherHtml = document.createElement('div');
+                switcherHtml.className = 'inst-switcher-container px-4 py-2 border-b border-slate-100 dark:border-slate-700 mb-1';
+                switcherHtml.innerHTML = `
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alternar Instituto</p>
+                    <div class="flex flex-col gap-1">
+                        <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-primary bg-primary/5">
+                            <span>Todos</span>
+                            <span class="material-symbols-outlined text-[14px]">check</span>
+                        </button>
+                        ${myInsts.map(inst => `
+                            <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-slate-600 dark:text-slate-300">
+                                <span class="truncate">${inst.sigla}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+
+                profileDropdown.insertBefore(switcherHtml, profileDropdown.firstChild);
+
+                // Add Listeners
+                const btns = switcherHtml.querySelectorAll('.inst-switcher-btn');
+                btns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        profileDropdown.classList.add('hidden');
+
+                        const selectedId = btn.dataset.instId;
+
+                        // Update Data
+                        if (selectedId === 'all') {
+                            localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+                            const nameDisplay = document.getElementById('inst-name-display');
+                            if (nameDisplay) nameDisplay.textContent = 'Todos os Vinculados';
+                        } else {
+                            localPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
+                            const selInst = myInsts.find(i => i.id === selectedId);
+                            const nameDisplay = document.getElementById('inst-name-display');
+                            if (nameDisplay) nameDisplay.textContent = selInst ? selInst.nome : 'Instituto';
+                        }
+
+                        // UI Update
+                        const allBtns = profileDropdown.querySelectorAll('.inst-switcher-btn');
+                        allBtns.forEach(b => {
+                            b.classList.remove('text-primary', 'bg-primary/5', 'text-slate-600', 'dark:text-slate-300');
+                            b.classList.add('text-slate-600', 'dark:text-slate-300');
+                            const check = b.querySelector('.material-symbols-outlined');
+                            if (check) check.remove();
+
+                            if (b.dataset.instId === selectedId) {
+                                b.classList.remove('text-slate-600', 'dark:text-slate-300');
+                                b.classList.add('text-primary', 'bg-primary/5');
+                                b.innerHTML += '<span class="material-symbols-outlined text-[14px]">check</span>';
+                            }
+                        });
+
+                        // REFRESH COMPETENCE FILTER
+                        const compFilter = document.getElementById('filter-competencia');
+                        if (compFilter) {
+                            if (localPactuacoes.length > 0) {
+                                const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort().reverse();
+                                const currentVal = compFilter.value;
+                                compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
+                                if (comps.includes(currentVal)) {
+                                    compFilter.value = currentVal;
+                                } else if (comps.length > 0) {
+                                    compFilter.value = comps[0];
+                                }
+                            } else {
+                                compFilter.innerHTML = '<option value="">Sem dados</option>';
+                            }
+                        }
+
+                        renderTable();
+                    });
+                });
+            }
+
+            // Set initial header
+            const nameDisplay = document.getElementById('inst-name-display');
+            if (nameDisplay) nameDisplay.textContent = 'Todos os Vinculados';
+
+            // Update User Headers
+            const nameHeader = document.getElementById('user-name-header');
+            if (nameHeader) nameHeader.textContent = profile.name || user.email;
+            const instHeader = document.getElementById('inst-header-name');
+            if (instHeader) instHeader.textContent = 'Múltiplos Vínculos';
+
+        } else {
+            // Single Mode
+            const instId = allowedIds[0];
+            const instituto = await Repository.getInstitutoById(instId);
+
+            // Update Headers
+            const nameHeader = document.getElementById('user-name-header');
+            if (nameHeader) nameHeader.textContent = profile.name || user.email;
+
+            const instHeader = document.getElementById('inst-header-name');
+            if (instHeader) instHeader.textContent = instituto?.nome || 'Ponto de Pactuação';
+
+            const pageName = document.getElementById('inst-name-display');
+            if (pageName) pageName.textContent = instituto?.nome || 'Instituto';
+        }
+
+        // Setup Sidebar & Profile Menu Toggle (Crucial!)
         setupProfileMenu();
 
-        const allPactuacoes = await Repository.getPactuacoes();
-        localPactuacoes = allPactuacoes.filter(p => p.instId === instId);
-        localProcs = await Repository.getProcedimentos();
-
-        // Populate Filters
+        // Populate Filters (Initial)
         const compFilter = document.getElementById('filter-competencia');
-
         if (localPactuacoes.length > 0) {
             const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort().reverse();
             compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
-        // Action Buttons
-        // Use 'input' event on search box for real-time filtering or keep button for manual trigger
+        // Populate Program Filter
+        const progFilter = document.getElementById('filter-programa');
+        if (progFilter) {
+            // Get unique Program IDs from current pactuacoes
+            const uniqueProgIds = [...new Set(localPactuacoes.map(p => p.progId))];
+            // Map to Program Objects
+            const progs = uniqueProgIds.map(id => localProgs.find(pg => pg.id === id)).filter(Boolean);
+            // Sort by Name
+            progs.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            progFilter.innerHTML = `<option value="">Todos os Incentivos</option>` +
+                progs.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
+
+            progFilter.addEventListener('change', renderTable);
+        }
+
+        // Search Listener
         const searchInput = document.getElementById('buscainteligente');
         if (searchInput) {
             searchInput.addEventListener('input', renderTable);
         }
 
-        const filterComp = document.getElementById('filter-competencia');
-        if (filterComp) {
-            filterComp.addEventListener('change', renderTable);
+        if (compFilter) {
+            compFilter.addEventListener('change', renderTable);
         }
 
-        // Remove old button listener if button doesn't exist, or keep if new layout has one
-        // In new layout we removed the explicit "Filtrar" button for text search, it's real-time or implicit
-        // checking html: there is NO filter-button ID in new html. There is filter-competencia and buscainteligente.
+
+
+        // Pass permissions
+        window.currentInstPermissions = { canEdit };
 
         renderTable();
-
-        // Initialize Sort Listeners
         setupSortListeners();
-
-        renderTable();
     });
 }
-
-let currentSort = { column: null, direction: 'asc' };
 
 function setupSortListeners() {
     const headers = document.querySelectorAll('th[data-sort]');
@@ -91,14 +223,14 @@ function setupSortListeners() {
             headers.forEach(h => {
                 const icon = h.querySelector('.sort-icon');
                 if (icon) icon.textContent = 'unfold_more';
-                h.classList.remove('text-primary'); // Remove highlight
+                h.classList.remove('text-primary');
             });
 
             const activeIcon = th.querySelector('.sort-icon');
             if (activeIcon) {
                 activeIcon.textContent = currentSort.direction === 'asc' ? 'expand_less' : 'expand_more';
-                th.classList.add('text-primary'); // Highlight active
             }
+            th.classList.add('text-primary');
 
             renderTable();
         });
@@ -125,11 +257,9 @@ window.autoSave = async function (pactId, field, value) {
     // Update Firestore
     try {
         await Repository.savePactuacao(pact);
-        // console.log(`Pact ${pactId} updated: ${field} = ${value}`);
 
         // Update Row UI calculations immediately without re-rendering everything
         updateRowUI(pactId, pact);
-        // updateTotalStats(); // Removed in Phase 13 (No totals on this page)
     } catch (error) {
         console.error("AutoSave Error:", error);
     }
@@ -157,8 +287,6 @@ function updateRowUI(pactId, pact) {
     }
 }
 
-// Phase 13: Removed updateTotalStats function as it is now in Financeiro page
-
 // Add to window for inline onclick
 window.deletePact = async function (id) {
     if (!confirm('Tem certeza que deseja excluir esta linha do Plano Operativo?')) return;
@@ -172,8 +300,6 @@ window.deletePact = async function (id) {
         // Update UI
         const row = document.querySelector(`tr[data-id="${id}"]`);
         if (row) row.remove();
-
-        // Phase 13: Removed updateTotalStats call
 
         // Re-check empty state
         const tbody = document.getElementById('table-acompanhamento-inst');
@@ -189,11 +315,18 @@ window.deletePact = async function (id) {
 
 function renderTable() {
     const compValue = document.getElementById('filter-competencia')?.value;
+    const progValue = document.getElementById('filter-programa')?.value;
     const searchValue = document.getElementById('buscainteligente')?.value.toLowerCase();
+    const { canEdit } = window.currentInstPermissions || { canEdit: false };
 
     if (!compValue) return; // Wait for population
 
     let filtered = localPactuacoes.filter(p => p.competencia === compValue);
+
+    // Filter by Program
+    if (progValue) {
+        filtered = filtered.filter(p => p.progId === progValue);
+    }
 
     // Sorting
     if (currentSort.column) {
@@ -202,9 +335,10 @@ function renderTable() {
 
             switch (currentSort.column) {
                 case 'linha':
-                    // TODO: Get real program name. Using placeholder for validation now.
-                    valA = "Programa Padrão";
-                    valB = "Programa Padrão";
+                    const progA = localProgs.find(pg => pg.id === a.progId);
+                    const progB = localProgs.find(pg => pg.id === b.progId);
+                    valA = (progA?.nome || '').toLowerCase();
+                    valB = (progB?.nome || '').toLowerCase();
                     break;
                 case 'sigtap':
                     valA = a.sigtap;
@@ -253,18 +387,24 @@ function renderTable() {
     if (!tbody) return;
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
     } else {
         tbody.innerHTML = filtered.map(p => {
             const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-            // Assuming we can get Program Name, if not, use placeholder or fetch programs
-            const progName = "Programa Padrão"; // TODO: Fetch real program name if needed or use ID
+            // Get Program Name
+            const prog = localProgs.find(pg => pg.id === p.progId);
+            const progName = prog ? prog.nome : "Programa Padrão";
 
             const pact = parseInt(p.ofertaMinima || 0);
             const vBase = parseFloat(p.vlrSigtapBase || 0);
             const vInc = parseFloat(p.vlrIncentivo || 0);
 
             const prod = p.producao || { sem1: 0, sem2: 0, sem3: 0, sem4: 0 };
+            const inputState = canEdit ? '' : 'disabled';
+            const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : '';
+            const baseInputClass = "w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 transition-all";
+            const disabledClass = 'bg-slate-50 text-slate-500 cursor-not-allowed';
+
 
             return `
                 <tr data-id="${p.id}" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
@@ -280,14 +420,12 @@ function renderTable() {
                         </div>
                     </td>
                     <td class="px-2 py-3 text-center font-mono text-xs font-bold text-slate-500 bg-slate-50/50">${formatNumber(pact)}</td>
-                    <td class="px-2 py-3 text-right font-mono text-xs text-slate-500">${formatCurrency(vBase)}</td>
-                    <td class="px-2 py-3 text-right font-mono text-xs text-slate-500">${formatCurrency(vInc)}</td>
                     
                     <!-- Week Inputs -->
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem1 || 0}" onchange="autoSave('${p.id}', 'sem1', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem2 || 0}" onchange="autoSave('${p.id}', 'sem2', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem3 || 0}" onchange="autoSave('${p.id}', 'sem3', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem4 || 0}" onchange="autoSave('${p.id}', 'sem4', this.value)" class="w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 focus:ring-primary focus:border-primary"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem1 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem1', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem2 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem2', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem3 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem3', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
+                    <td class="p-1 text-center"><input type="number" value="${prod.sem4 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem4', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
 
                     <td class="px-2 py-3 text-center status-cell">
                         <!-- Populated by updateRowUI -->
@@ -309,35 +447,66 @@ function setupProfileMenu() {
     const logoutBtn = document.getElementById('logout-btn');
 
     if (btn && dropdown) {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
             e.stopPropagation();
             dropdown.classList.toggle('hidden');
-        });
+        };
 
         document.addEventListener('click', () => {
-            dropdown.classList.add('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
         });
 
-        dropdown.addEventListener('click', (e) => {
+        dropdown.onclick = (e) => {
             e.stopPropagation();
-        });
+        };
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
+        logoutBtn.onclick = async () => {
             const { logout } = await import('./auth-guard.js');
             await logout();
-        });
+        };
     }
 
     // Sidebar Toggle
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebar = document.querySelector('aside');
     if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', () => {
+        sidebarToggle.onclick = () => {
             sidebar.classList.toggle('hidden');
-        });
+        };
     }
 }
+
+// Make update function global
+window.updateProducao = async function (input) {
+    const pId = input.dataset.id;
+    const newVal = input.value;
+
+    // Optimistic UI update could happen here
+    // Find item
+    const idx = localPactuacoes.findIndex(p => p.id === pId);
+    if (idx !== -1) {
+        if (!localPactuacoes[idx].producao) localPactuacoes[idx].producao = {};
+        localPactuacoes[idx].producao.realizada = newVal;
+    }
+    // Update in ALL list too
+    const allIdx = allPactuacoes.findIndex(p => p.id === pId);
+    if (allIdx !== -1) {
+        if (!allPactuacoes[allIdx].producao) allPactuacoes[allIdx].producao = {};
+        allPactuacoes[allIdx].producao.realizada = newVal;
+    }
+
+    try {
+        await Repository.updateProducao(pId, newVal);
+        input.classList.add('border-green-500');
+        setTimeout(() => input.classList.remove('border-green-500'), 1000);
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao salvar produção.');
+    }
+};
 
 initAcompanhamentoInst();

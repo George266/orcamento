@@ -149,8 +149,8 @@
             </div>
         </header>
         <!-- Main Content -->
-        <main class="flex-1 px-4 py-8 md:px-8 lg:px-12 xl:px-40">
-            <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
+        <main class="flex-1 px-4 py-8 md:px-8">
+            <div class="mx-auto flex w-full max-w-full flex-col gap-6">
                 <!-- Page Heading -->
                 <div class="flex flex-col gap-2">
                     <h1 class="text-text-main dark:text-white text-[32px] font-bold leading-tight tracking-tight">
@@ -221,7 +221,7 @@
                 <!-- Main Data Table -->
                 <div
                     class="flex flex-col overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm">
-                    <div class="overflow-x-auto">
+                    <div id="table-scroll-container" class="overflow-x-auto cursor-grab active:cursor-grabbing">
                         <table class="w-full min-w-[1200px] border-collapse text-left">
                             <thead class="bg-gray-50 dark:bg-slate-800/50">
                                 <tr>
@@ -261,39 +261,16 @@
                         </table>
                     </div>
                     <!-- Pagination -->
-                    <div
+                    <div id="pagination-container"
                         class="flex items-center justify-between border-t border-border-light dark:border-border-dark bg-white dark:bg-slate-800 px-6 py-3">
-                        <div class="text-sm text-text-secondary dark:text-slate-400">
-                            Mostrando <span class="font-bold text-text-main dark:text-white">1</span> a <span
-                                class="font-bold text-text-main dark:text-white">5</span> de <span
-                                class="font-bold text-text-main dark:text-white">42</span> resultados
-                        </div>
-                        <div class="flex gap-2">
-                            <button
-                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
-                                disabled="">
-                                <span class="material-symbols-outlined text-[16px]">chevron_left</span>
-                            </button>
-                            <button
-                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-primary bg-primary/10 text-primary dark:text-blue-400 font-bold text-sm">1</button>
-                            <button
-                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 text-sm">2</button>
-                            <button
-                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 text-sm">3</button>
-                            <span
-                                class="flex h-8 w-8 items-center justify-center text-text-secondary dark:text-slate-400">...</span>
-                            <button
-                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700">
-                                <span class="material-symbols-outlined text-[16px]">chevron_right</span>
-                            </button>
-                        </div>
+                        <!-- Content rendered by JS -->
                     </div>
                 </div>
             </div>
         </main>
     </div>
     <script type="module" src="src/js/auth-guard.js"></script>
-    <script type="module" src="src/js/acompanhamento-logic.js"></script>
+    <script type="module" src="src/js/acompanhamento-logic.js?v=2"></script>
 </body>
 
 </html>

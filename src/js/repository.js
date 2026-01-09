@@ -192,6 +192,68 @@ export const Repository = {
         await deleteDoc(doc(db, COLL_PACTUACOES, id));
     },
 
+    async deleteAllPactuacoes() {
+        const snapshot = await getDocs(collection(db, COLL_PACTUACOES));
+        const batchSize = 400;
+        const chunks = [];
+        for (let i = 0; i < snapshot.docs.length; i += batchSize) {
+            chunks.push(snapshot.docs.slice(i, i + batchSize));
+        }
+
+        for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        await this.logActivity('DELETE_ALL_PACTUACOES', { count: snapshot.size });
+    },
+
+    async duplicateCompetencia(sourceComp, targetComp) {
+        if (!sourceComp || !targetComp) throw new Error("Competências inválidas.");
+
+        // 1. Get Source Docs
+        const q = query(collection(db, COLL_PACTUACOES), where("competencia", "==", sourceComp));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) throw new Error(`Nenhuma pactuação encontrada para ${sourceComp}.`);
+
+        // 2. Batch Write
+        const batchSize = 400;
+        const chunks = [];
+        for (let i = 0; i < snapshot.docs.length; i += batchSize) {
+            chunks.push(snapshot.docs.slice(i, i + batchSize));
+        }
+
+        let count = 0;
+        for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(d => {
+                const data = d.data();
+                // Create new ID: prog_inst_sigtap_targetComp
+                const newId = normalizeId(`${data.progId}_${data.instId}_${data.sigtap}_${targetComp}`);
+
+                const newData = {
+                    ...data,
+                    id: newId,
+                    competencia: targetComp,
+                    // Reset production for new month
+                    producao: { sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0, realizada: 0 },
+                    importedAt: new Date(),
+                    updatedAt: new Date()
+                };
+
+                const ref = doc(db, COLL_PACTUACOES, newId);
+                batch.set(ref, newData, { merge: true });
+                count++;
+            });
+            await batch.commit();
+        }
+
+        await this.logActivity('DUPLICATE_COMPETENCIA', { source: sourceComp, target: targetComp, count });
+        return count;
+    },
+
     // BATCH IMPORT
     async importData(data, onProgress) {
         // 1. Analyze Data & Prepare Metadata
@@ -275,10 +337,27 @@ export const Repository = {
             const pNome = getCol(row, 'Programa').toString().trim();
             const iNome = getCol(row, 'Instituto').toString().trim();
             let sCod = getCol(row, 'SIGTAP').toString().trim();
-            const comp = getCol(row, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
+            let comp = getCol(row, 'Competencia', 'Mes', 'Referencia', 'Data', 'Periodo', 'Ano', 'Comp').toString().trim() || 'Geral';
 
             if (sCod && /^\d+$/.test(sCod)) sCod = sCod.padStart(10, '0');
             if (!pNome || !iNome || !sCod) return;
+
+            // Fix Excel Date Serial (e.g., 46023 -> jan/26)
+            if (/^\d{5}$/.test(comp)) {
+                const serial = parseInt(comp);
+                // Excel base date logic
+                const date = new Date((serial - 25569) * 86400 * 1000);
+                // Adjust for timezone offset if needed, but UTC is safer for simple date
+                // Using getUTCMonth/Year to avoid timezone shifts
+                const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                const m = months[date.getUTCMonth()];
+                const y = date.getUTCFullYear().toString().slice(-2);
+                // Check validity
+                if (m && y) {
+                    // Override comp with formatted string
+                    comp = `${m}/${y}`;
+                }
+            }
 
             const progId = normalizeId(pNome);
             const instId = normalizeId(iNome);

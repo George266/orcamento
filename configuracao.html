@@ -321,10 +321,16 @@
                         <div class="relative flex-1 md:w-36">
                             <span
                                 class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">calendar_month</span>
-                            <input type="text" id="main-filter-comp" oninput="window.renderPO()"
-                                placeholder="Competência"
-                                class="pl-9 pr-4 py-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm">
+                            <input type="month" id="main-filter-comp" onchange="window.renderPO()"
+                                class="pl-9 pr-4 py-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm text-slate-600 dark:text-slate-300">
                         </div>
+
+                        <!-- Replicate Button -->
+                        <button onclick="window.openModal('modal-replicar')"
+                            class="bg-white border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                            <span>Replicar Valores</span>
+                        </button>
 
                         <div class="hidden xl:block w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
@@ -405,6 +411,25 @@
                         </li>
                         <li>Certifique-se que o arquivo não está protegido por senha.</li>
                     </ul>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="mt-8 border-t border-slate-200 dark:border-slate-800 pt-8">
+                    <h3 class="text-sm font-bold text-red-600 uppercase mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined">warning</span> Zona de Perigo
+                    </h3>
+                    <div
+                        class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">Limpar todos os Incentivos</p>
+                            <p class="text-xs text-slate-500">Apaga apenas as <strong>Pactuações/Valores</strong>. Os
+                                cadastros de Institutos e Procedimentos são MANTIDOS.</p>
+                        </div>
+                        <button onclick="clearDatabase()"
+                            class="bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
+                            Apagar Tudo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -579,6 +604,39 @@
         </div>
     </div>
 
+    <!-- MODAL: REPLICAR -->
+    <div id="modal-replicar"
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Replicar Valores</h3>
+            <p class="text-xs text-slate-500 mb-6">Copie todos os incentivos e ofertas de uma competência anterior para
+                uma nova.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">De (Origem)</label>
+                    <input type="text" id="rep-origem" placeholder="Ex: jan/26"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono items-center">
+                </div>
+                <div class="flex justify-center">
+                    <span class="material-symbols-outlined text-slate-400">arrow_downward</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Para (Destino)</label>
+                    <input type="text" id="rep-destino" placeholder="Ex: fev/26"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button onclick="window.closeModal('modal-replicar')"
+                    class="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Cancelar</button>
+                <button onclick="window.confirmReplicar()"
+                    class="flex-1 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: PROCEDIMENTO -->
     <div id="modal-procedimento"
         class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -661,8 +719,17 @@
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
 
+        function checkImportPassword() {
+            const password = prompt("Digite a senha de administrador para iniciar a importação:");
+            if (password === "123456") return true;
+            alert("Senha incorreta.");
+            return false;
+        }
+
         if (dropZone && fileInput) {
-            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('click', () => {
+                if (checkImportPassword()) fileInput.click();
+            });
 
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -677,7 +744,9 @@
                 e.preventDefault();
                 dropZone.classList.remove('border-blue-500', 'bg-blue-50');
                 const files = e.dataTransfer.files;
-                if (files.length) handleFile(files[0]);
+                if (files.length) {
+                    if (checkImportPassword()) handleFile(files[0]);
+                }
             });
 
             fileInput.addEventListener('change', (e) => {
@@ -754,6 +823,27 @@
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
             XLSX.utils.book_append_sheet(wb, ws, "Modelo Completo");
             XLSX.writeFile(wb, "modelo_importacao_completo.xlsx");
+        };
+
+        window.clearDatabase = async () => {
+            if (!confirm('ATENÇÃO: Isso apagará TODOS os itens de incentivo/pactuação do sistema.\n\nEssa ação não pode ser desfeita. Tem certeza?')) return;
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Apagando...';
+
+            try {
+                await Repository.deleteAllPactuacoes();
+                alert('Base de dados limpa com sucesso!');
+                window.loadPO(); // Reload to show empty state
+            } catch (error) {
+                console.error(error);
+                alert('Erro ao limpar base: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         };
 
         // --- SORT LOGIC ---
@@ -1095,6 +1185,37 @@
         // window.deleteItemIncentivo removed (replaced by deleteItemFromForm)
 
         // --- LOADERS ---
+        window.confirmReplicar = async () => {
+            const origem = document.getElementById('rep-origem').value.trim();
+            const destino = document.getElementById('rep-destino').value.trim();
+
+            if (!origem || !destino) {
+                alert('Preencha as competências de origem e destino.');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Copiando...';
+
+            try {
+                const count = await Repository.duplicateCompetencia(origem, destino);
+                alert(`Sucesso! ${count} itens foram replicados para ${destino}.`);
+                window.closeModal('modal-replicar');
+
+                // Update filter and reload to show new items
+                document.getElementById('main-filter-comp').value = destino;
+                window.loadPO();
+            } catch (error) {
+                console.error(error);
+                alert('Erro: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        };
+
         window.loadInstitutos = async () => {
             localInstitutos = await Repository.getInstitutos();
             window.renderInstitutos();
@@ -1166,7 +1287,15 @@
         window.renderPO = () => {
             const query = document.getElementById('search-po').value.toLowerCase();
             const filterInst = document.getElementById('main-filter-inst')?.value || '';
-            const filterComp = (document.getElementById('main-filter-comp')?.value || '').toLowerCase();
+
+            // Handle Month Picker Conversion (YYYY-MM -> mmm/yy)
+            const filterCompInput = document.getElementById('main-filter-comp')?.value;
+            let filterComp = '';
+            if (filterCompInput) {
+                const [year, month] = filterCompInput.split('-');
+                const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                filterComp = `${months[parseInt(month) - 1]}/${year.slice(-2)}`;
+            }
 
             const container = document.getElementById('container-po');
 
@@ -1187,19 +1316,20 @@
 
             container.innerHTML = filteredProgs.map(p => {
                 let progItens = localPactuacoes.filter(it => it.progId == p.id);
-                const totalItens = progItens.length;
-
                 // Apply Global Item Filters
                 if (filterInst) {
                     progItens = progItens.filter(it => it.instId == filterInst);
                 }
-                if (filterComp) {
-                    progItens = progItens.filter(it => (it.competencia || '').toLowerCase().includes(filterComp));
+                if (filterComp) { // Using the converted 'mmm/yy' string
+                    progItens = progItens.filter(it => (it.competencia || '').toLowerCase() === filterComp);
                 }
 
-                // Auto-expand if filtering items (usability)
-                const isFiltered = (filterInst !== '' || filterComp !== '');
-                const isExpanded = expandedPrograms.has(p.id) || (isFiltered && progItens.length > 0);
+                const totalItens = progItens.length;
+
+                // Auto-expand logic: removed to ensure they start closed as requested, unless manually toggled
+                // const isFiltered = (filterInst !== '' || filterComp !== ''); 
+                const isExpanded = expandedPrograms.has(p.id);
+
 
                 // Apply Sorting
                 progItens.sort((a, b) => {
@@ -1363,6 +1493,18 @@
 
                 // Load Plano Operativo
                 window.loadPO();
+
+                // Set default filter to current month
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+                const filterCompEl = document.getElementById('main-filter-comp');
+                if (filterCompEl) {
+                    filterCompEl.value = currentMonth;
+                }
+            }).then(() => {
+                // Re-render after setting filter
+                window.renderPO();
             });
 
             // Search event listeners

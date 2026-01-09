@@ -20,33 +20,118 @@ async function initInstituteDashboard() {
         if (!user) return;
 
         const profile = await Repository.getUserByEmail(user.email);
-        if (!profile || profile.role !== 'Institutos' || !profile.instId) {
+        if (!profile || !profile.role.startsWith('Institutos')) {
             console.warn("Acesso não autorizado ou instituto não vinculado.");
             return;
         }
 
-        userInstId = profile.instId;
-        const instituto = await Repository.getInstitutoById(userInstId);
+        // --- MULTI-INSTITUTE SUPPORT ---
+        const allowedIds = profile.instIds || (profile.instId ? [profile.instId] : []);
+
+        if (allowedIds.length === 0) {
+            console.warn('Perfil de Instituto sem vínculos definidos.');
+            return;
+        }
+
+        userInstId = allowedIds[0];
+        let instituto = null;
+        if (userInstId) {
+            instituto = await Repository.getInstitutoById(userInstId);
+        }
 
         // Update UI with institute name
         const welcomeHeader = document.getElementById('inst-welcome-name');
-        if (welcomeHeader) welcomeHeader.textContent = `Painel: ${instituto?.sigla || instituto?.nome || 'Meu Instituto'}`;
+        if (welcomeHeader) welcomeHeader.textContent = `Painel: ${instituto?.sigla || instituto?.nome || 'Multi-Institutos'}`;
 
         const nameHeader = document.getElementById('user-name-header');
         if (nameHeader) nameHeader.textContent = profile.name || user.email;
 
         const instHeader = document.getElementById('user-inst-header');
-        if (instHeader) instHeader.textContent = instituto?.nome || 'Instituto Vinc.';
+        if (instHeader) instHeader.textContent = instituto?.nome || (allowedIds.length > 1 ? 'Múltiplos Vínculos' : '-');
 
         setupProfileMenu();
 
+        // --- PROFILE MENU SWITCHER INJECTION ---
+        if (allowedIds.length > 1) {
+            const institutes = await Repository.getInstitutos();
+            const myInsts = institutes.filter(i => allowedIds.includes(i.id));
+
+            // Wait for DOM to be ready or check if dropdown exists
+            const profileDropdown = document.getElementById('profile-dropdown');
+
+            if (profileDropdown) {
+                // Check if switcher already exists to avoid duplicates
+                if (!profileDropdown.querySelector('.inst-switcher-container')) {
+                    const switcherHtml = document.createElement('div');
+                    switcherHtml.className = 'inst-switcher-container px-4 py-2 border-b border-slate-100 dark:border-slate-700 mb-1';
+                    switcherHtml.innerHTML = `
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alternar Instituto</p>
+                        <div class="flex flex-col gap-1">
+                            <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-primary bg-primary/5">
+                                <span>Todos</span>
+                                <span class="material-symbols-outlined text-[14px]">check</span>
+                            </button>
+                            ${myInsts.map(inst => `
+                                <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-slate-600 dark:text-slate-300">
+                                    <span class="truncate">${inst.sigla}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    profileDropdown.insertBefore(switcherHtml, profileDropdown.firstChild);
+
+                    // Add listeners
+                    const btns = switcherHtml.querySelectorAll('.inst-switcher-btn');
+                    btns.forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const selectedId = btn.dataset.instId;
+
+                            if (selectedId === 'all') {
+                                currentPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+                                document.getElementById('inst-page-name').textContent = 'Todos os Vinculados';
+                            } else {
+                                currentPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
+                                const selInst = myInsts.find(i => i.id === selectedId);
+                                document.getElementById('inst-page-name').textContent = selInst ? selInst.nome : 'Instituto';
+                            }
+
+                            // UI Update
+                            const allBtns = profileDropdown.querySelectorAll('.inst-switcher-btn');
+                            allBtns.forEach(b => {
+                                b.classList.remove('text-primary', 'bg-primary/5', 'text-slate-600', 'dark:text-slate-300');
+                                b.classList.add('text-slate-600', 'dark:text-slate-300');
+                                const check = b.querySelector('.material-symbols-outlined');
+                                if (check) check.remove();
+
+                                if (b.dataset.instId === selectedId) {
+                                    b.classList.remove('text-slate-600', 'dark:text-slate-300');
+                                    b.classList.add('text-primary', 'bg-primary/5');
+                                    b.innerHTML += '<span class="material-symbols-outlined text-[14px]">check</span>';
+                                }
+                            });
+                            profileDropdown.classList.add('hidden');
+
+                            // Force re-render of stats
+                            renderDashboard();
+                        });
+                    });
+                }
+            }
+        }
+
         // Fetch Data
         const allPactuacoes = await Repository.getPactuacoes();
-        currentPactuacoes = allPactuacoes.filter(p => p.instId === userInstId);
+        currentPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
         localProcs = await Repository.getProcedimentos();
 
+        // Multi-Institute Filter Setup
         const monthSelector = document.getElementById('periodo-select');
+
+        // Populate Month Selector first
         if (monthSelector && currentPactuacoes.length > 0) {
+            // ... existing month logic ...
             const competencias = [...new Set(currentPactuacoes.map(p => p.competencia))].sort().reverse();
             monthSelector.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
 
@@ -56,10 +141,10 @@ async function initInstituteDashboard() {
             });
 
             currentPeriod = monthSelector.value;
-            renderDashboard();
-        } else {
-            renderDashboard();
         }
+
+        // Render initially
+        renderDashboard();
     });
 }
 
