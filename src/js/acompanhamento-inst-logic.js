@@ -313,133 +313,237 @@ window.deletePact = async function (id) {
     }
 };
 
+// --- UNIFIED LAUNCH LOGIC START ---
+
 function renderTable() {
     const compValue = document.getElementById('filter-competencia')?.value;
     const progValue = document.getElementById('filter-programa')?.value;
     const searchValue = document.getElementById('buscainteligente')?.value.toLowerCase();
     const { canEdit } = window.currentInstPermissions || { canEdit: false };
 
-    if (!compValue) return; // Wait for population
+    if (!compValue) return;
 
+    // 1. Filter
     let filtered = localPactuacoes.filter(p => p.competencia === compValue);
 
-    // Filter by Program
     if (progValue) {
         filtered = filtered.filter(p => p.progId === progValue);
     }
 
-    // Sorting
-    if (currentSort.column) {
-        filtered.sort((a, b) => {
-            let valA, valB;
+    // 2. Group by SIGTAP
+    const groups = {};
+    filtered.forEach(p => {
+        if (!groups[p.sigtap]) {
+            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+            groups[p.sigtap] = {
+                sigtap: p.sigtap,
+                procName: proc?.nome || 'Procedimento',
+                items: [],
+                totalMeta: 0,
+                maxMeta: 0,
+                totalRealizado: 0
+            };
+        }
+        groups[p.sigtap].items.push(p);
 
+        const meta = parseInt(p.ofertaMinima || 0);
+        // Ensure producao object exists
+        if (!p.producao) p.producao = { realizada: 0 };
+        const real = parseInt(p.producao.realizada || 0);
+
+        groups[p.sigtap].totalMeta += meta;
+        if (meta > groups[p.sigtap].maxMeta) groups[p.sigtap].maxMeta = meta;
+
+        // In unified view, we assume the single input value applies to the group, 
+        // OR we take the max of existing values if they differ (to avoid showing 0 if one is set).
+        // Standard behavior: max of existing lines to represent the "current offer".
+        groups[p.sigtap].totalRealizado = Math.max(groups[p.sigtap].totalRealizado, real);
+    });
+
+    // 3. Search Filter (on Groups)
+    let displayItems = Object.values(groups);
+    if (searchValue) {
+        displayItems = displayItems.filter(g =>
+            g.sigtap.includes(searchValue) ||
+            g.procName.toLowerCase().includes(searchValue)
+        );
+    }
+
+    // 4. Sort (Simplified for Unified View)
+    // Supports: Procedure Name, Status, Offer/Meta
+    if (currentSort.column) {
+        displayItems.sort((a, b) => {
+            let valA, valB;
             switch (currentSort.column) {
-                case 'linha':
-                    const progA = localProgs.find(pg => pg.id === a.progId);
-                    const progB = localProgs.find(pg => pg.id === b.progId);
-                    valA = (progA?.nome || '').toLowerCase();
-                    valB = (progB?.nome || '').toLowerCase();
-                    break;
-                case 'sigtap':
-                    valA = a.sigtap;
-                    valB = b.sigtap;
-                    break;
                 case 'procedimento':
-                    const procA = localProcs.find(pr => pr.sigtap === a.sigtap);
-                    const procB = localProcs.find(pr => pr.sigtap === b.sigtap);
-                    valA = procA?.nome || '';
-                    valB = procB?.nome || '';
+                    valA = a.procName.toLowerCase(); valB = b.procName.toLowerCase(); break;
+                case 'meta':
+                    valA = a.maxMeta; valB = b.maxMeta; break;
+                case 'status':
+                    // progress
+                    valA = a.maxMeta > 0 ? a.totalRealizado / a.maxMeta : 0;
+                    valB = b.maxMeta > 0 ? b.totalRealizado / b.maxMeta : 0;
                     break;
                 case 'oferta':
-                    valA = parseInt(a.ofertaMinima || 0);
-                    valB = parseInt(b.ofertaMinima || 0);
-                    break;
-                case 'vlrSigtap':
-                    valA = parseFloat(a.vlrSigtapBase || 0);
-                    valB = parseFloat(b.vlrSigtapBase || 0);
-                    break;
-                case 'vlrIncentivo':
-                    valA = parseFloat(a.vlrIncentivo || 0);
-                    valB = parseFloat(b.vlrIncentivo || 0);
-                    break;
+                    valA = a.totalRealizado; valB = b.totalRealizado; break;
                 default:
                     return 0;
             }
-
             if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
             if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
             return 0;
         });
     }
 
-    if (searchValue) {
-        filtered = filtered.filter(p => {
-            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-            const term = searchValue;
-            return (
-                p.sigtap.includes(term) ||
-                (proc && proc.nome.toLowerCase().includes(term))
-            );
-        });
-    }
-
     const tbody = document.getElementById('table-acompanhamento-inst');
     if (!tbody) return;
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+    if (displayItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 italic">Nenhum procedimento encontrado.</td></tr>`;
     } else {
-        tbody.innerHTML = filtered.map(p => {
-            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-            // Get Program Name
-            const prog = localProgs.find(pg => pg.id === p.progId);
-            const progName = prog ? prog.nome : "Programa Padrão";
+        tbody.innerHTML = displayItems.map(group => {
+            const target = group.maxMeta;
+            const progress = target > 0 ? (group.totalRealizado / target) * 100 : 0;
 
-            const pact = parseInt(p.ofertaMinima || 0);
-            const vBase = parseFloat(p.vlrSigtapBase || 0);
-            const vInc = parseFloat(p.vlrIncentivo || 0);
+            let statusColor = 'bg-primary';
+            if (progress >= 100) statusColor = 'bg-green-500';
+            else if (progress < 50) statusColor = 'bg-yellow-500';
 
-            const prod = p.producao || { sem1: 0, sem2: 0, sem3: 0, sem4: 0 };
             const inputState = canEdit ? '' : 'disabled';
-            const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : '';
-            const baseInputClass = "w-[70px] text-center text-sm font-bold border-slate-200 rounded px-1 py-1 transition-all";
-            const disabledClass = 'bg-slate-50 text-slate-500 cursor-not-allowed';
-
+            const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : 'bg-slate-50 text-slate-500';
 
             return `
-                <tr data-id="${p.id}" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-                    <td class="px-3 py-3 whitespace-nowrap text-xs font-medium text-slate-900 dark:text-white">
-                        <span class="text-[10px] text-slate-500 uppercase tracking-widest">${progName}</span>
-                    </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-xs text-center font-mono text-slate-500">
-                        ${p.sigtap}
-                    </td>
-                    <td class="px-3 py-3 whitespace-nowrap text-xs font-medium text-slate-900 dark:text-white">
-                        <div class="flex flex-col">
-                            <span class="font-bold truncate max-w-[180px]" title="${proc?.nome}">${proc?.nome || 'Procedimento'}</span>
+             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row">
+                <td class="px-6 py-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title="${group.procName}">${group.procName}</span>
+                        <span class="text-xs text-slate-500 font-mono mt-0.5">Cód: ${group.sigtap}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-bold">
+                    ${formatNumber(target)}
+                </td>
+                <td class="px-6 py-4 align-middle">
+                    <div class="flex flex-col gap-1 max-w-[140px] mx-auto">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-600 dark:text-slate-400 font-medium">${formatNumber(group.totalRealizado)} ofertados</span>
+                            <span class="font-bold text-slate-700 dark:text-white">${Math.round(progress)}%</span>
                         </div>
-                    </td>
-                    <td class="px-2 py-3 text-center font-mono text-xs font-bold text-slate-500 bg-slate-50/50">${formatNumber(pact)}</td>
-                    
-                    <!-- Week Inputs -->
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem1 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem1', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem2 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem2', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem3 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem3', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
-                    <td class="p-1 text-center"><input type="number" value="${prod.sem4 || 0}" ${inputState} onchange="autoSave('${p.id}', 'sem4', this.value)" class="${baseInputClass} ${canEdit ? activeClass : disabledClass}"></td>
-
-                    <td class="px-2 py-3 text-center status-cell">
-                        <!-- Populated by updateRowUI -->
-                        <span class="text-[10px] text-slate-400">---</span>
-                    </td>
-                    
-                </tr>
+                        <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                            <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <input
+                        onchange="window.updateUnifiedOffer('${group.sigtap}', this.value)"
+                        class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm shadow-sm font-bold ${activeClass}"
+                        min="0" 
+                        value="${group.totalRealizado}" 
+                        type="number" 
+                        ${inputState}
+                    />
+                </td>
+                 <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <button onclick="window.openDetailModal('${group.sigtap}')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg" title="Ver Detalhes">
+                         <span class="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
+                </td>
+            </tr>
             `;
         }).join('');
-
-        // Initial UI update for all rows
-        filtered.forEach(p => updateRowUI(p.id, p));
     }
+
+    // Store for modal access
+    window.displayGroups = groups;
 }
+
+// Global functions for Unified Interface
+window.updateUnifiedOffer = async (sigtap, value) => {
+    const val = parseInt(value) || 0;
+    const group = window.displayGroups[sigtap];
+    if (group) {
+        // Optimistic Update & Save Logic
+        // We update EVERY item in the group to have this same realized value
+        const updatePromises = group.items.map(async (pact) => {
+            if (!pact.producao) pact.producao = {};
+            pact.producao.realizada = val;
+
+            // Also update localPactuacoes state to allow re-render without refetch
+            const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
+            if (localIdx !== -1) localPactuacoes[localIdx].producao.realizada = val;
+
+            return Repository.savePactuacao(pact);
+        });
+
+        try {
+            await Promise.all(updatePromises);
+            // Re-render to update progress bars correctly
+            renderTable();
+        } catch (error) {
+            console.error("Error bulk updating offer:", error);
+            alert("Erro ao salvar oferta unificada.");
+        }
+    }
+};
+
+window.openDetailModal = (sigtap) => {
+    // If displayGroups isn't ready, verify if renderTable ran. 
+    // It should be by the time button is clicked.
+    const groups = window.displayGroups || {};
+    const group = groups[sigtap];
+
+    if (!group) return;
+
+    const modal = document.getElementById('modal-detalhe-lancamento');
+    if (modal) {
+        document.getElementById('modal-title').textContent = group.procName;
+        document.getElementById('modal-subtitle').textContent = `Cód. SIGTAP: ${sigtap}`;
+
+        const tbody = document.getElementById('modal-table-body');
+        tbody.innerHTML = group.items.map(item => {
+            const prog = localProgs.find(p => p.id === item.progId);
+            const progName = prog ? prog.nome : (item.progId || 'Incentivo Padrão');
+
+            const meta = parseInt(item.ofertaMinima || 0);
+            const real = parseInt(item.producao?.realizada || 0);
+            const progress = meta > 0 ? (real / meta) * 100 : 0;
+
+            let statusColor = 'bg-primary';
+            if (progress >= 100) statusColor = 'bg-green-500';
+            else if (progress < 50) statusColor = 'bg-yellow-500';
+
+            return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <td class="px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    ${progName}
+                </td>
+                <td class="px-4 py-3 text-right text-sm font-mono text-slate-600 dark:text-slate-400">
+                    ${formatNumber(meta)}
+                </td>
+                <td class="px-4 py-3 text-right text-sm font-mono font-bold text-slate-900 dark:text-white">
+                    ${formatNumber(real)}
+                </td>
+                 <td class="px-4 py-3 align-middle">
+                     <div class="flex items-center gap-2">
+                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 flex-1">
+                            <div class="${statusColor} h-1.5 rounded-full" style="width: ${Math.min(progress, 100)}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-500">${Math.round(progress)}%</span>
+                    </div>
+                </td>
+            </tr>
+        `}).join('');
+
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeDetailModal = () => {
+    document.getElementById('modal-detalhe-lancamento').classList.add('hidden');
+};
+
+// --- UNIFIED LAUNCH LOGIC END ---
 
 function setupProfileMenu() {
     const btn = document.getElementById('profile-menu-btn');

@@ -26,10 +26,18 @@ async function initFinanceiroInst() {
 
         if (allowedIds.length === 0) return;
 
-        const mainInstId = allowedIds[0];
+        let userInstId = allowedIds[0];
+        // Check for saved selection
+        const savedInstId = localStorage.getItem('selectedInstituteId');
+        if (savedInstId && (savedInstId === 'all' || allowedIds.includes(savedInstId))) {
+            userInstId = savedInstId;
+        } else {
+            userInstId = allowedIds.length > 1 ? 'all' : allowedIds[0];
+        }
+
         let instituto = null;
-        if (mainInstId) {
-            instituto = await Repository.getInstitutoById(mainInstId);
+        if (userInstId && userInstId !== 'all') {
+            instituto = await Repository.getInstitutoById(userInstId);
         }
 
         // Update Headers
@@ -37,10 +45,10 @@ async function initFinanceiroInst() {
         if (nameHeader) nameHeader.textContent = profile.name || user.email;
 
         const instHeader = document.getElementById('inst-header-name');
-        if (instHeader) instHeader.textContent = instituto?.nome || 'Financeiro';
+        if (instHeader) instHeader.textContent = instituto?.nome || (userInstId === 'all' ? 'Múltiplos Vínculos' : '-');
 
         const pageName = document.getElementById('inst-page-name');
-        if (pageName) pageName.textContent = instituto?.nome || 'Múltiplos Vínculos';
+        if (pageName) pageName.textContent = instituto?.nome || (userInstId === 'all' ? 'Todos os Vinculados' : 'Instituto Desconhecido');
 
         setupProfileMenu();
 
@@ -56,13 +64,14 @@ async function initFinanceiroInst() {
                 switcherHtml.innerHTML = `
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alternar Instituto</p>
                     <div class="flex flex-col gap-1">
-                        <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-primary bg-primary/5">
+                        <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === 'all' ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                             <span>Todos</span>
-                            <span class="material-symbols-outlined text-[14px]">check</span>
+                            ${userInstId === 'all' ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                         </button>
                         ${myInsts.map(inst => `
-                            <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-slate-600 dark:text-slate-300">
+                            <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === inst.id ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                                 <span class="truncate">${inst.sigla}</span>
+                                ${userInstId === inst.id ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                             </button>
                         `).join('')}
                     </div>
@@ -77,14 +86,18 @@ async function initFinanceiroInst() {
                         profileDropdown.classList.add('hidden'); // Close first
 
                         const selectedId = btn.dataset.instId;
+                        localStorage.setItem('selectedInstituteId', selectedId);
+                        userInstId = selectedId;
 
                         if (selectedId === 'all') {
                             localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
                             document.getElementById('inst-page-name').textContent = 'Todos os Vinculados';
+                            document.getElementById('inst-header-name').textContent = 'Múltiplos Vínculos';
                         } else {
                             localPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
                             const selInst = myInsts.find(i => i.id === selectedId);
                             document.getElementById('inst-page-name').textContent = selInst ? selInst.nome : 'Instituto';
+                            document.getElementById('inst-header-name').textContent = selInst ? selInst.nome : '-';
                         }
 
                         // UI Update
@@ -107,12 +120,18 @@ async function initFinanceiroInst() {
                     });
                 });
             }
-            document.getElementById('inst-page-name').textContent = 'Todos os Vinculados';
         }
 
         // Init Data
         allPactuacoes = await Repository.getPactuacoes();
-        localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+
+        // Initial Filter
+        if (userInstId === 'all') {
+            localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+        } else {
+            localPactuacoes = allPactuacoes.filter(p => p.instId === userInstId);
+        }
+
         localProcs = await Repository.getProcedimentos();
         localProgs = await Repository.getProgramas();
 

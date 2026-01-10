@@ -33,9 +33,18 @@ async function initInstituteDashboard() {
             return;
         }
 
-        userInstId = allowedIds[0];
+        // Check for saved selection
+        const savedInstId = localStorage.getItem('selectedInstituteId');
+        // Validate if saved ID is still allowed, otherwise default to first/all
+        if (savedInstId && (savedInstId === 'all' || allowedIds.includes(savedInstId))) {
+            userInstId = savedInstId;
+        } else {
+            // Default behavior: If > 1, show "all", else show the one
+            userInstId = allowedIds.length > 1 ? 'all' : allowedIds[0];
+        }
+
         let instituto = null;
-        if (userInstId) {
+        if (userInstId && userInstId !== 'all') {
             instituto = await Repository.getInstitutoById(userInstId);
         }
 
@@ -47,7 +56,13 @@ async function initInstituteDashboard() {
         if (nameHeader) nameHeader.textContent = profile.name || user.email;
 
         const instHeader = document.getElementById('user-inst-header');
-        if (instHeader) instHeader.textContent = instituto?.nome || (allowedIds.length > 1 ? 'Múltiplos Vínculos' : '-');
+        if (instHeader) instHeader.textContent = instituto?.nome || (userInstId === 'all' ? 'Múltiplos Vínculos' : '-');
+
+        // Update Page Title if "All"
+        const pageTitleInst = document.getElementById('inst-page-name');
+        if (pageTitleInst && userInstId === 'all') pageTitleInst.textContent = 'Todos os Vinculados';
+        else if (pageTitleInst && instituto) pageTitleInst.textContent = instituto.nome;
+
 
         setupProfileMenu();
 
@@ -67,13 +82,14 @@ async function initInstituteDashboard() {
                     switcherHtml.innerHTML = `
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alternar Instituto</p>
                         <div class="flex flex-col gap-1">
-                            <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-primary bg-primary/5">
+                            <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === 'all' ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                                 <span>Todos</span>
-                                <span class="material-symbols-outlined text-[14px]">check</span>
+                                ${userInstId === 'all' ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                             </button>
                             ${myInsts.map(inst => `
-                                <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-slate-600 dark:text-slate-300">
+                                <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === inst.id ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                                     <span class="truncate">${inst.sigla}</span>
+                                    ${userInstId === inst.id ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                                 </button>
                             `).join('')}
                         </div>
@@ -88,13 +104,21 @@ async function initInstituteDashboard() {
                             e.stopPropagation();
                             const selectedId = btn.dataset.instId;
 
+                            // SAVE SELECTION
+                            localStorage.setItem('selectedInstituteId', selectedId);
+                            userInstId = selectedId;
+
                             if (selectedId === 'all') {
                                 currentPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
                                 document.getElementById('inst-page-name').textContent = 'Todos os Vinculados';
+                                document.getElementById('user-inst-header').textContent = 'Múltiplos Vínculos';
+                                document.getElementById('inst-welcome-name').textContent = 'Painel: Multi-Institutos';
                             } else {
                                 currentPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
                                 const selInst = myInsts.find(i => i.id === selectedId);
                                 document.getElementById('inst-page-name').textContent = selInst ? selInst.nome : 'Instituto';
+                                document.getElementById('user-inst-header').textContent = selInst ? selInst.nome : '-';
+                                document.getElementById('inst-welcome-name').textContent = `Painel: ${selInst?.sigla || '...'}`;
                             }
 
                             // UI Update
@@ -123,7 +147,14 @@ async function initInstituteDashboard() {
 
         // Fetch Data
         const allPactuacoes = await Repository.getPactuacoes();
-        currentPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+
+        // Initial Filter based on stored/determined userInstId
+        if (userInstId === 'all') {
+            currentPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+        } else {
+            currentPactuacoes = allPactuacoes.filter(p => p.instId === userInstId);
+        }
+
         localProcs = await Repository.getProcedimentos();
 
         // Multi-Institute Filter Setup

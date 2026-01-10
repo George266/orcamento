@@ -79,19 +79,23 @@
             </div>
             <!-- Nav Links -->
             <nav class="flex flex-col gap-2">
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                    href="dashboard_instituto.html">
+                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                    href="dashboard_instituto.html"
+                    style="display: flex !important; flex-direction: row !important; align-items: center !important;">
                     <span
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">dashboard</span>
                     <span class="text-sm font-medium leading-normal">Dashboard</span>
                 </a>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 group"
-                    href="acompanhamento_instituto.html">
-                    <span class="material-symbols-outlined text-[24px]">edit_document</span>
-                    <span class="text-sm font-semibold leading-normal">Lançamentos</span>
+                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                    href="acompanhamento_instituto.html"
+                    style="display: flex !important; flex-direction: row !important; align-items: center !important;">
+                    <span
+                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">edit_document</span>
+                    <span class="text-sm font-medium leading-normal">Lançamentos</span>
                 </a>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                    href="financeiro_instituto.html">
+                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                    href="financeiro_instituto.html"
+                    style="display: flex !important; flex-direction: row !important; align-items: center !important;">
                     <span
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">payments</span>
                     <span class="text-sm font-medium leading-normal">Financeiro</span>
@@ -241,26 +245,8 @@
                         <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
                             <thead class="bg-slate-50 dark:bg-slate-800/50">
                                 <tr>
-                                    <th data-sort="linha"
-                                        class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none"
-                                        scope="col">
-                                        <div class="flex items-center gap-1">
-                                            Incentivo
-                                            <span
-                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
-                                        </div>
-                                    </th>
-                                    <th data-sort="sigtap"
-                                        class="px-2 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[100px] cursor-pointer group select-none"
-                                        scope="col">
-                                        <div class="flex items-center gap-1">
-                                            SIGTAP
-                                            <span
-                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
-                                        </div>
-                                    </th>
                                     <th data-sort="procedimento"
-                                        class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px] cursor-pointer group select-none"
+                                        class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px] cursor-pointer group select-none"
                                         scope="col">
                                         <div class="flex items-center gap-1">
                                             Procedimento
@@ -268,31 +254,29 @@
                                                 class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
                                         </div>
                                     </th>
-                                    <th data-sort="oferta"
-                                        class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[100px] cursor-pointer group select-none"
+                                    <th data-sort="meta"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                         scope="col">
-                                        <div class="flex items-center justify-center gap-1">
-                                            Oferta
-                                            <span
-                                                class="material-symbols-outlined sort-icon text-[16px] text-slate-300 group-hover:text-primary transition-colors">unfold_more</span>
-                                        </div>
+                                        Meta
                                     </th>
-
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
-                                        scope="col">Sem 1</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
-                                        scope="col">Sem 2</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
-                                        scope="col">Sem 3</th>
-                                    <th class="px-1 py-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[75px]"
-                                        scope="col">Sem 4</th>
-
-                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">Status</th>
+                                    <th data-sort="status"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">
+                                        Status Geral
+                                    </th>
+                                    <th data-sort="oferta"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">
+                                        Oferta (Qtd)
+                                    </th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">
+                                        Detalhes
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="table-acompanhamento-inst"
-                                class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
+                                class="bg-white dark:bg-surfaced-dark divide-y divide-border-light dark:divide-border-dark">
                                 <!-- Dynamic Content -->
                             </tbody>
                         </table>
@@ -302,6 +286,54 @@
             </div>
         </div>
     </main>
+
+    <!-- MODAL: DETALHAMENTO DE OFERTA -->
+    <div id="modal-detalhe-lancamento"
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="modal-title">Detalhes da Oferta
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1" id="modal-subtitle">---</p>
+                </div>
+                <button onclick="window.closeDetailModal()"
+                    class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-6">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-4 py-3">Incentivo / Programa</th>
+                            <th class="px-4 py-3 text-right">Meta</th>
+                            <th class="px-4 py-3 text-right">Ofertado</th>
+                            <th class="px-4 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-table-body"
+                        class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                        <!-- JS populated -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
+                <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg mt-0.5">info</span>
+                <p class="text-xs text-blue-800 dark:text-blue-200">
+                    Ao definir o valor na tela anterior, ele será aplicado automaticamente para <strong>todos</strong>
+                    os programas listados acima.
+                </p>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="window.closeDetailModal()"
+                    class="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg hover:bg-slate-200 transition-colors">Fechar</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="src/js/auth-guard.js"></script>
     <script type="module" src="src/js/acompanhamento-inst-logic.js"></script>
