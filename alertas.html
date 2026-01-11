@@ -236,6 +236,59 @@
                 </div>
             </div>
         </div>
+
+        <!-- MODAL: COMUNICAÇÃO -->
+        <div id="modal-comunicacao"
+            class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl animate-fade-in">
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold flex items-center gap-2" id="comm-title">
+                            <span class="material-symbols-outlined text-primary">mail</span>
+                            Enviar Mensagem
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Edite o conteúdo antes de enviar.</p>
+                    </div>
+                    <button onclick="closeCommModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-slate-500 uppercase mb-1.5 ml-1">Destinatários</label>
+                        <div id="comm-recipients"
+                            class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm min-h-[50px]">
+                            <!-- Tags populated via JS -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1.5 ml-1">Assunto</label>
+                        <input type="text" id="comm-subject"
+                            class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none font-bold">
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-slate-500 uppercase mb-1.5 ml-1">Mensagem</label>
+                        <textarea id="comm-message" rows="6"
+                            class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none resize-none leading-relaxed"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 mt-8">
+                    <button onclick="closeCommModal()"
+                        class="px-5 py-2.5 text-slate-500 hover:scale-105 transition-transform font-bold text-xs">Cancelar</button>
+                    <button id="comm-send-btn" onclick="sendCommunication()"
+                        class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:scale-105 transition-all text-sm flex items-center gap-2">
+                        <span>Enviar</span>
+                        <span class="material-symbols-outlined text-[16px]">send</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
     <script type="module" src="src/js/auth-guard.js"></script>
     <script type="module" src="src/js/dashboard-logic.js"></script>

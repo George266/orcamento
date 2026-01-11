@@ -12,7 +12,10 @@ function formatNumber(value) {
 let currentPactuacoes = [];
 let localInsts = [];
 let localProcs = [];
+
+let localUsers = []; // Cache functionality
 let currentPeriod = null;
+let currentCommData = null; // Store data for the active modal
 
 export async function initDashboard() {
     const pactuacoes = await Repository.getPactuacoes();
@@ -41,6 +44,7 @@ export async function initDashboard() {
 async function updateDashboard(period = null, allPactuacoes = null) {
     currentPactuacoes = allPactuacoes || await Repository.getPactuacoes();
     localInsts = await Repository.getInstitutos();
+    localUsers = await Repository.getUsers();
     localProcs = await Repository.getProcedimentos();
     window.localProgramas = await Repository.getProgramas(); // Make available for charts
 
@@ -165,16 +169,20 @@ async function updateDashboard(period = null, allPactuacoes = null) {
                 const status = Math.round((p.producao?.realizada / p.ofertaMinima) * 100);
                 return `
                     <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-l-4 ${status < 50 ? 'border-red-500' : 'border-orange-500'} shadow-sm">
-                        <div class="flex items-start gap-3">
-                            <span class="material-symbols-outlined ${status < 50 ? 'text-red-500' : 'text-orange-500'} text-[20px]">
-                                ${status < 50 ? 'error' : 'warning'}
-                            </span>
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-900 dark:text-white">${proc?.nome || p.sigtap}</h4>
-                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                                    Atingimento: <span class="font-bold">${status}%</span> no ${inst?.sigla || inst?.nome || 'Instituto'}
-                                </p>
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined ${status < 50 ? 'text-red-500' : 'text-orange-500'} text-[20px]">
+                                    ${status < 50 ? 'error' : 'warning'}
+                                </span>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">${proc?.nome || p.sigtap}</h4>
+                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                        Atingimento: <span class="font-bold">${status}%</span> no ${inst?.sigla || inst?.nome || 'Instituto'}
+                                    </p>
+                                </div>
                             </div>
+                            <!-- Contact Buttons (Right Side) -->
+                            ${renderContactButtons(p, inst, proc)}
                         </div>
                     </div>
                 `;
@@ -538,6 +546,133 @@ window.openDetalhamento = (sigtap) => {
 
 window.closeDetailModal = () => {
     document.getElementById('modal-detalhe-procedimento').classList.add('hidden');
+};
+
+function renderContactButtons(pact, inst, proc) {
+    if (!inst) return '';
+
+    // Find users
+    const recipients = localUsers.filter(u => {
+        const isInstUser = u.role && u.role.startsWith('Institutos');
+        if (!isInstUser) return false;
+        if (u.instIds && Array.isArray(u.instIds)) return u.instIds.includes(inst.id);
+        return u.instId === inst.id;
+    });
+
+    if (recipients.length === 0) return '';
+
+    const pactId = pact.id || pact.sigtap;
+    const hasPhone = recipients.some(u => !!u.phone);
+
+    return `
+        <div class="flex flex-col gap-1 shrink-0">
+            <button onclick="window.openCommModal('email', '${pactId}', '${inst.id}')" 
+                class="flex items-center justify-center size-7 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="Enviar Email">
+                <span class="material-symbols-outlined text-[16px]">mail</span>
+            </button>
+            <button onclick="window.openCommModal('whatsapp', '${pactId}', '${inst.id}')" ${!hasPhone ? 'disabled' : ''}
+                class="flex items-center justify-center size-7 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" title="${hasPhone ? 'Enviar WhatsApp' : 'Nenhum telefone cadastrado'}">
+                <span class="material-symbols-outlined text-[16px]">chat</span>
+            </button>
+        </div>
+    `;
+}
+
+// --- COMMUNICATION MODAL LOGIC ---
+window.openCommModal = (type, pactId, instId) => {
+    const pact = currentPactuacoes.find(p => (p.id || p.sigtap) == pactId);
+    const inst = localInsts.find(i => i.id == instId);
+    const proc = localProcs.find(pr => pr.sigtap === pact.sigtap);
+
+    if (!pact || !inst) return;
+
+    // Filter recipients
+    const recipients = localUsers.filter(u => {
+        const isInstUser = u.role && u.role.startsWith('Institutos');
+        if (!isInstUser) return false;
+        if (u.instIds && Array.isArray(u.instIds)) return u.instIds.includes(inst.id);
+        return u.instId === inst.id;
+    });
+
+    if (recipients.length === 0) return alert('Nenhum usuário cadastrado para este Instituto.');
+
+    currentCommData = { type, recipients };
+
+    const modal = document.getElementById('modal-comunicacao');
+    const recipientContainer = document.getElementById('comm-recipients');
+    const subjectInput = document.getElementById('comm-subject');
+    const messageInput = document.getElementById('comm-message');
+    const sendBtn = document.getElementById('comm-send-btn');
+    const title = document.getElementById('comm-title');
+
+    // Reset UI
+    recipientContainer.innerHTML = '';
+
+    // Populate Data
+    const subjectText = `Alerta de Produção: ${proc?.nome || pact.sigtap}`;
+    const bodyText = `Olá,\n\nIdentificamos que o procedimento ${proc?.nome || pact.sigtap} está com produção abaixo do esperado (${Math.round((pact.producao?.realizada / pact.ofertaMinima) * 100)}%) no mês de ${pact.competencia}.\n\nFavor verificar.\n\nAtenciosamente,\nEquipe Orçamento`;
+
+    subjectInput.value = subjectText;
+    messageInput.value = bodyText;
+
+    if (type === 'email') {
+        title.innerHTML = '<span class="material-symbols-outlined text-blue-600">mail</span> Enviar E-mail';
+        sendBtn.classList.remove('hidden');
+        sendBtn.innerHTML = '<span>Enviar Email</span><span class="material-symbols-outlined text-[16px]">send</span>';
+
+        recipients.forEach(u => {
+            recipientContainer.innerHTML += `
+                <div class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[12px]">person</span>
+                    ${u.name.split(' ')[0]}
+                </div>`;
+        });
+    } else {
+        title.innerHTML = '<span class="material-symbols-outlined text-green-600">chat</span> Enviar WhatsApp';
+        sendBtn.classList.add('hidden'); // Hide main button for WA
+
+        recipients.forEach(u => {
+            const hasPhone = !!u.phone;
+            recipientContainer.innerHTML += `
+                <div class="flex items-center justify-between w-full p-2 bg-white border border-slate-200 rounded-lg">
+                    <div class="flex items-center gap-2">
+                         <span class="material-symbols-outlined text-slate-400">person</span>
+                         <span class="font-bold text-slate-700">${u.name}</span>
+                         ${!hasPhone ? '<span class="text-xs text-red-400">(Sem telefone)</span>' : ''}
+                    </div>
+                    ${hasPhone ? `
+                    <button onclick="window.sendToIndividual('${u.phone}')" class="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-colors flex items-center gap-1">
+                        Enviar
+                        <span class="material-symbols-outlined text-[14px]">send</span>
+                    </button>
+                    ` : ''}
+                </div>`;
+        });
+    }
+
+    modal.classList.remove('hidden');
+};
+
+window.closeCommModal = () => {
+    document.getElementById('modal-comunicacao').classList.add('hidden');
+    currentCommData = null;
+};
+
+window.sendCommunication = () => {
+    if (!currentCommData || currentCommData.type !== 'email') return;
+
+    const emails = currentCommData.recipients.map(u => u.email).filter(e => e).join(',');
+    const subject = encodeURIComponent(document.getElementById('comm-subject').value);
+    const body = encodeURIComponent(document.getElementById('comm-message').value);
+
+    window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+    setTimeout(window.closeCommModal, 1000);
+};
+
+window.sendToIndividual = (phone) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const body = encodeURIComponent(document.getElementById('comm-message').value);
+    window.open(`https://wa.me/55${cleanPhone}?text=${body}`, '_blank');
 };
 
 initDashboard();
