@@ -11,7 +11,7 @@ export default defineConfig({
         configuracao: resolve(__dirname, 'configuracao.html'),
         dashboard_instituto: resolve(__dirname, 'dashboard_instituto.html'),
         dashboard_orcamento: resolve(__dirname, 'dashboard_orcamento.html'),
-        lancamento: resolve(__dirname, 'lancamento.html'),
+        lancamento: resolve(__dirname, 'acompanhamento_instituto.html'),
         login: resolve(__dirname, 'login.html'),
       },
     },

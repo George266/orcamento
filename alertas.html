@@ -56,16 +56,16 @@
                     </p>
                 </div>
             </a>
-            <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
-                href="dashboard_orcamento.html">Visão Geral</a>
-            <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                href="alertas.html">Alertas</a>
-            <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
-            <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                href="configuracao.html">Parâmetros do Incentivo</a>
-            <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                href="usuarios.html">Gestão de Usuários</a>
+            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="dashboard_orcamento.html">Visão Geral</a>
+                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="alertas.html">Alertas</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="configuracao.html">Parâmetros do Incentivo</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="usuarios.html">Gestão de Usuários</a>
             </nav>
             <div class="flex items-center gap-4">
                 <div class="relative">
@@ -143,10 +143,9 @@
     <main class="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8">
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div class="flex flex-col gap-1">
-                <h1 class="text-3xl md:text-4xl font-black tracking-tight">Visão Geral do Orçamento</h1>
-                <p class="text-slate-500 dark:text-slate-400 text-sm">Acompanhamento consolidado de ofertas mínimas e
-                    produção
-                    mensal.</p>
+                <h1 class="text-3xl md:text-4xl font-black tracking-tight">Alertas e Execução</h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Detalhamento operacional da produção e pontos de
+                    atenção.</p>
             </div>
             <div class="flex gap-3">
                 <select id="month-selector"
@@ -157,149 +156,46 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div
-                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div class="xl:col-span-2">
                 <div
-                    class="size-10 bg-blue-50 dark:bg-blue-900/20 text-primary rounded-lg flex items-center justify-center mb-4">
-                    <span class="material-symbols-outlined icon-filled">handshake</span>
+                    class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                        <h3 class="font-bold">Execução por Procedimento</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/30">
+                                <tr>
+                                    <th class="px-6 py-3">Procedimento</th>
+                                    <th class="px-6 py-3">Incentivo</th>
+                                    <th class="px-6 py-3 text-right">Pactuado</th>
+                                    <th class="px-6 py-3 text-right">Ofertado</th>
+                                    <th class="px-6 py-3 text-center">Execução</th>
+                                    <th class="px-6 py-3 text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <!-- Carregado via JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total
-                    Pactuado</p>
-                <h3 id="kpi-pactuado" class="text-2xl font-black">---</h3>
             </div>
-            <div
-                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+            <div class="xl:col-span-1 flex flex-col gap-6">
                 <div
-                    class="size-10 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
-                    <span class="material-symbols-outlined icon-filled">inventory_2</span>
-                </div>
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total
-                    Ofertado</p>
-                <h3 id="kpi-ofertado" class="text-2xl font-black">---</h3>
-            </div>
-            <div
-                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
-                <div class="flex justify-between items-start mb-4">
+                    class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
                     <div
-                        class="size-10 bg-teal-50 dark:bg-teal-900/20 text-teal-600 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined icon-filled">donut_large</span>
+                        class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-orange-500">warning</span>
+                        <h3 class="font-bold">Alertas Operacionais</h3>
                     </div>
-                    <span id="kpi-atingimento-percent" class="text-sm font-black text-teal-600">---</span>
-                </div>
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-                    Atingimento</p>
-                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-                    <div id="kpi-atingimento-bar" class="bg-teal-500 h-2 rounded-full transition-all duration-500"
-                        style="width: 0%"></div>
-                </div>
-            </div>
-            <div
-                class="bg-white dark:bg-[#101822] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
-                <div
-                    class="size-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg flex items-center justify-center mb-4">
-                    <span class="material-symbols-outlined icon-filled">payments</span>
-                </div>
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Impacto
-                    Financeiro</p>
-                <h3 id="kpi-financeiro" class="text-2xl font-black truncate">---</h3>
-                <p id="kpi-financeiro-detail" class="text-[10px] text-slate-400 mt-1">Calculando...</p>
-            </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Ranking Chart -->
-            <div
-                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="font-bold text-slate-900 dark:text-white">Ranking de Institutos</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Top 5 em Execução Financeira (Mês Atual)
-                        </p>
-                    </div>
-                    <div
-                        class="size-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[18px]">leaderboard</span>
-                    </div>
-                </div>
-                <div id="chart-ranking-container" class="flex flex-col gap-3">
-                    <div class="h-40 flex items-center justify-center text-slate-400 text-xs italic">Carregando dados...
+                    <div id="alerts-container" class="p-4 flex flex-col gap-4">
+                        <!-- Carregado via JS -->
                     </div>
                 </div>
             </div>
-
-            <!-- Evolution Chart -->
-            <div
-                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 flex flex-col">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="font-bold text-slate-900 dark:text-white">Evolução Financeira</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Tendência dos últimos 6 meses</p>
-                    </div>
-                    <div
-                        class="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[18px]">show_chart</span>
-                    </div>
-                </div>
-                <div id="chart-evolution-container"
-                    class="flex-1 flex items-end justify-between gap-2 min-h-[160px] px-2 border-b border-slate-100 dark:border-slate-800/50 pb-2">
-                    <div class="w-full flex items-center justify-center text-slate-400 text-xs italic">Carregando
-                        histórico...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Charts Row 2: Goals & Incentives -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Goal Achievement Chart -->
-            <div
-                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="font-bold text-slate-900 dark:text-white">Alcance de Metas</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Oferta vs Pactuado por Instituto (%)</p>
-                    </div>
-                    <div
-                        class="size-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[18px]">ads_click</span>
-                    </div>
-                </div>
-                <div id="chart-goal-container" class="flex flex-col gap-3">
-                    <div class="h-40 flex items-center justify-center text-slate-400 text-xs italic">Carregando dados...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Revenue by Incentive Chart -->
-            <div
-                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 overflow-hidden">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="font-bold text-slate-900 dark:text-white">Faturamento por Incentivo</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Distribuição da Receita (R$)</p>
-                    </div>
-                    <div
-                        class="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[18px]">pie_chart</span>
-                    </div>
-                </div>
-                <!-- Scrollable list if many programs -->
-                <div id="chart-incentive-container"
-                    class="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    <div class="h-40 flex items-center justify-center text-slate-400 text-xs italic">Carregando dados...
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Link to detailed view -->
-        <div class="flex justify-center mt-8">
-            <a href="alertas.html"
-                class="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl shadow-sm hover:shadow-md hover:text-primary transition-all">
-                <span class="material-symbols-outlined">table_view</span>
-                Ver Detalhamento da Execução e Alertas
-            </a>
         </div>
 
         <!-- MODAL: DETALHAMENTO POR PROCEDIMENTO -->
@@ -323,6 +219,7 @@
                             <tr>
                                 <th class="px-6 py-3">Instituto</th>
                                 <th class="px-6 py-3 text-right">Oferta Mínima</th>
+                                <th class="px-6 py-3 text-right">Ofertado</th>
                                 <th class="px-6 py-3 text-right">Produzido</th>
                                 <th class="px-6 py-3 text-center">Atingimento</th>
                                 <th class="px-6 py-3 text-right">Total Financeiro</th>

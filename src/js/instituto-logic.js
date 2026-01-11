@@ -280,12 +280,18 @@ async function renderDashboard() {
 
     // Populate Table (Items with Prazos/Stats)
     const tbody = document.getElementById('table-prazos-itens');
+    // FIX: Method name is getProgramas (Portuguese)
+    const localProgramas = await Repository.getProgramas();
+
     if (tbody) {
         if (filtered.length === 0) {
             tbody.innerHTML = `<tr><td colspan="2" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para este período.</td></tr>`;
         } else {
             tbody.innerHTML = filtered.map(p => {
                 const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+                const prog = localProgramas.find(pg => pg.id === p.progId);
+                const progName = prog ? prog.nome : (p.progId || 'Incentivo Padrão');
+
                 const pact = parseInt(p.ofertaMinima || 0);
                 const real = parseInt(p.producao?.realizada || 0);
                 const status = pact > 0 ? (real / pact) * 100 : 0;
@@ -294,12 +300,13 @@ async function renderDashboard() {
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                         <td class="px-6 py-4">
                             <div class="flex flex-col">
+                                <span class="text-xs font-bold text-primary uppercase tracking-wider mb-0.5">${progName}</span>
                                 <span class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[280px]" title="${p.nome || proc?.nome || p.sigtap}">${p.nome || proc?.nome || p.sigtap}</span>
                                 <span class="text-[10px] text-slate-500 font-mono">${p.sigtap} | Oferta: ${formatNumber(pact)}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${status >= 90 ? 'bg-emerald-100 text-emerald-800' : status >= 70 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${status >= 100 ? 'bg-emerald-100 text-emerald-800' : status > 75 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}">
                                 ${Math.round(status)}% Atingimento
                             </span>
                         </td>
@@ -309,7 +316,7 @@ async function renderDashboard() {
         }
     }
 
-    renderSemesterChart();
+    renderWeeklyChart();
 }
 
 function updateTrendPill(elementId, current, previous, type) {
@@ -344,54 +351,87 @@ function updateTrendPill(elementId, current, previous, type) {
     `;
 }
 
-function renderSemesterChart() {
+function renderWeeklyChart() {
     const container = document.getElementById('chart-bars-container');
     if (!container) return;
 
-    const now = new Date();
-    const months = [];
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    // 1. Filter data for current period
+    const filtered = currentPactuacoes.filter(p => p.competencia === currentPeriod);
 
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const comp = `${monthNames[d.getMonth()].toLowerCase()}-${d.getFullYear()}`;
-        months.push({
-            id: comp,
-            label: monthNames[d.getMonth()],
-            year: d.getFullYear()
+    // 2. Initialize Weeks
+    const weeks = [
+        { id: 'sem1', label: 'Sem 1', real: 0, target: 0 },
+        { id: 'sem2', label: 'Sem 2', real: 0, target: 0 },
+        { id: 'sem3', label: 'Sem 3', real: 0, target: 0 },
+        { id: 'sem4', label: 'Sem 4', real: 0, target: 0 },
+        { id: 'sem5', label: 'Sem 5', real: 0, target: 0 }
+    ];
+
+    // 3. Aggregate Data
+    let totalRealizadoPeriodo = 0;
+
+    filtered.forEach(p => {
+        const pact = parseInt(p.ofertaMinima || 0);
+
+        // Estimated weekly target (Monthly / 4.5 weeks approx or just spread evenly)
+        // Using 4 as divisor for visual reference, or 5 if using 5 weeks. 
+        // Let's use 4.2 to be safe or simply dividing by 4 is standard logic for weekly goals.
+        const weeklyTarget = pact > 0 ? pact / 4 : 0;
+
+        weeks.forEach(w => {
+            const val = parseInt(p.producao?.[w.id] || 0);
+            w.real += val;
+            w.target += weeklyTarget;
         });
-    }
 
-    let totalPeriodo = 0;
-    const statsByMonth = months.map(m => {
-        const filtered = currentPactuacoes.filter(p => p.competencia === m.id);
-        const pact = filtered.reduce((acc, p) => acc + parseInt(p.ofertaMinima || 0), 0);
-        const real = filtered.reduce((acc, p) => acc + parseInt(p.producao?.realizada || 0), 0);
-        totalPeriodo += real;
-        return { ...m, pact, real };
+        totalRealizadoPeriodo += parseInt(p.producao?.realizada || 0);
     });
 
     const totalEl = document.getElementById('chart-total-exams');
-    if (totalEl) totalEl.textContent = formatNumber(totalPeriodo);
+    if (totalEl) totalEl.textContent = formatNumber(totalRealizadoPeriodo);
 
-    const maxVal = Math.max(...statsByMonth.map(s => s.pact), 100);
+    // 4. Determine Max Scale
+    // We want the highest bar (either real or target) to dictate the height
+    const maxVal = Math.max(
+        ...weeks.map(w => Math.max(w.real, w.target)),
+        10 // Minimum scale to avoid empty chart division by zero
+    );
 
-    container.innerHTML = statsByMonth.map(s => {
-        const pactH = maxVal > 0 ? (s.pact / maxVal) * 100 : 0;
-        const realPercent = s.pact > 0 ? (s.real / s.pact) * 100 : 0;
-        const realH = Math.min(realPercent, 100);
+    // 5. Render
+    container.innerHTML = weeks.map(w => {
+        const targetH = maxVal > 0 ? (w.target / maxVal) * 100 : 0;
+        const realH = maxVal > 0 ? (w.real / maxVal) * 100 : 0;
+
+        // Capping at 100% just in case
+        const renderTargetH = Math.min(targetH, 100);
+        const renderRealH = Math.min(realH, 100);
+        // Relative to the height of the container, we want the "target" to be the background bar, 
+        // but if Real > Target, it overflows? 
+        // Better design: Two separate bars side-by-side OR Stacked? 
+        // User asked for "Background" as target.
+        // If Real > Target, the bar fills completely and maybe changes color?
+        // Let's stick to the visual: Gray bar = Target Height. Blue bar = Real Height.
+        // Both start from button.
 
         return `
-            <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                <div class="relative w-full max-w-[40px] bg-blue-100 dark:bg-blue-900/40 rounded-t-sm transition-all duration-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60" 
-                     style="height: ${Math.max(pactH, 5)}%" title="Oferta: ${formatNumber(s.pact)}">
-                    <div class="absolute bottom-0 w-full bg-primary rounded-t-sm transition-all duration-500" 
-                         style="height: ${realH}%" 
-                         title="Realizado: ${formatNumber(s.real)} (${Math.round(realPercent)}%)"></div>
+            <div class="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer relative w-full">
+                <div class="relative w-full max-w-[40px] h-full flex items-end justify-center">
+                    <!-- Target Ghost Bar -->
+                    <div class="absolute bottom-0 w-full bg-slate-100 dark:bg-slate-700/50 rounded-t-sm transition-all duration-300 border border-slate-200 dark:border-slate-600 border-dashed" 
+                         style="height: ${renderTargetH}%" 
+                         title="Meta Esperada: ~${formatNumber(Math.round(w.target))}">
+                    </div>
+                    
+                    <!-- Realized Bar -->
+                    <div class="absolute bottom-0 w-3/4 bg-primary rounded-t-sm transition-all duration-500 shadow-sm z-10" 
+                         style="height: ${renderRealH}%" 
+                         title="Realizado: ${formatNumber(w.real)}">
+                    </div>
                 </div>
-                <div class="flex flex-col items-center">
-                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400">${s.label}</p>
-                    <p class="text-[8px] text-slate-400">${s.year}</p>
+                
+                <div class="flex flex-col items-center z-20">
+                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400">${w.label}</p>
+                    <p class="text-[9px] font-bold text-primary">${formatNumber(w.real)}</p>
                 </div>
             </div>
         `;

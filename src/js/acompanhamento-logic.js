@@ -12,6 +12,7 @@ function formatNumber(value) {
 let allPactuacoes = [];
 let localInsts = [];
 let localProcs = [];
+let localProgramas = []; // Added programs
 let userRole = null;
 
 // Pagination State
@@ -23,6 +24,7 @@ export async function initAcompanhamento() {
     allPactuacoes = await Repository.getPactuacoes();
     localInsts = await Repository.getInstitutos();
     localProcs = await Repository.getProcedimentos();
+    localProgramas = await Repository.getProgramas(); // Fetch programs
 
     // Check User Role
     const user = auth.currentUser;
@@ -41,25 +43,29 @@ export async function initAcompanhamento() {
         }, 1000);
     }
 
-    // Data Normalization (One-time fix per session load, or permanent?)
-    // User requested that existing "Produzido" values (e.g. 3) be treated as "Ofertado",
-    // and "Produzido" reset to 0.
-    // We will check for this condition and update local + DB.
+    // Data Correction: User confirmed that existing 'Production' values are actually 'Offers'.
+    // We will move them to the correct field and clear Production.
     let migrationNeeded = false;
     allPactuacoes.forEach(p => {
-        const off = parseInt(p.ofertado || 0);
-        const prod = parseInt(p.producao?.realizada || 0);
-        const pact = parseInt(p.ofertaMinima || 0);
+        // Robust parsing to avoid NaN issues
+        let off = parseInt(p.ofertado);
+        if (isNaN(off)) off = 0;
 
-        // If Offer is 0, but we have "Production" data (and user says we haven't input production yet),
-        // and there is a Minimum (implies it's a valid row),
-        // Move Production -> Offer.
+        let prod = parseInt(p.producao?.realizada);
+        if (isNaN(prod)) prod = 0;
+
+        let pact = parseInt(p.ofertaMinima);
+        if (isNaN(pact)) pact = 0;
+
+        // Logic: If there is 'Production' but no 'Offer' (and user says Production should be 0),
+        // we assume the Production value is actually the Offer.
         if (off === 0 && prod > 0 && pact > 0) {
-            p.ofertado = prod;
+            console.log(`Fixing row ${p.id}: Moving Production (${prod}) to Offer.`); // Log for debugging
+            p.ofertado = prod; // Move value in memory
             if (!p.producao) p.producao = {};
-            p.producao.realizada = 0;
+            p.producao.realizada = 0; // Clear production in memory
 
-            // Trigger save
+            // Save correction
             Repository.savePactuacao({
                 id: p.id,
                 ofertado: prod,
@@ -70,7 +76,7 @@ export async function initAcompanhamento() {
     });
 
     if (migrationNeeded) {
-        console.log('Data migration executed: Moved misplaced Production data to Offer.');
+        console.log('Fixed data: Moved misplaced Production values to Ofertado column.');
     }
 
     // Populate Filters
@@ -82,6 +88,7 @@ export async function initAcompanhamento() {
     // Event Listeners
     document.getElementById('filter-inst')?.addEventListener('change', renderTable);
     document.getElementById('filter-proc')?.addEventListener('change', renderTable);
+    document.getElementById('filter-prog')?.addEventListener('change', renderTable); // Added program filter listener
     document.getElementById('filter-period')?.addEventListener('change', renderTable);
 
     // Click-to-edit for Offer (only works if element exists/rendered by permissions)
@@ -140,6 +147,7 @@ export async function initAcompanhamento() {
     document.getElementById('btn-clear')?.addEventListener('click', () => {
         document.getElementById('filter-inst').value = '';
         document.getElementById('filter-proc').value = '';
+        document.getElementById('filter-prog').value = ''; // Clear program filter
         const periodSelect = document.getElementById('filter-period');
         if (periodSelect) {
             // Re-select the latest competence on clear
@@ -171,6 +179,16 @@ function populateFilters() {
             }).join('');
     }
 
+    // Populate Program Filter
+    const progSelect = document.getElementById('filter-prog');
+    if (progSelect) {
+        // Unique programs present in pactuacoes + programs from repo
+        // Filter those actually used if desired, or show all available?
+        // Let's show all valid programs available in `localProgramas`
+        progSelect.innerHTML = `<option value="">Todos os Incentivos</option>` +
+            localProgramas.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
+    }
+
     const periodSelect = document.getElementById('filter-period');
     if (periodSelect) {
         const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort().reverse();
@@ -192,15 +210,17 @@ function renderTable() {
     const fInst = document.getElementById('filter-inst')?.value;
     const fProc = document.getElementById('filter-proc')?.value;
     const fPeriod = document.getElementById('filter-period')?.value;
+    const fProg = document.getElementById('filter-prog')?.value; // Get Filter Value
 
     // Filter Logic
     let filtered = allPactuacoes;
     if (fInst) filtered = filtered.filter(p => p.instId === fInst);
     if (fProc) filtered = filtered.filter(p => p.sigtap === fProc);
     if (fPeriod) filtered = filtered.filter(p => p.competencia === fPeriod);
+    if (fProg) filtered = filtered.filter(p => p.progId === fProg); // Apply Filter
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`; // Colspan increased
         updateStats(0, 0, 0);
         renderPagination(0, 0, 0); // Clear pagination
         return;
@@ -225,7 +245,8 @@ function renderTable() {
     // Calculate totals based on ALL filtered data (not just current page) for the top stats
     filtered.forEach(p => {
         statsTotalPact += parseInt(p.ofertaMinima || 0);
-        statsTotalReal += parseInt(p.producao?.realizada || 0); // Keep tracking total production for stats if needed, or switch to offer? 
+        statsTotalReal += parseInt(p.producao?.realizada || 0);
+        // We might want to track Total Offer for KPI if the label matches.
         // User might want "Total Offer" in stats too? Let's check updateStats function. 
         // For now, let's keep statsTotalReal as production because 'produção assistencial' logic usually tracks reality.
 
@@ -240,6 +261,8 @@ function renderTable() {
     tbody.innerHTML = paginatedData.map(p => {
         const inst = localInsts.find(i => i.id === p.instId);
         const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+        const prog = localProgramas.find(pg => pg.id === p.progId); // Resolve Program
+        const progName = prog ? prog.nome : (p.progId || '-');
 
         const pactuado = parseInt(p.ofertaMinima || 0);
         const ofertado = parseInt(p.ofertado || 0); // Explicit offer from user input
@@ -347,6 +370,9 @@ function renderTable() {
                 <td class="px-6 py-4">
                     <div class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${proc?.nome || '???'}">${proc?.nome || '???'}</div>
                     <div class="text-[10px] font-mono text-slate-400">${p.sigtap}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[120px]" title="${progName}">${progName}</div>
                 </td>
                 <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(pactuado)}</td>
                 <td class="px-6 py-4 text-right font-mono text-xs text-slate-700 dark:text-slate-300">${offerDisplay}</td>
