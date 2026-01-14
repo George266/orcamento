@@ -355,6 +355,7 @@
                             Acesso</label>
                         <select id="user-role" onchange="toggleInstSelector()"
                             class="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none">
+                            <option value="" disabled selected>Selecione...</option>
                             <option value="Orçamento">Orçamento</option>
                             <option value="Institutos_Editor">Institutos (Editor)</option>
                             <option value="Institutos_Leitor">Institutos (Leitor)</option>
@@ -608,7 +609,7 @@
             document.getElementById('user-email').value = '';
             document.getElementById('user-phone').value = '';
             document.getElementById('user-extension').value = '';
-            document.getElementById('user-role').value = 'Orçamento';
+            document.getElementById('user-role').value = '';
             document.getElementById('user-status').value = 'Ativo';
             document.getElementById('password-container').classList.remove('hidden');
 
@@ -687,6 +688,7 @@
             });
 
             if (!name || !email) return alert('Por favor, preencha nome e e-mail.');
+            if (!role) return alert('Por favor, selecione um Perfil de Acesso.');
             if (role.startsWith('Institutos') && instIds.length === 0) {
                 return alert('Por favor, selecione pelo menos um Instituto.');
             }
@@ -789,7 +791,7 @@
         });
 
     </script>
-    <script type="module" src="src/js/auth-guard.js"></script>
+    <!-- Removed duplicate auth-guard import -->
 </body>
 
 </html>

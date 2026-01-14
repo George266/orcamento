@@ -16,9 +16,12 @@ export function initAuthGuard() {
                 const { Repository } = await import('./repository.js');
                 const profile = await Repository.getUserByEmail(user.email);
 
+                // Normalização robusta: lowercase, remove acentos, remove espaços extras
+                const normalize = (str) => str ? str.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+
                 if (!profile) {
                     if (!isPublicPage) {
-                        alert('Perfil não encontrado. Entre em contato com o administrador.');
+                        alert('Perfil não encontrado no banco de dados. Entre em contato com o administrador.');
                         await signOut(auth);
                         window.location.href = 'login.html';
                     }
@@ -34,10 +37,13 @@ export function initAuthGuard() {
                 const isInstitutePage = currentPage.includes('dashboard_instituto.html') ||
                     currentPage.includes('acompanhamento_instituto.html');
 
-                if (profile.role === 'Orçamento') {
+                const roleOriginal = profile.role;
+                const role = normalize(roleOriginal);
+
+                if (role === 'orcamento') {
                     // Admin can access everything, but if on login/index, send to dashboard
                     if (isPublicPage) window.location.href = 'dashboard_orcamento.html';
-                } else if (profile.role.startsWith('Institutos')) {
+                } else if (role.startsWith('institutos')) {
                     // Institute restricted to their pages
                     if (isAdminPage) {
                         window.location.href = 'dashboard_instituto.html';
@@ -45,7 +51,7 @@ export function initAuthGuard() {
                         window.location.href = 'dashboard_instituto.html';
                     }
                 } else {
-                    // Other roles or undefined
+                    // Outros papéis
                     if (!isPublicPage) {
                         alert('Perfil sem permissão de acesso.');
                         await signOut(auth);
@@ -54,6 +60,7 @@ export function initAuthGuard() {
                 }
             } catch (err) {
                 console.error('Erro ao verificar permissões:', err);
+                alert('Erro interno de verificação: ' + err.message);
             }
         }
     });

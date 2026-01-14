@@ -38,7 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Login realizado com sucesso:', user);
 
                 // Smart Redirection
-                if (profile && profile.role === 'Institutos') {
+                // Check for any institute role variant (Institutos, Institutos_Editor, Institutos_Leitor)
+                if (profile && profile.role && profile.role.toString().startsWith('Institutos')) {
                     window.location.href = 'dashboard_instituto.html';
                 } else {
                     window.location.href = 'dashboard_orcamento.html';
