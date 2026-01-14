@@ -239,37 +239,39 @@
                     <div id="table-scroll-container" class="overflow-x-auto cursor-grab active:cursor-grabbing">
                         <table class="w-full min-w-[1200px] border-collapse text-left">
                             <thead class="bg-gray-50 dark:bg-slate-800/50">
-                                <tr>
-                                    <th
-                                        class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Instituto</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Procedimento</th>
-                                    <th
-                                        class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Incentivo</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Oferta Mínima</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Ofertado</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Produzido</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Valor SIGTAP</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Incentivo</th>
-                                    <th
-                                        class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Total Financeiro</th>
-                                    <th
-                                        class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                        Status</th>
+                                <!--<th
+                                    class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Instituto</th>-->
+                                <th
+                                    class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Procedimento</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Meta (Total)</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Ofertado (Total)</th>
+                                <th
+                                    class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Status Meta</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Produzido (Total)</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Valor Sigtap</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Valor Incentivo</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Faturado Sigtap</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Faturado Incentivo</th>
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Total Financeiro</th>
                                 </tr>
                             </thead>
                             <tbody id="monitoring-table-body"
@@ -286,6 +288,68 @@
                 </div>
             </div>
         </main>
+    </div>
+    <!-- Modal de Detalhamento por Instituto -->
+    <div id="modal-breakdown" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-slate-900/60 transition-opacity backdrop-blur-sm"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl border border-slate-200 dark:border-slate-700">
+
+                    <!-- Header -->
+                    <div
+                        class="bg-white dark:bg-slate-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="modal-title">Detalhamento
+                                do Procedimento</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1" id="modal-subtitle">Visualize e
+                                ajuste a produção por instituto</p>
+                        </div>
+                        <button onclick="document.getElementById('modal-breakdown').classList.add('hidden')"
+                            class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="px-6 py-6 max-h-[70vh] overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                                    <th class="py-3 px-2">Instituto</th>
+                                    <th class="py-3 px-2 text-right">Meta (Oferta Mínima)</th>
+                                    <th class="py-3 px-2 text-right">Ofertado (Instituto)</th>
+                                    <th class="py-3 px-2 text-right">Produzido</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-breakdown-body"
+                                class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                        class="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 flex flex-col sm:flex-row sm:justify-between items-center gap-4">
+                        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-[16px]">info</span>
+                            <span>Os valores de "Produzido" são salvos automaticamente ao sair do campo.</span>
+                        </div>
+                        <button type="button"
+                            onclick="document.getElementById('modal-breakdown').classList.add('hidden')"
+                            class="w-full sm:w-auto inline-flex justify-center rounded-lg bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 sm:mt-0 sm:w-auto transition-colors">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <script type="module" src="src/js/auth-guard.js"></script>
     <script type="module" src="src/js/acompanhamento-logic.js?v=3"></script>

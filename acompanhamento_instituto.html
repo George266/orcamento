@@ -264,11 +264,16 @@
                                         scope="col">
                                         Status Geral
                                     </th>
-                                    <th data-sort="oferta"
-                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        scope="col">
-                                        Oferta (Qtd)
-                                    </th>
+                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Sem 1</th>
+                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Sem 2</th>
+                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Sem 3</th>
+                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Sem 4</th>
+                                    <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        scope="col">Sem 5</th>
                                     <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                         scope="col">
                                         Detalhes
@@ -288,7 +293,7 @@
     </main>
 
     <!-- MODAL: DETALHAMENTO DE OFERTA -->
-    <div id="modal-detalhe-lancamento"
+    <div id="modal-detalhe-lancamento" onclick="if(event.target === this) window.closeDetailModal()"
         class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl">
             <div class="flex items-start justify-between mb-6">
@@ -320,7 +325,7 @@
                 </table>
             </div>
 
-            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
+            <div id="modal-info-legend" class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
                 <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg mt-0.5">info</span>
                 <p class="text-xs text-blue-800 dark:text-blue-200">
                     Ao definir o valor na tela anterior, ele será aplicado automaticamente para <strong>todos</strong>
@@ -328,7 +333,7 @@
                 </p>
             </div>
 
-            <div class="mt-6 flex justify-end">
+            <div id="modal-footer" class="mt-6 flex justify-end">
                 <button onclick="window.closeDetailModal()"
                     class="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg hover:bg-slate-200 transition-colors">Fechar</button>
             </div>

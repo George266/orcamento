@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (profile && profile.role && profile.role.toString().startsWith('Institutos')) {
                     window.location.href = 'dashboard_instituto.html';
                 } else {
-                    window.location.href = 'dashboard_orcamento.html';
+                    // Start directly at Monitoring/Budget Table as requested
+                    window.location.href = 'acompanhamento_orcamento.html';
                 }
             } catch (error) {
                 console.error('Erro ao fazer login:', error.code, error.message);
