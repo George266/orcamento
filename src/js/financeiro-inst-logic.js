@@ -243,40 +243,95 @@ function renderTable() {
         });
     }
 
-    let totalSigtap = 0;
-    let totalIncentivo = 0;
-    let totalGeral = 0;
+    // 1. Calculate Global Status (Pre-process ALL data to check network goals)
+    const globalStatus = {};
+    allPactuacoes.forEach(p => {
+        if (!globalStatus[p.sigtap]) {
+            globalStatus[p.sigtap] = { meta: 0, offer: 0 };
+        }
 
-    // Enrich Data for Sorting
-    let displayData = filtered.map(p => {
-        const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+        // Meta: Take the Maximum Meta found (Shared Goal Logic)
+        const currentMeta = parseInt(p.ofertaMinima || 0);
+        if (currentMeta > globalStatus[p.sigtap].meta) {
+            globalStatus[p.sigtap].meta = currentMeta;
+        }
+
         const prod = p.producao || {};
-        const real = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0);
-        const vBaseUnit = parseFloat(p.vlrSigtapBase || 0);
-        const vIncUnit = parseFloat(p.vlrIncentivo || 0);
-        const totalBase = vBaseUnit * real;
-        const totalInc = vIncUnit * real;
-        const totalRow = totalBase + totalInc;
+        const offer = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        globalStatus[p.sigtap].offer += offer;
+    });
+
+    // 2. Aggregate Data (Group by SIGTAP)
+    const aggregated = {};
+
+    filtered.forEach(p => {
+        if (!aggregated[p.sigtap]) {
+            aggregated[p.sigtap] = {
+                items: [],
+                sigtap: p.sigtap,
+                competencia: p.competencia,
+                progId: p.progId,
+                // Aggregated stats
+                ofertado: 0,
+                realizado: 0,
+                totalBase: 0,
+                totalInc: 0,
+                totalRow: 0,
+                // Unit prices (take first non-zero found)
+                vBaseUnit: parseFloat(p.vlrSigtapBase || 0),
+                vIncUnit: parseFloat(p.vlrIncentivo || 0)
+            };
+        }
+
+        const group = aggregated[p.sigtap];
+        group.items.push(p);
+
+        // --- Calculate "Ofertado" (Sum of Weeks) ---
+        const prod = p.producao || {};
+        const ofertado = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        group.ofertado += ofertado;
+
+        // --- Calculate "Realizado" (Budget Input) ---
+        const realizado = parseInt(prod.realizada || 0);
+        group.realizado += realizado;
+
+        // Update unit prices if current zero and new one has value
+        if (group.vBaseUnit === 0) group.vBaseUnit = parseFloat(p.vlrSigtapBase || 0);
+        if (group.vIncUnit === 0) group.vIncUnit = parseFloat(p.vlrIncentivo || 0);
+    });
+
+    // 3. Prepare Display Data
+    let displayData = Object.values(aggregated).map(d => {
+        const proc = localProcs.find(pr => pr.sigtap === d.sigtap);
+
+        // Check Global Status
+        const gStats = globalStatus[d.sigtap] || { meta: 0, offer: 0 };
+        const isMetaMet = gStats.meta > 0 && gStats.offer >= gStats.meta;
+
+        // Financial Calculations
+        const rowBase = d.realizado * d.vBaseUnit; // Base always on Realized
+        const rowInc = isMetaMet ? (d.realizado * d.vIncUnit) : 0; // Incentive only if Met
+
+        d.totalBase = rowBase;
+        d.totalInc = rowInc;
+        d.totalRow = rowBase + rowInc;
+        d.isMetaMet = isMetaMet;
 
         return {
-            ...p,
+            ...d,
             procName: proc?.nome || 'Procedimento',
-            real,
-            vBaseUnit,
-            vIncUnit,
-            totalBase,
-            totalInc,
-            totalRow
         };
     });
 
-    // Sorting
+    // 4. Sorting
     if (currentSort.column) {
         displayData.sort((a, b) => {
             let valA, valB;
             switch (currentSort.column) {
                 case 'procedimento': valA = a.procName.toLowerCase(); valB = b.procName.toLowerCase(); break;
-                case 'qtd': valA = a.real; valB = b.real; break;
+                case 'qtd': valA = a.ofertado; valB = b.ofertado; break;
+                case 'status': valA = a.isMetaMet ? 1 : 0; valB = b.isMetaMet ? 1 : 0; break;
+                case 'realizado': valA = a.realizado; valB = b.realizado; break;
                 case 'vlrSigtapUnit': valA = a.vBaseUnit; valB = b.vBaseUnit; break;
                 case 'vlrIncUnit': valA = a.vIncUnit; valB = b.vIncUnit; break;
                 case 'fatSigtap': valA = a.totalBase; valB = b.totalBase; break;
@@ -290,13 +345,24 @@ function renderTable() {
         });
     }
 
+    let totalSigtap = 0;
+    let totalIncentivo = 0;
+    let totalGeral = 0;
+
     if (displayData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
     } else {
         tbody.innerHTML = displayData.map(d => {
             totalSigtap += d.totalBase;
             totalIncentivo += d.totalInc;
             totalGeral += d.totalRow;
+
+            // Status Badge
+            const gStats = globalStatus[d.sigtap] || { meta: 0, offer: 0 };
+
+            const statusHtml = d.isMetaMet
+                ? `<div class="flex items-center justify-center"><span class="material-symbols-outlined text-emerald-500 font-bold" title="Meta da Rede Atingida (${formatNumber(gStats.meta)})">check_circle</span></div>`
+                : `<div class="flex items-center justify-center"><span class="material-symbols-outlined text-amber-500 font-bold" title="Abaixo da Meta da Rede (Meta: ${formatNumber(gStats.meta)} | Oferta: ${formatNumber(gStats.offer)})">warning</span></div>`;
 
             return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -306,11 +372,15 @@ function renderTable() {
                             <span class="text-[10px] text-slate-500 font-mono">${d.sigtap}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-slate-800 dark:text-slate-200">${formatNumber(d.real)}</td>
+                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-slate-800 dark:text-slate-200">${formatNumber(d.ofertado)}</td>
+                    <td class="px-6 py-4 text-center">${statusHtml}</td>
+                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-blue-600 dark:text-blue-400">${formatNumber(d.realizado)}</td>
                     <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(d.vBaseUnit)}</td>
                     <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(d.vIncUnit)}</td>
                     <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">${formatCurrency(d.totalBase)}</td>
-                    <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">${formatCurrency(d.totalInc)}</td>
+                    <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">
+                        ${d.totalInc > 0 ? formatCurrency(d.totalInc) : `R$ 0,00 <span class="text-red-500 text-[10px] block">(${formatCurrency(d.realizado * d.vIncUnit)})</span>`}
+                    </td>
                     <td class="px-6 py-4 text-right font-mono text-sm font-black text-primary">${formatCurrency(d.totalRow)}</td>
                 </tr>
             `;

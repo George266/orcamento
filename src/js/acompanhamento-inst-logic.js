@@ -16,6 +16,7 @@ let localPactuacoes = [];
 let localProcs = [];
 let localProgs = [];
 let allPactuacoes = [];
+let allInstitutes = []; // New global
 let currentSort = { column: null, direction: 'asc' };
 
 async function initAcompanhamentoInst() {
@@ -39,13 +40,28 @@ async function initAcompanhamentoInst() {
         allPactuacoes = await Repository.getPactuacoes();
         localProcs = await Repository.getProcedimentos();
         localProgs = await Repository.getProgramas();
+        allInstitutes = await Repository.getInstitutos(); // Fetch ALL for breakdown lookup
 
         // Hide old filter container if it exists
         const instFilterContainer = document.getElementById('container-filter-inst');
         if (instFilterContainer) instFilterContainer.classList.add('hidden');
 
         // Initial Data Load
-        localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+        // Initial Data Load
+        let userInstId = 'all';
+        const savedInstId = localStorage.getItem('selectedInstituteId');
+
+        if (savedInstId && (savedInstId === 'all' || allowedIds.includes(savedInstId))) {
+            userInstId = savedInstId;
+        } else {
+            userInstId = allowedIds.length > 1 ? 'all' : allowedIds[0];
+        }
+
+        if (userInstId === 'all') {
+            localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
+        } else {
+            localPactuacoes = allPactuacoes.filter(p => p.instId === userInstId);
+        }
 
         // --- HEADER & MENU SETUP ---
         if (allowedIds.length > 1) {
@@ -62,13 +78,14 @@ async function initAcompanhamentoInst() {
                 switcherHtml.innerHTML = `
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alternar Instituto</p>
                     <div class="flex flex-col gap-1">
-                        <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-primary bg-primary/5">
+                        <button data-inst-id="all" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === 'all' ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                             <span>Todos</span>
-                            <span class="material-symbols-outlined text-[14px]">check</span>
+                            ${userInstId === 'all' ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                         </button>
                         ${myInsts.map(inst => `
-                            <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group text-slate-600 dark:text-slate-300">
+                            <button data-inst-id="${inst.id}" class="inst-switcher-btn w-full text-left text-xs font-medium py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group ${userInstId === inst.id ? 'text-primary bg-primary/5' : 'text-slate-600 dark:text-slate-300'}">
                                 <span class="truncate">${inst.sigla}</span>
+                                ${userInstId === inst.id ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}
                             </button>
                         `).join('')}
                     </div>
@@ -84,17 +101,26 @@ async function initAcompanhamentoInst() {
                         profileDropdown.classList.add('hidden');
 
                         const selectedId = btn.dataset.instId;
+                        localStorage.setItem('selectedInstituteId', selectedId);
 
                         // Update Data
                         if (selectedId === 'all') {
                             localPactuacoes = allPactuacoes.filter(p => allowedIds.includes(p.instId));
-                            const nameDisplay = document.getElementById('inst-name-display');
+                            const nameDisplay = document.getElementById('inst-page-name');
                             if (nameDisplay) nameDisplay.textContent = 'Todos os Vinculados';
+                            const headerName = document.getElementById('inst-header-name');
+                            if (headerName) headerName.textContent = 'Todos os Vinculados';
+                            // Disable editing in All view
+                            if (window.currentInstPermissions) window.currentInstPermissions.canEdit = false;
                         } else {
                             localPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
                             const selInst = myInsts.find(i => i.id === selectedId);
-                            const nameDisplay = document.getElementById('inst-name-display');
+                            const nameDisplay = document.getElementById('inst-page-name');
                             if (nameDisplay) nameDisplay.textContent = selInst ? selInst.nome : 'Instituto';
+                            const headerName = document.getElementById('inst-header-name');
+                            if (headerName) headerName.textContent = selInst ? selInst.nome : 'Instituto';
+                            // Enable editing if user has role
+                            if (window.currentInstPermissions) window.currentInstPermissions.canEdit = canEdit;
                         }
 
                         // UI Update
@@ -134,15 +160,22 @@ async function initAcompanhamentoInst() {
                 });
             }
 
-            // Set initial header
-            const nameDisplay = document.getElementById('inst-name-display');
-            if (nameDisplay) nameDisplay.textContent = 'Todos os Vinculados';
-
             // Update User Headers
             const nameHeader = document.getElementById('user-name-header');
             if (nameHeader) nameHeader.textContent = profile.name || user.email;
             const instHeader = document.getElementById('inst-header-name');
-            if (instHeader) instHeader.textContent = 'Múltiplos Vínculos';
+
+            // Set initial header based on selection
+            if (userInstId === 'all') {
+                const nameDisplay = document.getElementById('inst-page-name');
+                if (nameDisplay) nameDisplay.textContent = 'Todos os Vinculados';
+                if (instHeader) instHeader.textContent = 'Múltiplos Vínculos';
+            } else {
+                const selInst = myInsts.find(i => i.id === userInstId);
+                const nameDisplay = document.getElementById('inst-page-name');
+                if (nameDisplay) nameDisplay.textContent = selInst ? selInst.nome : 'Instituto';
+                if (instHeader) instHeader.textContent = selInst ? selInst.nome : 'Instituto';
+            }
 
         } else {
             // Single Mode
@@ -156,7 +189,7 @@ async function initAcompanhamentoInst() {
             const instHeader = document.getElementById('inst-header-name');
             if (instHeader) instHeader.textContent = instituto?.nome || 'Ponto de Pactuação';
 
-            const pageName = document.getElementById('inst-name-display');
+            const pageName = document.getElementById('inst-page-name');
             if (pageName) pageName.textContent = instituto?.nome || 'Instituto';
         }
 
@@ -198,8 +231,13 @@ async function initAcompanhamentoInst() {
 
 
 
+
         // Pass permissions
-        window.currentInstPermissions = { canEdit };
+        // Default to false if in multi-view (length > 1), otherwise use user role
+        let effectiveCanEdit = canEdit;
+        if (allowedIds.length > 1) effectiveCanEdit = false;
+
+        window.currentInstPermissions = { canEdit: effectiveCanEdit };
 
         renderTable();
         setupSortListeners();
@@ -330,34 +368,97 @@ function renderTable() {
         filtered = filtered.filter(p => p.progId === progValue);
     }
 
-    // 2. Group by SIGTAP
+    // 1.5 Calculate Global Stats (Unified by SIGTAP)
+    // Map: sigtap -> { totalMeta: 0, totalRealizado: 0, breakdown: [] }
+    const globalStats = {};
+
+    // We iterate over ALL pactuacoes to get the global picture
+    const allFiltered = allPactuacoes.filter(p => p.competencia === compValue);
+
+    allFiltered.forEach(p => {
+        if (!globalStats[p.sigtap]) {
+            globalStats[p.sigtap] = {
+                totalMeta: 0,
+                totalRealizado: 0,
+                breakdown: []
+            };
+        }
+
+        const meta = parseInt(p.ofertaMinima || 0);
+        const real = parseInt(p.producao?.realizada || 0);
+
+        // Use Max Meta logic (Assuming Shared Goal)
+        globalStats[p.sigtap].totalMeta = Math.max(globalStats[p.sigtap].totalMeta, meta);
+        globalStats[p.sigtap].totalRealizado += real;
+
+        // Find Institute Name
+        // We know we only have access to "myInsts" usually, but "allPactuacoes" might contain others.
+        // We might need to fetch all institutes or store a map if we want names for everyone.
+        // For now, let's try to lookup in 'myInsts' if available, otherwise just use ID or generic.
+        // ACTUALLY: We need to load ALL institutes to get names properly if we want a full report.
+        // But let's assume valid IDs.
+        globalStats[p.sigtap].breakdown.push({
+            instId: p.instId,
+            meta,
+            realizado: real
+        });
+    });
+
+    // 2. Group by SIGTAP Only (Merge incentives)
     const groups = {};
     filtered.forEach(p => {
-        if (!groups[p.sigtap]) {
+        // Group Key is JUST SIGTAP now
+        const groupKey = p.sigtap;
+
+        if (!groups[groupKey]) {
             const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-            groups[p.sigtap] = {
+            groups[groupKey] = {
+                key: groupKey,
                 sigtap: p.sigtap,
                 procName: proc?.nome || 'Procedimento',
                 items: [],
                 totalMeta: 0,
                 maxMeta: 0,
-                totalRealizado: 0
+                totalRealizado: 0,
+                sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0,
+                programs: new Set(), // Track programs
+                // Globals
+                global: globalStats[p.sigtap] || { totalMeta: 0, totalRealizado: 0, breakdown: [] }
             };
         }
-        groups[p.sigtap].items.push(p);
+        groups[groupKey].items.push(p);
+
+        // Track Program
+        const prog = localProgs.find(pg => pg.id === p.progId);
+        groups[groupKey].programs.add(prog ? prog.nome : (p.progId || ''));
 
         const meta = parseInt(p.ofertaMinima || 0);
+
         // Ensure producao object exists
-        if (!p.producao) p.producao = { realizada: 0 };
-        const real = parseInt(p.producao.realizada || 0);
+        if (!p.producao) p.producao = { realizada: 0, sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0 };
 
-        groups[p.sigtap].totalMeta += meta;
-        if (meta > groups[p.sigtap].maxMeta) groups[p.sigtap].maxMeta = meta;
+        // For inputs: we want to display the "current" values. 
+        // Since we mirror updates, all items *should* have same values.
+        // We take values from the FIRST item we encounter (or max/latest).
+        // Let's just take the values from the *first* item in the group, handled by the loop if we set it once.
+        // Or simpler: overwrite with current p values (assuming consistency).
 
-        // In unified view, we assume the single input value applies to the group, 
-        // OR we take the max of existing values if they differ (to avoid showing 0 if one is set).
-        // Standard behavior: max of existing lines to represent the "current offer".
-        groups[p.sigtap].totalRealizado = Math.max(groups[p.sigtap].totalRealizado, real);
+        groups[groupKey].sem1 = parseInt(p.producao.sem1 || 0);
+        groups[groupKey].sem2 = parseInt(p.producao.sem2 || 0);
+        groups[groupKey].sem3 = parseInt(p.producao.sem3 || 0);
+        groups[groupKey].sem4 = parseInt(p.producao.sem4 || 0);
+        groups[groupKey].sem5 = parseInt(p.producao.sem5 || 0);
+
+        // Meta Logic: User said "a meta é a maior"
+        groups[groupKey].maxMeta = Math.max(groups[groupKey].maxMeta, meta);
+        // Total Meta might not be useful if we use Max, but let's keep it max as well? 
+        // Or is totalMeta = SUM of metas for context? 
+        // "Ele so faz um lançametno a meta é o maior" -> The target is Max.
+        // Let's set totalMeta to MaxMeta for the progress calculation.
+        groups[groupKey].totalMeta = groups[groupKey].maxMeta;
+
+        // Recalc total for group
+        groups[groupKey].totalRealizado = groups[groupKey].sem1 + groups[groupKey].sem2 + groups[groupKey].sem3 + groups[groupKey].sem4 + groups[groupKey].sem5;
     });
 
     // 3. Search Filter (on Groups)
@@ -370,7 +471,6 @@ function renderTable() {
     }
 
     // 4. Sort (Simplified for Unified View)
-    // Supports: Procedure Name, Status, Offer/Meta
     if (currentSort.column) {
         displayItems.sort((a, b) => {
             let valA, valB;
@@ -380,7 +480,6 @@ function renderTable() {
                 case 'meta':
                     valA = a.maxMeta; valB = b.maxMeta; break;
                 case 'status':
-                    // progress
                     valA = a.maxMeta > 0 ? a.totalRealizado / a.maxMeta : 0;
                     valB = b.maxMeta > 0 ? b.totalRealizado / b.maxMeta : 0;
                     break;
@@ -399,7 +498,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (displayItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 italic">Nenhum procedimento encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum procedimento encontrado.</td></tr>`;
     } else {
         tbody.innerHTML = displayItems.map(group => {
             const target = group.maxMeta;
@@ -412,12 +511,62 @@ function renderTable() {
             const inputState = canEdit ? '' : 'disabled';
             const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : 'bg-slate-50 text-slate-500';
 
+            // Meta Check (Based on displayed Max Meta)
+            const isMetaMet = target > 0 && group.totalRealizado >= target;
+
+            // Program Label (Multiple or Single)
+            const progNames = Array.from(group.programs).filter(Boolean); // Remove empty
+            const uniqueProgs = [...new Set(progNames)];
+            const progLabel = uniqueProgs.length > 1 ? `Vários (${uniqueProgs.length})` : uniqueProgs[0];
+
+            let statusContent = '';
+            if (isMetaMet) {
+                statusContent = `
+                    <button onclick="window.openGlobalBreakdown('${group.sigtap}')" class="w-full py-1.5 px-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Meta Atingida
+                    </button>
+                    <div class="text-[10px] text-center text-slate-400 mt-1">Clique para ver detalhes</div>
+                `;
+            } else {
+                statusContent = `
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-600 dark:text-slate-400 font-medium">${formatNumber(group.totalRealizado)} ofertados</span>
+                        <span class="font-bold text-slate-700 dark:text-white">${Math.round(progress)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                        <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
+                    </div>
+                 `;
+            }
+
+            // Generate 5 inputs
+            const weeks = [1, 2, 3, 4, 5];
+            const weekInputs = weeks.map(w => {
+                const val = group[`sem${w}`];
+                return `
+                    <td class="px-2 py-4 whitespace-nowrap text-center">
+                        <input
+                            onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value)"
+                            class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
+                            min="0" 
+                            value="${val}" 
+                            type="number" 
+                            ${inputState}
+                        />
+                    </td>
+                 `;
+            }).join('');
+
             return `
              <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row">
                 <td class="px-6 py-4">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title="${group.procName}">${group.procName}</span>
-                        <span class="text-xs text-slate-500 font-mono mt-0.5">Cód: ${group.sigtap}</span>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-xs text-slate-500 font-mono">Cód: ${group.sigtap}</span>
+                            ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100" title="${progNames.join(', ')}">${progLabel}</span>` : ''}
+                        </div>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-bold">
@@ -425,27 +574,12 @@ function renderTable() {
                 </td>
                 <td class="px-6 py-4 align-middle">
                     <div class="flex flex-col gap-1 max-w-[140px] mx-auto">
-                        <div class="flex justify-between text-xs mb-1">
-                            <span class="text-slate-600 dark:text-slate-400 font-medium">${formatNumber(group.totalRealizado)} ofertados</span>
-                            <span class="font-bold text-slate-700 dark:text-white">${Math.round(progress)}%</span>
-                        </div>
-                        <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
-                            <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
-                        </div>
+                        ${statusContent}
                     </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-center">
-                    <input
-                        onchange="window.updateUnifiedOffer('${group.sigtap}', this.value)"
-                        class="w-24 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary sm:text-sm shadow-sm font-bold ${activeClass}"
-                        min="0" 
-                        value="${group.totalRealizado}" 
-                        type="number" 
-                        ${inputState}
-                    />
-                </td>
+                ${weekInputs}
                  <td class="px-6 py-4 whitespace-nowrap text-center">
-                    <button onclick="window.openDetailModal('${group.sigtap}')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg" title="Ver Detalhes">
+                    <button onclick="window.openDetailModal('${group.key}')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg" title="Ver Detalhes">
                          <span class="material-symbols-outlined text-[20px]">visibility</span>
                     </button>
                 </td>
@@ -457,6 +591,48 @@ function renderTable() {
     // Store for modal access
     window.displayGroups = groups;
 }
+
+window.updateUnifiedWeek = async (groupKey, weekField, value) => {
+    const val = parseInt(value) || 0;
+    const group = window.displayGroups[groupKey];
+    if (group) {
+        // Optimistic Update
+        group[weekField] = val;
+        // Recalc total
+        group.totalRealizado = (group.sem1 || 0) + (group.sem2 || 0) + (group.sem3 || 0) + (group.sem4 || 0) + (group.sem5 || 0);
+
+        // Update all items in group (Mirroring the value)
+        const updatePromises = group.items.map(async (pact) => {
+            if (!pact.producao) pact.producao = {};
+            pact.producao[weekField] = val; // Set the same value
+            pact.producao.realizada = (pact.producao.sem1 || 0) + (pact.producao.sem2 || 0) + (pact.producao.sem3 || 0) + (pact.producao.sem4 || 0) + (pact.producao.sem5 || 0);
+
+            return Repository.savePactuacao({
+                id: pact.id,
+                producao: pact.producao
+            });
+        });
+
+        try {
+            await Promise.all(updatePromises);
+
+            // Update local state (Optimistic already done on group object, but sync localPactuacoes)
+            group.items.forEach(pact => {
+                const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
+                if (localIdx !== -1) {
+                    if (!localPactuacoes[localIdx].producao) localPactuacoes[localIdx].producao = {};
+                    localPactuacoes[localIdx].producao[weekField] = val;
+                    localPactuacoes[localIdx].producao.realizada = pact.producao.realizada;
+                }
+            });
+
+            renderTable(); // Re-render to update totals and progress bars
+        } catch (error) {
+            console.error("Error bulk updating week:", error);
+            alert("Erro ao salvar semana.");
+        }
+    }
+};
 
 // Global functions for Unified Interface
 window.updateUnifiedOffer = async (sigtap, value) => {
@@ -487,18 +663,136 @@ window.updateUnifiedOffer = async (sigtap, value) => {
     }
 };
 
-window.openDetailModal = (sigtap) => {
-    // If displayGroups isn't ready, verify if renderTable ran. 
-    // It should be by the time button is clicked.
+// New Function for Exclusive Global Breakdown
+window.openGlobalBreakdown = (sigtap) => {
+    // Find ANY group with this sigtap to get the global data (which assumes global stats are by sigtap)
     const groups = window.displayGroups || {};
-    const group = groups[sigtap];
+    // We need to find the correct group by sigtap, but keys are now composite.
+    // Iterating to find match:
+    const groupKey = Object.keys(groups).find(k => groups[k].sigtap === sigtap);
+    const group = groups[groupKey];
 
     if (!group) return;
 
     const modal = document.getElementById('modal-detalhe-lancamento');
     if (modal) {
+        document.getElementById('modal-title').textContent = "Status da Rede";
+        document.getElementById('modal-subtitle').textContent = `${group.procName} (Cód: ${sigtap})`;
+
+        // Hide the standard table header for this view
+        const thead = modal.querySelector('thead');
+        if (thead) thead.classList.add('hidden');
+
+        // Hide standard blue info legend for this view
+        const infoLegend = document.getElementById('modal-info-legend');
+        if (infoLegend) infoLegend.classList.add('hidden');
+
+        // Hide standard modal footer for this view
+        const modalFooter = document.getElementById('modal-footer');
+        if (modalFooter) modalFooter.classList.add('hidden');
+
+        const tbody = document.getElementById('modal-table-body');
+
+        // Remove old global section if present
+        const oldGlobal = document.getElementById('dynamic-global-section');
+        if (oldGlobal) oldGlobal.remove();
+
+        if (group.global && group.global.breakdown.length > 0) {
+            const breakdownHtml = group.global.breakdown.map(item => {
+                const inst = allInstitutes.find(i => i.id === item.instId);
+                const instName = inst ? inst.sigla : 'Inst. Desconhecido';
+
+                return `
+                    <div class="flex items-center justify-between text-sm py-3 border-b border-emerald-100 dark:border-emerald-800 last:border-0 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 px-2 rounded-lg transition-colors">
+                        <span class="font-bold text-slate-700 dark:text-emerald-100">${instName}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs text-slate-500 font-medium">Meta: ${item.meta}</span>
+                            <span class="font-bold ${item.realizado >= item.meta ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}">
+                                Ofertado: ${item.realizado}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Inject simpler view
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="p-0 border-none">
+                        <div class="p-6 flex flex-col items-center">
+                            
+                            <div class="w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center shadow-sm mb-6">
+                                <div class="bg-white dark:bg-emerald-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-800 shadow-sm">
+                                    <span class="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>
+                                </div>
+                                
+                                <h4 class="text-xl font-bold text-emerald-900 dark:text-white mb-2">Meta Global Atingida!</h4>
+                                <p class="text-sm text-emerald-700 dark:text-emerald-300 max-w-sm mx-auto">
+                                    A soma das ofertas de todos os institutos superou a meta estabelecida para a rede.
+                                </p>
+                            
+                                <div class="flex items-center justify-center gap-8 mt-6">
+                                    <div class="flex flex-col items-center">
+                                        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Meta Rede</span>
+                                        <span class="text-2xl font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">${group.global.totalMeta}</span>
+                                    </div>
+                                    <div class="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
+                                    <div class="flex flex-col items-center">
+                                        <span class="text-[10px] uppercase tracking-wider text-emerald-600 font-bold mb-1">Oferta Rede</span>
+                                        <span class="text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-white dark:bg-emerald-950 px-4 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800 shadow-sm">${group.global.totalRealizado}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="w-full">
+                                <h5 class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-3 px-1 ml-1">
+                                    <span class="material-symbols-outlined text-[16px]">domain</span>
+                                    Detalhamento por Instituto
+                                </h5>
+                                <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                    <div class="divide-y divide-slate-100 dark:divide-slate-700 p-2">
+                                        ${breakdownHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">Nenhum dado de rede disponível.</td></tr>`;
+        }
+
+        modal.classList.remove('hidden');
+    }
+};
+
+window.openDetailModal = (groupKey) => {
+    // If displayGroups isn't ready, verify if renderTable ran. 
+    // It should be by the time button is clicked.
+    const groups = window.displayGroups || {};
+    const group = groups[groupKey];
+
+    if (!group) return;
+
+    const sigtap = group.sigtap; // Extract sigtap from group
+
+    const modal = document.getElementById('modal-detalhe-lancamento');
+    if (modal) {
         document.getElementById('modal-title').textContent = group.procName;
         document.getElementById('modal-subtitle').textContent = `Cód. SIGTAP: ${sigtap}`;
+
+        // Ensure header is visible
+        const thead = modal.querySelector('thead');
+        if (thead) thead.classList.remove('hidden');
+
+        // Ensure standard legend is visible
+        const infoLegend = document.getElementById('modal-info-legend');
+        if (infoLegend) infoLegend.classList.remove('hidden');
+
+        // Ensure standard footer is visible
+        const modalFooter = document.getElementById('modal-footer');
+        if (modalFooter) modalFooter.classList.remove('hidden');
 
         const tbody = document.getElementById('modal-table-body');
         tbody.innerHTML = group.items.map(item => {
@@ -534,6 +828,10 @@ window.openDetailModal = (sigtap) => {
                 </td>
             </tr>
         `}).join('');
+
+        // Remove old dynamic section if present
+        const oldGlobal = document.getElementById('dynamic-global-section');
+        if (oldGlobal) oldGlobal.remove();
 
         modal.classList.remove('hidden');
     }

@@ -43,41 +43,8 @@ export async function initAcompanhamento() {
         }, 1000);
     }
 
-    // Data Correction: User confirmed that existing 'Production' values are actually 'Offers'.
-    // We will move them to the correct field and clear Production.
-    let migrationNeeded = false;
-    allPactuacoes.forEach(p => {
-        // Robust parsing to avoid NaN issues
-        let off = parseInt(p.ofertado);
-        if (isNaN(off)) off = 0;
-
-        let prod = parseInt(p.producao?.realizada);
-        if (isNaN(prod)) prod = 0;
-
-        let pact = parseInt(p.ofertaMinima);
-        if (isNaN(pact)) pact = 0;
-
-        // Logic: If there is 'Production' but no 'Offer' (and user says Production should be 0),
-        // we assume the Production value is actually the Offer.
-        if (off === 0 && prod > 0 && pact > 0) {
-            console.log(`Fixing row ${p.id}: Moving Production (${prod}) to Offer.`); // Log for debugging
-            p.ofertado = prod; // Move value in memory
-            if (!p.producao) p.producao = {};
-            p.producao.realizada = 0; // Clear production in memory
-
-            // Save correction
-            Repository.savePactuacao({
-                id: p.id,
-                ofertado: prod,
-                producao: { ...p.producao, realizada: 0 }
-            });
-            migrationNeeded = true;
-        }
-    });
-
-    if (migrationNeeded) {
-        console.log('Fixed data: Moved misplaced Production values to Ofertado column.');
-    }
+    // Data Correction: Removed to prevent future data loss.
+    // User will re-import data with correct structure.
 
     // Populate Filters
     populateFilters();
@@ -136,8 +103,9 @@ export async function initAcompanhamento() {
             const idx = allPactuacoes.findIndex(p => p.id === id);
             if (idx !== -1) {
                 if (!allPactuacoes[idx].producao) allPactuacoes[idx].producao = {};
-                allPactuacoes[idx].producao.realizada = newVal;
-                await Repository.savePactuacao({ id, producao: { ...allPactuacoes[idx].producao, realizada: newVal } });
+                if (!allPactuacoes[idx].producao) allPactuacoes[idx].producao = {};
+                allPactuacoes[idx].producao.aprovada = newVal;
+                await Repository.savePactuacao({ id, producao: { ...allPactuacoes[idx].producao, aprovada: newVal } });
                 renderTable();
             }
         }
@@ -220,178 +188,265 @@ function renderTable() {
     if (fProg) filtered = filtered.filter(p => p.progId === fProg); // Apply Filter
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`; // Colspan increased
+        tbody.innerHTML = `<tr><td colspan="13" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`; // Colspan increased
         updateStats(0, 0, 0);
         renderPagination(0, 0, 0); // Clear pagination
         return;
     }
 
-    // Pagination Slice
-    const totalItems = filtered.length;
+    // ------------------------------------------------------------------
+    // 1. Group Data (Procedure + Program)
+    // ------------------------------------------------------------------
+    // Helper: Safe Float Parse
+    const safeParseFloat = (val) => {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        // Handle "1.234,56" -> "1234.56"
+        let str = String(val).replace(/\./g, "").replace(",", ".");
+        let num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+    };
+
+    const groups = {};
+    filtered.forEach(p => {
+        // Grouping purely by Procedure (SIGTAP)
+        const key = p.sigtap;
+
+        if (!groups[key]) {
+            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+            groups[key] = {
+                key,
+                sigtap: p.sigtap,
+                procName: proc?.nome || 'Procedimento',
+                code: p.sigtap,
+                items: [],
+                // Aggregates
+                totalMeta: 0,
+                totalOffer: 0,
+                totalProd: 0,
+                totalFatSigtap: 0,
+                potentialFatInc: 0,
+                programs: new Set(), // To track unique programs
+                competencia: p.competencia,
+                // Unit Values (for display, takes first valid found)
+                vSigtap: safeParseFloat(p.vlrSigtapBase),
+                vInc: safeParseFloat(p.vlrIncentivo)
+            };
+        }
+
+        // Add item to group
+        groups[key].items.push(p);
+
+        // Track Program
+        const prog = localProgramas.find(pg => pg.id === p.progId);
+        const progName = prog ? prog.nome : (p.progId || '-');
+        groups[key].programs.add(progName);
+
+        // Accumulate Values
+        const meta = parseInt(p.ofertaMinima || 0);
+
+        let offer = parseInt(p.producao?.realizada);
+        if (isNaN(offer)) offer = 0;
+        let staticOffer = parseInt(p.ofertado);
+        if (isNaN(staticOffer)) staticOffer = 0;
+        const finalOffer = offer > 0 ? offer : staticOffer;
+
+        let prod = parseInt(p.producao?.aprovada);
+        if (isNaN(prod)) prod = 0;
+
+        // Financials Calculation per Item
+        const vSigtap = safeParseFloat(p.vlrSigtapBase);
+        const vInc = safeParseFloat(p.vlrIncentivo);
+
+        const itemFatSigtap = prod * vSigtap;
+        const itemPotentialInc = prod * vInc;
+
+        groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
+        groups[key].totalOffer += finalOffer;
+        groups[key].totalProd += prod;
+        groups[key].totalFatSigtap += itemFatSigtap;
+        groups[key].potentialFatInc += itemPotentialInc;
+    });
+
+    const groupList = Object.values(groups);
+
+    // ------------------------------------------------------------------
+    // 2. Pagination (on Groups now)
+    // ------------------------------------------------------------------
+    const totalItems = groupList.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    // Adjust current page if out of bounds
-    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage > totalPages) currentPage = totalPages || 1;
     if (currentPage < 1) currentPage = 1;
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-    const paginatedData = filtered.slice(startIndex, endIndex);
+    const paginatedGroups = groupList.slice(startIndex, endIndex);
 
-    let statsTotalPact = 0;
-    let statsTotalReal = 0;
-    let statsTotalFinanceiro = 0;
+    // ------------------------------------------------------------------
+    // 3. Render Rows (Aggregated)
+    // ------------------------------------------------------------------
+    tbody.innerHTML = paginatedGroups.map(g => {
+        // Meta Status
+        const isMetaMet = g.totalMeta > 0 ? (g.totalOffer >= g.totalMeta) : true;
 
-    // Calculate totals based on ALL filtered data (not just current page) for the top stats
-    filtered.forEach(p => {
-        statsTotalPact += parseInt(p.ofertaMinima || 0);
-        statsTotalReal += parseInt(p.producao?.realizada || 0);
-        // We might want to track Total Offer for KPI if the label matches.
-        // User might want "Total Offer" in stats too? Let's check updateStats function. 
-        // For now, let's keep statsTotalReal as production because 'produção assistencial' logic usually tracks reality.
+        // Status Icon / Button
+        let metaStatusHtml = '<span class="text-slate-300">-</span>';
+        if (g.totalMeta > 0) {
+            const icon = isMetaMet ? 'check_circle' : 'warning';
+            const color = isMetaMet ? 'text-emerald-500' : 'text-amber-500';
+            const title = isMetaMet ? 'Meta Atingida' : 'Meta Não Atingida';
 
-        // Actually, if status reflects Offer, maybe stats should reflect Offer too? 
-        // Let's stick to the requested TABLE changes first. 
-
-        const vSigtap = parseFloat(p.vlrSigtapBase || 0);
-        const vInc = parseFloat(p.vlrIncentivo || 0);
-        statsTotalFinanceiro += (vSigtap + vInc) * parseInt(p.producao?.realizada || 0);
-    });
-
-    tbody.innerHTML = paginatedData.map(p => {
-        const inst = localInsts.find(i => i.id === p.instId);
-        const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-        const prog = localProgramas.find(pg => pg.id === p.progId); // Resolve Program
-        const progName = prog ? prog.nome : (p.progId || '-');
-
-        const pactuado = parseInt(p.ofertaMinima || 0);
-        const ofertado = parseInt(p.ofertado || 0); // Explicit offer from user input
-        const realizado = parseInt(p.producao?.realizada || 0); // Actual production
-
-        const vSigtap = parseFloat(p.vlrSigtapBase || 0);
-        const vInc = parseFloat(p.vlrIncentivo || 0);
-        const totalUnit = vSigtap + vInc;
-        // Financial usually tracks what was actually paid/produced, so logic stays on 'realizado' for money?
-        // "o produzido é pego no final". Financial implies payment for production. I will keep financial on realized.
-        const totalLinha = totalUnit * realizado;
-
-        // Status based on OFFER vs MINIMUM (User request: "percentual de oferta... foi direcionado")
-        const currentOffer = isNaN(ofertado) ? 0 : ofertado;
-        const statusVal = pactuado > 0 ? (currentOffer / pactuado) * 100 : 100;
-        let statusLabel = 'Atingido';
-        let statusClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
-
-        if (currentOffer === 0 && pactuado > 0) {
-            statusLabel = 'Sem oferta';
-            statusClass = 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
-        } else if (statusVal < 100) {
-            statusLabel = 'Crítico';
-            statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
-        }
-
-        // Offer Display
-        // Editable for: Institutos_Editor
-        // Read-only for: Orçamento, Institutos_Leitor
-        let offerDisplay = ''; // Define early
-        const valOfertado = isNaN(ofertado) ? 0 : ofertado;
-        const canEditOffer = userRole === 'Institutos_Editor';
-
-        const renderBar = (val, max) => {
-            const pct = max > 0 ? Math.min((val / max) * 100, 100) : 0;
-            const colorClass = pct < 70 ? 'bg-red-500' : pct < 100 ? 'bg-amber-500' : 'bg-emerald-500';
-            return `
-                <div class="h-1.5 w-16 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
-                    <div class="h-full ${colorClass}" style="width: ${pct}%"></div>
-                </div>
+            // Clickable to open modal
+            metaStatusHtml = `
+                <button onclick="window.openBreakdownModal('${g.key}')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Clique para ver detalhes por instituto">
+                    <span class="material-symbols-outlined ${color} font-bold text-[22px]">${icon}</span>
+                </button>
             `;
-        };
-
-        if (pactuado === 0) {
-            // Badge State
-            if (canEditOffer) {
-                offerDisplay = `
-                   <div data-offer-idx="${p.id}" class="editable-cell cursor-pointer flex flex-col items-end gap-1 group">
-                       <span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700 transition-colors w-full">
-                           Não ofertado <span class="material-symbols-outlined text-[10px] ml-1 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
-                       </span>
-                   </div>
-               `;
-            } else {
-                offerDisplay = `
-                    <span class="flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 w-full">
-                        Não ofertado
-                    </span>
-                 `;
-            }
-        } else {
-            // Value + Bar State
-            const pctBar = renderBar(valOfertado, pactuado);
-            if (canEditOffer) {
-                offerDisplay = `
-                   <div data-offer-idx="${p.id}" class="editable-cell cursor-pointer flex flex-col items-end gap-1 group hover:bg-slate-100 dark:hover:bg-slate-800/50 p-1 rounded -mr-1 transition-colors">
-                       <div class="flex items-center gap-1">
-                           <span>${formatNumber(valOfertado)}</span>
-                           <span class="material-symbols-outlined text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
-                       </div>
-                       ${pctBar}
-                   </div>
-                `;
-            } else {
-                offerDisplay = `
-                    <div class="flex flex-col items-end gap-1">
-                        <span>${formatNumber(valOfertado)}</span>
-                        ${pctBar}
-                    </div>
-                 `;
-            }
         }
 
-        // Production Display (Editable for Orçamento)
-        let prodDisplay = formatNumber(realizado);
-        const canEditProd = userRole === 'Orçamento';
-
-        if (canEditProd) {
-            if (pactuado > 0) {
-                prodDisplay = `<input type="number" data-prod-id="${p.id}" value="${realizado}" min="0" class="w-full min-w-[60px] max-w-[100px] text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 dark:text-white transition-all shadow-sm">`;
-            } else {
-                prodDisplay = `
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                        -
-                    </span>
-                `;
-            }
+        // Financials (Using pre-calculated sums)
+        const fatSigtap = g.totalFatSigtap;
+        let fatInc = 0;
+        // Apply Global Meta Condition to the Sum of Potential Incentives
+        if (isMetaMet) {
+            fatInc = g.potentialFatInc;
         }
+
+        const totalRow = fatSigtap + fatInc;
+
         return `
             <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                <!-- Procedure -->
                 <td class="px-6 py-4">
-                    <div class="text-sm font-bold text-slate-900 dark:text-white">${inst?.sigla || (inst?.nome ? inst.nome.substring(0, 15) : '???')}</div>
-                    <div class="text-[10px] text-slate-400 uppercase">${p.competencia}</div>
+                    <div class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${g.procName}">${g.procName}</div>
+                    <div class="text-[10px] font-mono text-slate-400">${g.code}</div>
+                    <div class="text-[10px] text-slate-400 uppercase mt-0.5">${g.competencia}</div>
                 </td>
-                <td class="px-6 py-4">
-                    <div class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${proc?.nome || '???'}">${proc?.nome || '???'}</div>
-                    <div class="text-[10px] font-mono text-slate-400">${p.sigtap}</div>
+                
+                <!-- Meta (Total) -->
+                <td class="px-6 py-4 text-right font-mono text-xs font-bold">${formatNumber(g.totalMeta)}</td>
+                
+                <!-- Ofertado (Total) -->
+                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-blue-700 dark:text-blue-400">${formatNumber(g.totalOffer)}</td>
+                
+                <!-- Status Meta (Button) -->
+                <td class="px-6 py-4 text-center">${metaStatusHtml}</td>
+
+                <!-- Produced (Total) -->
+                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatNumber(g.totalProd)}</td>
+
+                <!-- Values -->
+                <td class="px-6 py-4 text-right font-mono text-[11px] text-slate-500">${formatCurrency(g.vSigtap)}</td>
+                <td class="px-6 py-4 text-right font-mono text-[11px] text-slate-500">${formatCurrency(g.vInc)}</td>
+                
+                <!-- Financials -->
+                <td class="px-6 py-4 text-right font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">${formatCurrency(fatSigtap)}</td>
+                <td class="px-6 py-4 text-right font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                     ${fatInc > 0 ? formatCurrency(fatInc) : (g.potentialFatInc > 0 ? `0,00 <div class="text-[9px] text-red-500 font-bold">(${formatCurrency(g.potentialFatInc)})</div>` : '0,00')}
                 </td>
-                <td class="px-6 py-4">
-                    <div class="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[120px]" title="${progName}">${progName}</div>
-                </td>
-                <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(pactuado)}</td>
-                <td class="px-6 py-4 text-right font-mono text-xs text-slate-700 dark:text-slate-300">${offerDisplay}</td>
-                <td class="px-6 py-4 text-right font-mono text-xs">${prodDisplay}</td>
-                <td class="px-6 py-4 text-right font-mono text-[11px]">${formatCurrency(vSigtap * realizado)}</td>
-                <td class="px-6 py-4 text-right font-mono text-[11px]">${formatCurrency(vInc * realizado)}</td>
-                <td class="px-6 py-4 text-right font-mono text-sm font-black text-primary">${formatCurrency(totalLinha)}</td>
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase ${statusClass}">
-                        ${statusLabel}
-                    </span>
+                
+                <!-- Total -->
+                <td class="px-6 py-4 text-right font-mono text-sm font-black text-primary">${formatCurrency(totalRow)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Save groups globally for modal access
+    window.rowGroups = groups;
+
+    updateStats(0, 0, 0, filtered); // Update stats uses filtered list logic which we might need to adjust or keep
+    renderPagination(totalItems, startIndex + 1, endIndex);
+}
+
+// ------------------------------------------------------------------
+// Modal Functions
+// ------------------------------------------------------------------
+window.openBreakdownModal = (key) => {
+    const group = window.rowGroups[key];
+    if (!group) return;
+
+    document.getElementById('modal-title').textContent = group.procName;
+    const progLabel = group.programs.size > 1 ? 'Múltiplos Incentivos' : Array.from(group.programs)[0];
+    document.getElementById('modal-subtitle').textContent = `Incentivo(s): ${progLabel} | Meta Global: ${formatNumber(group.totalMeta)}`;
+
+    const tbody = document.getElementById('modal-breakdown-body');
+    tbody.innerHTML = group.items.map(item => {
+        const inst = localInsts.find(i => i.id === item.instId);
+        const instName = inst?.sigla || inst?.nome || 'Desconhecido';
+
+        let meta = parseInt(item.ofertaMinima || 0);
+
+        let offer = parseInt(item.producao?.realizada);
+        if (isNaN(offer)) offer = 0;
+        let staticOffer = parseInt(item.ofertado);
+        if (isNaN(staticOffer)) staticOffer = 0;
+        const finalOffer = offer > 0 ? offer : staticOffer;
+
+        let prod = parseInt(item.producao?.aprovada);
+        if (isNaN(prod)) prod = 0;
+
+        // Determine if this row met its specific meta (if applicable) or if we just show values
+        // Usually meta is checked globally, but here we show individual contributions.
+
+        const prog = localProgramas.find(pg => pg.id === item.progId);
+        const progName = prog ? prog.nome : (item.progId || '-');
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <td class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300">${instName}</td>
+                <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
+                <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
+                <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
+                <td class="py-3 px-2 text-right">
+                    <input 
+                        type="number" 
+                        value="${prod}" 
+                        onchange="window.saveBreakdownItem('${item.id}', this.value, '${key}')"
+                        class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
+                    />
                 </td>
             </tr>
         `;
     }).join('');
 
-    updateStats(statsTotalPact, statsTotalReal, statsTotalFinanceiro, filtered);
-    renderPagination(totalItems, startIndex + 1, endIndex);
-}
+    document.getElementById('modal-breakdown').classList.remove('hidden');
+};
+
+window.saveBreakdownItem = async (pactId, value, groupKey) => {
+    const val = parseInt(value) || 0;
+
+    // Find item locally to update immediately
+    const group = window.rowGroups[groupKey];
+    const item = group.items.find(i => i.id === pactId);
+    if (item) {
+        if (!item.producao) item.producao = {};
+        item.producao.aprovada = val;
+
+        // Recalc Group Totals
+        group.totalProd = group.items.reduce((sum, i) => sum + (parseInt(i.producao?.aprovada) || 0), 0);
+
+        // Update DB
+        try {
+            await Repository.savePactuacao({ id: pactId, producao: { ...item.producao, aprovada: val } });
+            console.log('Saved production:', pactId, val);
+
+            // Re-render table to reflect new totals (stay on same page)
+            renderTable();
+
+            // If we re-render, we might lose the modal if we are not careful? 
+            // renderTable regenerates HTML.
+            // But we don't want to close the modal.
+            // Actually renderTable updates the background table. The modal is separate HTML (outside tbody).
+            // However, `rowGroups` will be regenerated. We need to make sure the modal refers to valid data.
+            // Since `window.rowGroups` is updated, next click works. Does open modal stay open? Yes.
+            // But if we want to update the modal subtitle/summary if needed?
+        } catch (err) {
+            console.error('Error saving production:', err);
+            alert('Erro ao salvar valor.');
+        }
+    }
+};
 
 function enableDragToScroll() {
     const slider = document.getElementById('table-scroll-container');
@@ -506,22 +561,44 @@ function itemProgress(percent) {
     `;
 }
 
-function updateStats(pact, real, fin, filteredList = []) {
-    // Stats cards in acompanhamento_orcamento.html
+function updateStats(pact, real, fin, filteredList = [], globalStatus = {}) {
+    // We need to RE-CALCULATE the financial total to match the table (Incentive only if met)
+    // The passed 'fin' was calculated in the iterator before logic changes, so likely incorrect now.
+    // Let's iterate filteredList and use globalStatus to sum up correctly.
+
+    let correctFinancialTotal = 0;
+
+    filteredList.forEach(p => {
+        const realiz = parseInt(p.producao?.aprovada || 0);
+        const vSigtap = parseFloat(p.vlrSigtapBase || 0);
+        const vInc = parseFloat(p.vlrIncentivo || 0);
+
+        const progId = p.progId || 'default';
+        const key = `${p.sigtap}-${progId}`;
+        const gStats = globalStatus[key] || { meta: 0, offer: 0 };
+        const isMetaMet = gStats.meta > 0 ? (gStats.offer >= gStats.meta) : true;
+
+        const rowSigtap = realiz * vSigtap;
+        const rowInc = isMetaMet ? (realiz * vInc) : 0;
+
+        correctFinancialTotal += (rowSigtap + rowInc);
+    });
+
     const elements = document.querySelectorAll('.text-2xl.font-bold');
     if (elements.length >= 3) {
         elements[0].textContent = formatNumber(pact);
         elements[1].textContent = formatNumber(real);
-        elements[2].textContent = formatCurrency(fin);
+        elements[2].textContent = formatCurrency(correctFinancialTotal);
 
-        // Critical institutes count - Based on Offer vs Minimum (User preference seems to be tracking Offer sufficiency)
-        // Or is it Production vs Offer? 
-        // "percentual de oferta... foi direcionado". 
-        // If Offer < 0.7 * Min -> Critical.
         if (elements[3]) {
+            // Critical count based on Global Status? Or Row status?
+            // Let's keep distinct Critical count based on Rows where offer < 70% of min?
+            // "Se for ofertad... contabiliza". 
+            // Users usually want to know how many PROCEDURES are critical.
+            // Using the existing logic for now.
             const criticalCount = filteredList.filter(p => {
                 const pactVal = parseInt(p.ofertaMinima || 0);
-                const offerVal = parseInt(p.ofertado || 0); // Use OFFER for status
+                const offerVal = parseInt(p.ofertado || 0);
                 return pactVal > 0 && (offerVal / pactVal) < 0.7;
             }).length;
             elements[3].textContent = criticalCount;
