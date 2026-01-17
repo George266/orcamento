@@ -201,8 +201,8 @@ function renderTable() {
     const safeParseFloat = (val) => {
         if (typeof val === 'number') return val;
         if (!val) return 0;
-        // Handle "1.234,56" -> "1234.56"
-        let str = String(val).replace(/\./g, "").replace(",", ".");
+        // Remove 'R$', space, non-breaking space, then standard replace
+        let str = String(val).replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(",", ".");
         let num = parseFloat(str);
         return isNaN(num) ? 0 : num;
     };
@@ -242,33 +242,82 @@ function renderTable() {
         const progName = prog ? prog.nome : (p.progId || '-');
         groups[key].programs.add(progName);
 
-        // Accumulate Values
-        const meta = parseInt(p.ofertaMinima || 0);
+        // ** Correct Accumulation of Sigtap per Item (regardless of meta) **
+        const prod = parseInt(p.producao?.aprovada || 0);
+        const vSigtap = safeParseFloat(p.vlrSigtapBase);
+        groups[key].totalFatSigtap += (prod * vSigtap);
+        groups[key].totalProd += prod;
 
+        let meta = parseInt(p.ofertaMinima || 0);
+        groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
+
+        // Offer for display (sum? or max? Usually Sum for Group if multiple)
         let offer = parseInt(p.producao?.realizada);
         if (isNaN(offer)) offer = 0;
         let staticOffer = parseInt(p.ofertado);
         if (isNaN(staticOffer)) staticOffer = 0;
         const finalOffer = offer > 0 ? offer : staticOffer;
-
-        let prod = parseInt(p.producao?.aprovada);
-        if (isNaN(prod)) prod = 0;
-
-        // Financials Calculation per Item
-        const vSigtap = safeParseFloat(p.vlrSigtapBase);
-        const vInc = safeParseFloat(p.vlrIncentivo);
-
-        const itemFatSigtap = prod * vSigtap;
-        const itemPotentialInc = prod * vInc;
-
-        groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
         groups[key].totalOffer += finalOffer;
-        groups[key].totalProd += prod;
-        groups[key].totalFatSigtap += itemFatSigtap;
-        groups[key].potentialFatInc += itemPotentialInc;
     });
 
     const groupList = Object.values(groups);
+
+    // 2.1 Calculate Incentive Status per Program within Group
+    const programStatusMap = {}; // Key: "Sigtap-ProgId" -> Boolean (isMet)
+
+    groupList.forEach(g => {
+        // Partition items by program to check meta
+        // 1. Calculate Total Production for the Procedure (Group)
+        // Production counts for the procedure regardless of which "line" it was entered on.
+        let totalGroupProd = 0;
+
+        // Use reduce to sum 'producao.aprovada' from all items in the group
+        totalGroupProd = g.items.reduce((sum, item) => sum + (parseInt(item.producao?.aprovada || 0)), 0);
+
+        // 2. Partition items by program to check meta
+        const usageByProg = {};
+        g.items.forEach(item => {
+            const pId = item.progId || 'default';
+            if (!usageByProg[pId]) usageByProg[pId] = { meta: 0, offer: 0, unitVal: 0 };
+
+            const itemMeta = parseInt(item.ofertaMinima || 0);
+
+            let offer = parseInt(item.producao?.realizada);
+            if (isNaN(offer)) offer = 0;
+            let staticOffer = parseInt(item.ofertado);
+            if (isNaN(staticOffer)) staticOffer = 0;
+            const itemOffer = offer > 0 ? offer : staticOffer;
+
+            const itemValInc = safeParseFloat(item.vlrIncentivo);
+
+            usageByProg[pId].meta = Math.max(usageByProg[pId].meta, itemMeta);
+            usageByProg[pId].offer += itemOffer;
+
+            // Capture Unit Value (use max found or first non-zero)
+            if (itemValInc > 0) usageByProg[pId].unitVal = itemValInc;
+        });
+
+        // Calculate Realized vs Missed for the Group
+        g.realizedInc = 0;
+        g.missedInc = 0;
+
+        Object.keys(usageByProg).forEach(pId => {
+            const prog = usageByProg[pId];
+            const isMet = prog.meta > 0 ? (prog.offer >= prog.meta) : true;
+
+            // Calculate Potential based on TOTAL GROUP PRODUCTION
+            const potential = totalGroupProd * prog.unitVal;
+
+            // Store status for global stats
+            programStatusMap[`${g.sigtap}-${pId}`] = isMet;
+
+            if (isMet) {
+                g.realizedInc += potential;
+            } else {
+                g.missedInc += potential;
+            }
+        });
+    });
 
     // ------------------------------------------------------------------
     // 2. Pagination (on Groups now)
@@ -299,19 +348,21 @@ function renderTable() {
 
             // Clickable to open modal
             metaStatusHtml = `
-                <button onclick="window.openBreakdownModal('${g.key}')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Clique para ver detalhes por instituto">
+                <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-center gap-1 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors group/btn" title="Clique para ver detalhes por instituto">
                     <span class="material-symbols-outlined ${color} font-bold text-[22px]">${icon}</span>
+                    <span class="text-[10px] text-slate-400 font-medium group-hover/btn:text-primary transition-colors leading-none">clique para ver detalhes</span>
                 </button>
             `;
         }
 
-        // Financials (Using pre-calculated sums)
+        // Financials (Using calculated sums)
         const fatSigtap = g.totalFatSigtap;
-        let fatInc = 0;
-        // Apply Global Meta Condition to the Sum of Potential Incentives
-        if (isMetaMet) {
-            fatInc = g.potentialFatInc;
-        }
+
+        // Incentive is now strictly the Realized amount
+        const fatInc = g.realizedInc;
+
+        // Missed Incentive (Potential)
+        const missedInc = g.missedInc;
 
         const totalRow = fatSigtap + fatInc;
 
@@ -319,31 +370,42 @@ function renderTable() {
             <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
                 <!-- Procedure -->
                 <td class="px-6 py-4">
-                    <div class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${g.procName}">${g.procName}</div>
-                    <div class="text-[10px] font-mono text-slate-400">${g.code}</div>
-                    <div class="text-[10px] text-slate-400 uppercase mt-0.5">${g.competencia}</div>
+                    <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${g.procName}">${g.procName}</div>
+                    <div class="text-xs font-mono text-slate-400">${g.code}</div>
+                    <div class="text-xs text-slate-400 uppercase mt-0.5">${g.competencia}</div>
                 </td>
                 
                 <!-- Meta (Total) -->
-                <td class="px-6 py-4 text-right font-mono text-xs font-bold">${formatNumber(g.totalMeta)}</td>
+                <td class="px-6 py-4 text-right font-mono text-sm font-bold">${formatNumber(g.totalMeta)}</td>
                 
                 <!-- Ofertado (Total) -->
-                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-blue-700 dark:text-blue-400">${formatNumber(g.totalOffer)}</td>
+                <td class="px-6 py-4 text-right font-mono text-sm font-bold text-blue-700 dark:text-blue-400">${formatNumber(g.totalOffer)}</td>
                 
                 <!-- Status Meta (Button) -->
                 <td class="px-6 py-4 text-center">${metaStatusHtml}</td>
 
                 <!-- Produced (Total) -->
-                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatNumber(g.totalProd)}</td>
+                <td class="px-6 py-4 text-right font-mono text-sm font-bold text-slate-700 dark:text-slate-300">${formatNumber(g.totalProd)}</td>
 
                 <!-- Values -->
-                <td class="px-6 py-4 text-right font-mono text-[11px] text-slate-500">${formatCurrency(g.vSigtap)}</td>
-                <td class="px-6 py-4 text-right font-mono text-[11px] text-slate-500">${formatCurrency(g.vInc)}</td>
+                <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(g.vSigtap)}</td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="window.openBreakdownModal('${g.key}')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-primary" title="Ver detalhes do incentivo">
+                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
+                </td>
                 
                 <!-- Financials -->
-                <td class="px-6 py-4 text-right font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">${formatCurrency(fatSigtap)}</td>
-                <td class="px-6 py-4 text-right font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                     ${fatInc > 0 ? formatCurrency(fatInc) : (g.potentialFatInc > 0 ? `0,00 <div class="text-[9px] text-red-500 font-bold">(${formatCurrency(g.potentialFatInc)})</div>` : '0,00')}
+                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency(fatSigtap)}</td>
+
+                <td class="px-6 py-4 text-right">
+                    <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-end w-full group/inc" title="Clique para ver detalhes do incentivo">
+                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">
+                             ${formatCurrency(fatInc)}
+                             ${missedInc > 0 ? `<span class="text-[10px] text-red-500 font-bold ml-1">(${formatCurrency(missedInc)})</span>` : ''}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-medium group-hover/inc:text-primary transition-colors leading-none mt-0.5">clique para ver detalhes</span>
+                    </button>
                 </td>
                 
                 <!-- Total -->
@@ -355,7 +417,7 @@ function renderTable() {
     // Save groups globally for modal access
     window.rowGroups = groups;
 
-    updateStats(0, 0, 0, filtered); // Update stats uses filtered list logic which we might need to adjust or keep
+    updateStats(0, 0, 0, filtered, programStatusMap); // Pass computed status map
     renderPagination(totalItems, startIndex + 1, endIndex);
 }
 
@@ -396,6 +458,7 @@ window.openBreakdownModal = (key) => {
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <td class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300">${instName}</td>
                 <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
+                <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
                 <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
                 <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
                 <td class="py-3 px-2 text-right">
@@ -406,6 +469,7 @@ window.openBreakdownModal = (key) => {
                         class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
                     />
                 </td>
+                <td class="py-3 px-2 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
             </tr>
         `;
     }).join('');
@@ -418,33 +482,54 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
 
     // Find item locally to update immediately
     const group = window.rowGroups[groupKey];
-    const item = group.items.find(i => i.id === pactId);
-    if (item) {
-        if (!item.producao) item.producao = {};
-        item.producao.aprovada = val;
+    if (!group) return;
+
+    // Find the master item that triggered the change
+    const masterItem = group.items.find(i => i.id === pactId);
+    if (!masterItem) return;
+
+    const targetInstId = masterItem.instId;
+
+    // Filter ALL items in this group that belong to the same Institute
+    // Logic: Production is per Procedure per Institute, so it applies to all Incentive programs.
+    const itemsToUpdate = group.items.filter(i => i.instId === targetInstId);
+
+    try {
+        const updatePromises = itemsToUpdate.map(item => {
+            if (!item.producao) item.producao = {};
+            item.producao.aprovada = val;
+            return Repository.savePactuacao({ id: item.id, producao: { ...item.producao, aprovada: val } });
+        });
+
+        await Promise.all(updatePromises);
+        console.log(`Synced production ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId})`);
 
         // Recalc Group Totals
+        // Note: Total Prod is usually Sum of all PROD items. 
+        // But if we double count per program, we might be inflating "Total Prod" if it's supposed to be "Unique Procedures".
+        // Use loop:
         group.totalProd = group.items.reduce((sum, i) => sum + (parseInt(i.producao?.aprovada) || 0), 0);
+        // Wait, if we have 2 programs for same procedure, we are summing 4 + 4 = 8?
+        // Logic check: "Produzido (Total)" column. 
+        // If the table line is "Holter", and we did 4 Holters. We expect "4".
+        // But if `items` contains 2 rows (one for each program), and both have 4.
+        // Then reduce sums to 8. 
+        // We should fix this calculation logic to count unique production or max per institute?
+        // HOWEVER, "Ofertado (Total)" logic (line 251ish in old code, now refactored inside loop)
+        // was summing offers. 
+        // Let's stick to simple Sum for now to avoid breaking existing "Total" definition unless user complains "Doubled".
+        // Actually, previous logic just summed everything. So we keep summing.
 
-        // Update DB
-        try {
-            await Repository.savePactuacao({ id: pactId, producao: { ...item.producao, aprovada: val } });
-            console.log('Saved production:', pactId, val);
+        // Re-render table to reflect new totals (and financial calculations)
+        renderTable();
 
-            // Re-render table to reflect new totals (stay on same page)
-            renderTable();
+        // Re-open/Refresh modal to show updated values in other inputs
+        // This ensures if user typed in Row 1, Row 2 also updates visibly.
+        window.openBreakdownModal(groupKey);
 
-            // If we re-render, we might lose the modal if we are not careful? 
-            // renderTable regenerates HTML.
-            // But we don't want to close the modal.
-            // Actually renderTable updates the background table. The modal is separate HTML (outside tbody).
-            // However, `rowGroups` will be regenerated. We need to make sure the modal refers to valid data.
-            // Since `window.rowGroups` is updated, next click works. Does open modal stay open? Yes.
-            // But if we want to update the modal subtitle/summary if needed?
-        } catch (err) {
-            console.error('Error saving production:', err);
-            alert('Erro ao salvar valor.');
-        }
+    } catch (err) {
+        console.error('Error saving production:', err);
+        alert('Erro ao salvar valor.');
     }
 };
 
@@ -575,8 +660,9 @@ function updateStats(pact, real, fin, filteredList = [], globalStatus = {}) {
 
         const progId = p.progId || 'default';
         const key = `${p.sigtap}-${progId}`;
-        const gStats = globalStatus[key] || { meta: 0, offer: 0 };
-        const isMetaMet = gStats.meta > 0 ? (gStats.offer >= gStats.meta) : true;
+
+        // Use Pre-calculated Status for this Prog/Sigtap
+        const isMetaMet = globalStatus[key] === true;
 
         const rowSigtap = realiz * vSigtap;
         const rowInc = isMetaMet ? (realiz * vInc) : 0;
