@@ -1,4 +1,5 @@
 import { Repository } from './repository.js';
+import { DateUtils } from './utils/date-utils.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -38,6 +39,17 @@ export async function initDashboard() {
         updateDashboard(currentPeriod, pactuacoes);
     } else {
         updateDashboard(null, pactuacoes);
+    }
+
+    // --- GLOBAL DEADLINE MONITOR ---
+    const config = await Repository.getSystemConfig();
+    const deadlineDay = config?.deadlineDay || 5;
+    const deadlineRule = config?.deadlineRule || 'business_day';
+    const deadlineAlert = config?.deadlineAlert !== false; // Default true
+
+    if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
+        const insts = await Repository.getInstitutos(); // Ensure we have names
+        checkGlobalCompliance(pactuacoes, insts, { deadlineDay, deadlineRule });
     }
 }
 
@@ -674,5 +686,105 @@ window.sendToIndividual = (phone) => {
     const body = encodeURIComponent(document.getElementById('comm-message').value);
     window.open(`https://wa.me/55${cleanPhone}?text=${body}`, '_blank');
 };
+
+
+// --- GLOBAL COMPLIANCE CHECK ---
+function checkGlobalCompliance(allPactuacoes, institutes, config) {
+    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
+
+    // Filter relevant items
+    const periodItems = allPactuacoes.filter(p => p.competencia === targetComp);
+    if (periodItems.length === 0) return;
+
+    const complianceMap = {};
+
+    // Initialize map for institutes involved in this period (or all active? Let's use involved in pactuacoes)
+    // Actually, we should check ALL institutes that HAVE pactuation goals > 0.
+
+    periodItems.forEach(p => {
+        if (!complianceMap[p.instId]) {
+            complianceMap[p.instId] = {
+                instId: p.instId,
+                pendingCount: 0,
+                totalCount: 0
+            };
+        }
+
+        const meta = parseInt(p.ofertaMinima || 0);
+        if (meta > 0) {
+            complianceMap[p.instId].totalCount++;
+            const real = parseInt(p.producao?.realizada || 0);
+            if (!real || real === 0) {
+                complianceMap[p.instId].pendingCount++;
+            }
+        }
+    });
+
+    const nonCompliant = Object.values(complianceMap).filter(i => i.pendingCount > 0);
+
+    if (nonCompliant.length > 0) {
+        showMonitorModal(targetComp, nonCompliant, institutes, config);
+    }
+}
+
+function showMonitorModal(targetCompISO, list, institutes, config) {
+    const modal = document.getElementById('modal-monitoramento-prazo');
+    if (!modal) return;
+
+    // Format Date from targetComp
+    const [tYear, tMonth] = targetCompISO.split('-');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const humanComp = `${months[parseInt(tMonth) - 1]} ${tYear}`;
+
+    document.getElementById('monitor-month').textContent = humanComp;
+
+    // Calculate Deadline Date based on Config
+    const today = new Date();
+    let deadlineDate;
+
+    const day = config?.deadlineDay || 5;
+    const rule = config?.deadlineRule || 'business_day';
+
+    if (rule === 'fixed_date') {
+        deadlineDate = new Date(today.getFullYear(), today.getMonth(), day);
+    } else {
+        deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), day);
+    }
+
+    document.getElementById('monitor-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+
+    const tbody = document.getElementById('monitor-table-body');
+    tbody.innerHTML = list.map(item => {
+        const inst = institutes.find(i => i.id === item.instId);
+        const name = inst ? (inst.sigla || inst.nome) : 'Instituto Desconhecido';
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${name}</td>
+                <td class="px-6 py-4 text-center font-mono text-xs text-red-600 font-bold bg-red-50 dark:bg-red-900/10 rounded-lg">
+                    ${item.pendingCount} / ${item.totalCount}
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        <span class="size-1.5 rounded-full bg-red-600"></span>
+                        Pendente
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <button onclick="window.openCommModal('email', '${item.instId}', '${item.instId}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs">
+                        Cobrar
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    modal.classList.remove('hidden');
+}
+
+window.notifyAllPending = () => {
+    alert("Notificações enviadas para todos os institutos listados.");
+    document.getElementById('modal-monitoramento-prazo').classList.add('hidden');
+}
 
 initDashboard();

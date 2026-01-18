@@ -22,6 +22,7 @@ const COLL_USUARIOS = "usuarios";
 const COLL_PACTUACOES = "pactuacoes"; // Level 2 (Relations)
 const COLL_PRODUCAO = "producao";
 const COLL_LOGS = "logs";
+const COLL_CONFIG = "config"; // New Collection
 
 // --- HELPERS ---
 const normalizeId = (text) => {
@@ -252,6 +253,19 @@ export const Repository = {
 
         await this.logActivity('DUPLICATE_COMPETENCIA', { source: sourceComp, target: targetComp, count });
         return count;
+    },
+
+
+    // --- SYSTEM CONFIG ---
+    async getSystemConfig() {
+        // We use a singleton document named 'system'
+        const d = await getDoc(doc(db, COLL_CONFIG, "system"));
+        return d.exists() ? d.data() : null;
+    },
+
+    async saveSystemConfig(config) {
+        await setDoc(doc(db, COLL_CONFIG, "system"), config, { merge: true });
+        await this.logActivity('UPDATE_CONFIG', config);
     },
 
     // BATCH IMPORT

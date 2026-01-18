@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Smart Redirection
                 // Check for any institute role variant (Institutos, Institutos_Editor, Institutos_Leitor)
                 if (profile && profile.role && profile.role.toString().startsWith('Institutos')) {
-                    window.location.href = 'dashboard_instituto.html';
+                    window.location.href = 'acompanhamento_instituto.html';
                 } else {
                     // Start directly at Monitoring/Budget Table as requested
                     window.location.href = 'acompanhamento_orcamento.html';

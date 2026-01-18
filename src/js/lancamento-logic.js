@@ -1,4 +1,5 @@
 import { Repository } from './repository.js';
+import { DateUtils } from './utils/date-utils.js';
 import { auth } from './firebase-config.js';
 // Fallback helper if repository.js doesn't have it (it usually does as getProgramas or similar)
 Repository.getPrograms = Repository.getProgramas || (async () => []);
@@ -55,6 +56,20 @@ async function initLancamento() {
         localProcs = await Repository.getProcedimentos();
 
         // Setup Filters (Mock for now, or real if needed)
+
+        // --- DEADLINE CHECK START ---
+        const config = await Repository.getSystemConfig();
+        const deadlineDay = config?.deadlineDay || 5;
+        const deadlineRule = config?.deadlineRule || 'business_day';
+        const deadlineAlert = config?.deadlineAlert !== false;
+
+        // Only checking if we are past deadline to alert about PREVIOUS month
+        if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule) && instituto) {
+            checkDeadlineCompliance(allPactuacoes, instituto.id, localProcs, { deadlineDay, deadlineRule });
+        }
+        // --- DEADLINE CHECK END ---
+
+        renderTable();
         const compSelect = document.getElementById('competencia');
         if (compSelect) {
             // Populate based on data? or static for now as per HTML
@@ -267,6 +282,81 @@ window.openDetailModal = async (sigtap) => {
 
 window.closeDetailModal = () => {
     document.getElementById('modal-detalhe-lancamento').classList.add('hidden');
+}
+
+
+// --- COMPLIANCE ALERT LOGIC ---
+function checkDeadlineCompliance(pactuacoes, instId, procs, config) {
+    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
+
+    // Filter items for this institute and target competence
+    const relevant = pactuacoes.filter(p => p.instId === instId && p.competencia === targetComp);
+    if (relevant.length === 0) return; // No pactuation for this month, so maybe nothing to alert? Or alert everything?
+    // Assuming if no pactuation doc exists, it means nothing was imported/created, so we can't check for "missing" real.
+
+    // Group by Sigtap to check status
+    const groups = {};
+    relevant.forEach(p => {
+        if (!groups[p.sigtap]) {
+            groups[p.sigtap] = { sigtap: p.sigtap, maxMeta: 0, totalRealized: 0 };
+        }
+        groups[p.sigtap].maxMeta = Math.max(groups[p.sigtap].maxMeta, parseInt(p.ofertaMinima || 0));
+        groups[p.sigtap].totalRealized = Math.max(groups[p.sigtap].totalRealized, parseInt(p.producao?.realizada || 0));
+    });
+
+    const missing = Object.values(groups).filter(g => g.maxMeta > 0 && g.totalRealized === 0);
+
+    if (missing.length > 0) {
+        showDeadlineAlert(targetComp, missing, procs, config);
+    }
+}
+
+function showDeadlineAlert(compLabel, items, procs, config) {
+    const modal = document.getElementById('modal-alert-prazo');
+    if (!modal) return;
+
+    // Format Month
+    const [year, month] = compLabel.split('-');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const humanComp = `${months[parseInt(month) - 1]} ${year}`;
+
+    document.getElementById('alert-month').textContent = humanComp;
+
+    // Calc Deadline
+    const today = new Date();
+    let deadlineDate;
+
+    const day = config?.deadlineDay || 5;
+    const rule = config?.deadlineRule || 'business_day';
+
+    if (rule === 'fixed_date') {
+        deadlineDate = new Date(today.getFullYear(), today.getMonth(), day);
+    } else {
+        deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), day);
+    }
+
+    document.getElementById('alert-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+
+    // Render Items
+    const tbody = document.getElementById('alert-table-body');
+
+    tbody.innerHTML = items.map(g => {
+        const proc = procs.find(pr => pr.sigtap === g.sigtap);
+        const procName = proc?.nome || `Procedimento ${g.sigtap}`;
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td class="px-4 py-3 font-mono text-slate-500">${g.sigtap}</td>
+                <td class="px-4 py-3 font-bold text-slate-800 dark:text-white">${procName}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                        <span class="size-1.5 rounded-full bg-red-600"></span> Pendente
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    modal.classList.remove('hidden');
 }
 
 

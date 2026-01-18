@@ -2,6 +2,7 @@
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { DateUtils } from './utils/date-utils.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -241,7 +242,115 @@ async function initAcompanhamentoInst() {
 
         renderTable();
         setupSortListeners();
+
+        // --- DEADLINE ALERT CHECK (On Init) ---
+        const config = await Repository.getSystemConfig();
+        const deadlineDay = config?.deadlineDay || 5;
+        const deadlineRule = config?.deadlineRule || 'business_day';
+        const deadlineAlert = config?.deadlineAlert !== false;
+
+        if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
+            // Check compliance for ALL allowed ids (Global check for user)
+            const allInstitutes = await Repository.getInstitutos();
+            checkDeadlineCompliance(allPactuacoes, allowedIds, allInstitutes, { deadlineDay, deadlineRule });
+        }
     });
+}
+
+// --- DEADLINE ALERT LOGIC ---
+function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, config) {
+    const targetComp = DateUtils.getCurrentMonthLabel('short'); // "mmm/yy" (e.g., "jan/26")
+
+    // Filter pertinent data: Target Month AND User's Institutes
+    const relevant = allPactuacoes.filter(p =>
+        p.competencia === targetComp &&
+        allowedInstIds.includes(p.instId)
+    );
+
+    if (relevant.length === 0) return;
+
+    const pendingItems = [];
+    const processedKeys = new Set(); // Key: instId_sigtap
+
+    relevant.forEach(p => {
+        const key = `${p.instId}_${p.sigtap}`;
+        if (processedKeys.has(key)) return;
+
+        const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
+
+        const maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
+        const totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
+
+        if (maxMeta > 0 && totalRealized === 0) {
+            pendingItems.push({
+                instId: p.instId,
+                sigtap: p.sigtap,
+                meta: maxMeta
+            });
+            processedKeys.add(key);
+        }
+    });
+
+    if (pendingItems.length > 0) {
+        showDeadlineAlert(targetComp, pendingItems, allInstitutes, config);
+    }
+}
+
+function showDeadlineAlert(compLabel, items, allInstitutes, config) {
+    const modal = document.getElementById('modal-alert-prazo');
+    if (!modal) return;
+
+    // Formatting Date Label
+    const [year, month] = compLabel.split('-');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const humanComp = `${months[parseInt(month) - 1]} ${year}`;
+
+    document.getElementById('alert-month').textContent = humanComp;
+
+    // Calculate Deadline
+    const today = new Date();
+    let deadlineDate;
+    const day = config?.deadlineDay || 5;
+    const rule = config?.deadlineRule || 'business_day';
+
+    if (rule === 'fixed_date') {
+        deadlineDate = new Date(today.getFullYear(), today.getMonth(), day);
+    } else {
+        deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), day);
+    }
+
+    document.getElementById('alert-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+
+    // Render Items
+    const tbody = document.getElementById('alert-table-body');
+
+    tbody.innerHTML = items.map(item => {
+        const inst = allInstitutes.find(i => i.id === item.instId);
+        const instName = inst ? (inst.sigla || inst.nome) : 'Inst.';
+        const proc = localProcs.find(pr => pr.sigtap === item.sigtap);
+        const procName = proc ? proc.nome : `Procedimento ${item.sigtap}`;
+
+        const showInst = items.some(i => i.instId !== items[0].instId);
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td class="px-4 py-3 font-mono text-slate-500 text-xs">${item.sigtap}</td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800 dark:text-white">${procName}</span>
+                         ${showInst ? `<span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">${instName}</span>` : ''}
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                        <span class="size-1.5 rounded-full bg-red-600"></span> Pendente
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    modal.classList.remove('hidden');
 }
 
 function setupSortListeners() {
@@ -432,33 +541,58 @@ function renderTable() {
         const prog = localProgs.find(pg => pg.id === p.progId);
         groups[groupKey].programs.add(prog ? prog.nome : (p.progId || ''));
 
+        if (!groups[groupKey].instStats) {
+            groups[groupKey].instStats = {};
+        }
+
+        // Initialize Stats for this Institute if not present
+        if (!groups[groupKey].instStats[p.instId]) {
+            groups[groupKey].instStats[p.instId] = {
+                maxMeta: 0,
+                sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0
+            };
+        }
+
+        const stats = groups[groupKey].instStats[p.instId];
         const meta = parseInt(p.ofertaMinima || 0);
 
-        // Ensure producao object exists
-        if (!p.producao) p.producao = { realizada: 0, sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0 };
+        // Update Max Meta for this Institute (Shared Goal Logic within Inst)
+        stats.maxMeta = Math.max(stats.maxMeta, meta);
 
-        // For inputs: we want to display the "current" values. 
-        // Since we mirror updates, all items *should* have same values.
-        // We take values from the FIRST item we encounter (or max/latest).
-        // Let's just take the values from the *first* item in the group, handled by the loop if we set it once.
-        // Or simpler: overwrite with current p values (assuming consistency).
+        // Capture Production (Mirrored within Inst, so we can just take the value of any/latest)
+        // We use Math.max just in case of slight sync inconsistency, favoring the positive value
+        if (!p.producao) p.producao = {};
+        stats.sem1 = Math.max(stats.sem1, parseInt(p.producao.sem1 || 0));
+        stats.sem2 = Math.max(stats.sem2, parseInt(p.producao.sem2 || 0));
+        stats.sem3 = Math.max(stats.sem3, parseInt(p.producao.sem3 || 0));
+        stats.sem4 = Math.max(stats.sem4, parseInt(p.producao.sem4 || 0));
+        stats.sem5 = Math.max(stats.sem5, parseInt(p.producao.sem5 || 0));
+    });
 
-        groups[groupKey].sem1 = parseInt(p.producao.sem1 || 0);
-        groups[groupKey].sem2 = parseInt(p.producao.sem2 || 0);
-        groups[groupKey].sem3 = parseInt(p.producao.sem3 || 0);
-        groups[groupKey].sem4 = parseInt(p.producao.sem4 || 0);
-        groups[groupKey].sem5 = parseInt(p.producao.sem5 || 0);
+    // Finalize Calculation: Aggregate InstStats to Group Totals
+    Object.values(groups).forEach(group => {
+        let maxMetaVal = 0;
+        let sumSem1 = 0, sumSem2 = 0, sumSem3 = 0, sumSem4 = 0, sumSem5 = 0;
 
-        // Meta Logic: User said "a meta é a maior"
-        groups[groupKey].maxMeta = Math.max(groups[groupKey].maxMeta, meta);
-        // Total Meta might not be useful if we use Max, but let's keep it max as well? 
-        // Or is totalMeta = SUM of metas for context? 
-        // "Ele so faz um lançametno a meta é o maior" -> The target is Max.
-        // Let's set totalMeta to MaxMeta for the progress calculation.
-        groups[groupKey].totalMeta = groups[groupKey].maxMeta;
+        Object.values(group.instStats).forEach(st => {
+            maxMetaVal = Math.max(maxMetaVal, st.maxMeta);
+            sumSem1 += st.sem1;
+            sumSem2 += st.sem2;
+            sumSem3 += st.sem3;
+            sumSem4 += st.sem4;
+            sumSem5 += st.sem5;
+        });
 
-        // Recalc total for group
-        groups[groupKey].totalRealizado = groups[groupKey].sem1 + groups[groupKey].sem2 + groups[groupKey].sem3 + groups[groupKey].sem4 + groups[groupKey].sem5;
+        group.maxMeta = maxMetaVal;
+        group.totalMeta = maxMetaVal; // Consistent
+        group.sem1 = sumSem1;
+        group.sem2 = sumSem2;
+        group.sem3 = sumSem3;
+        group.sem4 = sumSem4;
+        group.sem5 = sumSem5;
+
+        // Final Total Realized
+        group.totalRealizado = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
     });
 
     // 3. Search Filter (on Groups)

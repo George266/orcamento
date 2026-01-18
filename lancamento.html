@@ -409,6 +409,40 @@
             </div>
         </div>
     </div>
+    <!-- MODAL: ALERT PRAZO -->
+    <div id="modal-alert-prazo"
+        class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-red-900/20 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-[#151e2a] rounded-2xl p-0 max-w-md w-full shadow-2xl overflow-hidden border border-red-200 dark:border-red-900/50">
+            <div class="p-6 pb-0 flex flex-col items-center text-center gap-4">
+                <div
+                    class="size-14 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 flex items-center justify-center mb-2">
+                    <span class="material-symbols-outlined text-3xl">Timer</span>
+                </div>
+                <h3 class="text-xl font-black text-slate-900 dark:text-white">Prazo Expirado!</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    O prazo para o lançamento das ofertas de <strong id="alert-month"
+                        class="text-slate-900 dark:text-white">---</strong> encerrou-se no dia
+                    <strong id="alert-deadline" class="text-slate-900 dark:text-white">---</strong> (5º dia útil).
+                </p>
+                <div
+                    class="w-full bg-red-50 dark:bg-red-900/10 rounded-xl p-4 border border-red-100 dark:border-red-900/20">
+                    <p class="text-xs font-bold text-red-800 dark:text-red-200 uppercase tracking-wide mb-2">Pendências
+                        Identificadas</p>
+                    <ul id="alert-list"
+                        class="text-xs text-left text-red-700 dark:text-red-300 space-y-1 list-disc list-inside max-h-32 overflow-y-auto">
+                        <!-- JS populated -->
+                    </ul>
+                </div>
+            </div>
+            <div class="p-6">
+                <button onclick="document.getElementById('modal-alert-prazo').classList.add('hidden')"
+                    class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/30 transition-all">
+                    Entendi, vou regularizar
+                </button>
+            </div>
+        </div>
+    </div>
     <script type="module" src="/src/js/lancamento-logic.js?v=12345"></script>
 </body>
 

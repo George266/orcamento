@@ -46,9 +46,9 @@ export function initAuthGuard() {
                 } else if (role.startsWith('institutos')) {
                     // Institute restricted to their pages
                     if (isAdminPage) {
-                        window.location.href = 'dashboard_instituto.html';
+                        window.location.href = 'acompanhamento_instituto.html';
                     } else if (isPublicPage) {
-                        window.location.href = 'dashboard_instituto.html';
+                        window.location.href = 'acompanhamento_instituto.html';
                     }
                 } else {
                     // Outros papéis

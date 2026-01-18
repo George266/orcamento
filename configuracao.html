@@ -184,6 +184,10 @@
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
                 Incentivos
             </button>
+            <button onclick="switchTab('config')" id="btn-tab-config"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
+                Configuração
+            </button>
             <button onclick="switchTab('importacao')" id="btn-tab-importacao"
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap flex items-center gap-2">
                 <span class="material-symbols-outlined text-[18px]">publish</span> Importação
@@ -358,6 +362,106 @@
                 </div>
                 <div id="po-history" class="p-4 space-y-3 max-h-60 overflow-y-auto text-xs">
                     <p class="text-slate-400 italic">Nenhuma alteração registrada recentemente.</p>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div id="tab-config" class="tab-content hidden">
+            <div
+                class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden p-6 md:p-8">
+                <div class="border-b border-slate-200 dark:border-slate-800 pb-6 mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Configurações do Sistema</h2>
+                    <p class="text-sm text-slate-500">Defina os parâmetros globais de funcionamento e notificações.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Column 1: Prazos -->
+                    <div class="space-y-6">
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div
+                                    class="size-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
+                                    <span class="material-symbols-outlined">calendar_clock</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white">Prazos de Lançamento</h3>
+                                    <p class="text-xs text-slate-500">Controle do fechamento mensal.</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Regra de
+                                        Fechamento</label>
+                                    <select id="cfg-deadline-rule"
+                                        class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm">
+                                        <option value="business_day">Dias Úteis (Padrão)</option>
+                                        <option value="fixed_date">Dia Fixo do Mês</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Dia
+                                            Limite</label>
+                                        <input type="number" id="cfg-deadline-day" value="5" min="1" max="31"
+                                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <p class="text-xs text-slate-500 mb-2.5 ml-2">do mês subsequente.</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 pt-2">
+                                    <input type="checkbox" id="cfg-deadline-alert" checked
+                                        class="rounded border-slate-300 text-primary focus:ring-primary/20">
+                                    <label for="cfg-deadline-alert"
+                                        class="text-sm text-slate-700 dark:text-slate-300">Ativar alertas automáticos
+                                        nos dashboards</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Notificações -->
+                    <div class="space-y-6">
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div
+                                    class="size-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center">
+                                    <span class="material-symbols-outlined">notifications_active</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white">Comunicação</h3>
+                                    <p class="text-xs text-slate-500">Padrões de mensagem para cobrança.</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Assunto
+                                        (E-mail)</label>
+                                    <input type="text" id="cfg-msg-subject" value="Alerta de Produção - Gestão SUS"
+                                        class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Mensagem
+                                        Padrão</label>
+                                    <textarea id="cfg-msg-body" rows="4"
+                                        class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm resize-none">Olá, identificamos pendências no lançamento de sua produção referente ao último mês. Favor regularizar o quanto antes.</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                    <button onclick="saveSystemConfig()"
+                        class="px-8 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined">save</span>
+                        Salvar Configurações
+                    </button>
                 </div>
             </div>
         </div>
@@ -681,6 +785,34 @@
     <script type="module">
         import { Repository } from './src/js/repository.js';
 
+        // --- SYSTEM CONFIG LOGIC ---
+        window.loadSystemConfig = async () => {
+            const config = (await Repository.getSystemConfig()) || {};
+
+            if (document.getElementById('cfg-deadline-rule')) {
+                document.getElementById('cfg-deadline-rule').value = config.deadlineRule || 'business_day';
+                document.getElementById('cfg-deadline-day').value = config.deadlineDay || 5;
+                document.getElementById('cfg-deadline-alert').checked = config.deadlineAlert !== false;
+
+                document.getElementById('cfg-msg-subject').value = config.msgSubject || 'Alerta de Produção - Gestão SUS';
+                document.getElementById('cfg-msg-body').value = config.msgBody || 'Olá, identificamos pendências no lançamento de sua produção referente ao último mês. Favor regularizar o quanto antes.';
+            }
+        };
+
+        window.saveSystemConfig = async () => {
+            const config = {
+                deadlineRule: document.getElementById('cfg-deadline-rule').value,
+                deadlineDay: parseInt(document.getElementById('cfg-deadline-day').value),
+                deadlineAlert: document.getElementById('cfg-deadline-alert').checked,
+                msgSubject: document.getElementById('cfg-msg-subject').value,
+                msgBody: document.getElementById('cfg-msg-body').value,
+                updatedAt: new Date()
+            };
+
+            await Repository.saveSystemConfig(config);
+            alert('Configurações salvas com sucesso!');
+        };
+
         let currentEditId = null;
         let currentSort = { field: 'nome', direction: 'asc' };
 
@@ -706,7 +838,7 @@
             if (selected) selected.classList.remove('hidden');
 
             // Update buttons
-            ['institutos', 'procedimentos', 'incentivos', 'importacao'].forEach(t => {
+            ['institutos', 'procedimentos', 'incentivos', 'config', 'importacao'].forEach(t => {
                 const btn = document.getElementById(`btn-tab-${t}`);
                 if (btn) {
                     if (t === tab) {
@@ -723,6 +855,7 @@
             if (tab === 'institutos') window.loadInstitutos();
             if (tab === 'procedimentos') window.loadProcedimentos();
             if (tab === 'incentivos') window.loadPO();
+            if (tab === 'config') window.loadSystemConfig();
         };
 
         // --- IMPORT LOGIC ---

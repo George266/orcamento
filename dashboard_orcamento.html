@@ -341,6 +341,73 @@
             </div>
         </div>
     </main>
+    <!-- MODAL: MONITORAMENTO PRAZO -->
+    <div id="modal-monitoramento-prazo"
+        class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-[#151e2a] rounded-2xl p-0 max-w-3xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div
+                class="bg-red-50 dark:bg-red-900/20 p-6 border-b border-red-100 dark:border-red-900/50 flex items-start justify-between">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="size-12 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-2xl">timer_off</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Prazo de Lançamento Expirado</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                            Competência: <strong id="monitor-month" class="text-slate-900 dark:text-white">---</strong>
+                            |
+                            Encerrado em: <strong id="monitor-deadline">---</strong>
+                        </p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-monitoramento-prazo').classList.add('hidden')"
+                    class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Os seguintes Institutos possuem pendências de lançamento (oferta não confirmada ou incompleta) para
+                    o período.
+                </p>
+
+                <div
+                    class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead
+                            class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
+                            <tr>
+                                <th class="px-6 py-3">Instituto</th>
+                                <th class="px-6 py-3 text-center">Itens Pendentes</th>
+                                <th class="px-6 py-3 text-center">Status</th>
+                                <th class="px-6 py-3 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitor-table-body"
+                            class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div
+                class="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                <button onclick="document.getElementById('modal-monitoramento-prazo').classList.add('hidden')"
+                    class="px-5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    Fechar
+                </button>
+                <button onclick="window.notifyAllPending()"
+                    class="px-5 py-2.5 rounded-lg bg-red-600 text-white font-bold text-sm shadow-md hover:bg-red-700 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">notification_important</span>
+                    Notificar Todos
+                </button>
+            </div>
+        </div>
+    </div>
     <script type="module" src="src/js/auth-guard.js"></script>
     <script type="module" src="src/js/dashboard-logic.js"></script>
 </body>

@@ -1,6 +1,7 @@
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { DateUtils } from './utils/date-utils.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -176,7 +177,125 @@ async function initInstituteDashboard() {
 
         // Render initially
         renderDashboard();
+
+        // --- DEADLINE ALERT CHECK ---
+        const config = await Repository.getSystemConfig();
+        const deadlineDay = config?.deadlineDay || 5;
+        const deadlineRule = config?.deadlineRule || 'business_day';
+        const deadlineAlert = config?.deadlineAlert !== false;
+
+        if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
+            // Check compliance for ALL allowed institutes (not just the selected one)
+            // We want to warn the user if ANY of their institutes is pending.
+            const institutes = await Repository.getInstitutos();
+            checkDeadlineCompliance(allPactuacoes, allowedIds, institutes, { deadlineDay, deadlineRule });
+        }
     });
+}
+
+// --- DEADLINE ALERT LOGIC ---
+function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, config) {
+    const targetComp = DateUtils.getCurrentMonthLabel('short'); // "mmm/yy"
+
+    // Filter pertinent data: Target Month AND User's Institutes
+    const relevant = allPactuacoes.filter(p =>
+        p.competencia === targetComp &&
+        allowedInstIds.includes(p.instId)
+    );
+
+    if (relevant.length === 0) return;
+
+    // Identify Pending Items
+    // We group by Sigtap + Institute to avoid duplicate alerts for same procedure in different programs
+    // Actually, distinct missing items row per institute
+    const pendingItems = [];
+    const processedKeys = new Set(); // Key: instId_sigtap
+
+    relevant.forEach(p => {
+        const key = `${p.instId}_${p.sigtap}`;
+        if (processedKeys.has(key)) return;
+
+        // Check the whole group (all programs for this sigtap/inst)
+        const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
+
+        // Max Meta Concept
+        const maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
+        const totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
+
+        if (maxMeta > 0 && totalRealized === 0) {
+            pendingItems.push({
+                instId: p.instId,
+                sigtap: p.sigtap,
+                procName: 'Carregando...', // We'll try to look this up or pass procs
+                meta: maxMeta
+            });
+            processedKeys.add(key);
+        }
+    });
+
+    if (pendingItems.length > 0) {
+        showDeadlineAlert(targetComp, pendingItems, allInstitutes, config);
+    }
+}
+
+function showDeadlineAlert(compLabel, items, allInstitutes, config) {
+    const modal = document.getElementById('modal-alert-prazo');
+    if (!modal) return;
+
+    // Formatting Date Label
+    const [year, month] = compLabel.split('-');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const humanComp = `${months[parseInt(month) - 1]} ${year}`;
+
+    document.getElementById('alert-month').textContent = humanComp;
+
+    // Calculate Deadline
+    const today = new Date();
+    let deadlineDate;
+    const day = config?.deadlineDay || 5;
+    const rule = config?.deadlineRule || 'business_day';
+
+    if (rule === 'fixed_date') {
+        deadlineDate = new Date(today.getFullYear(), today.getMonth(), day);
+    } else {
+        deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), day);
+    }
+
+    document.getElementById('alert-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+
+    // Render Items
+    const tbody = document.getElementById('alert-table-body');
+    // Need proc names. Relying on localProcs global (if available) or finding unique logic.
+    // 'localProcs' is available in global scope of this file.
+
+    tbody.innerHTML = items.map(item => {
+        const inst = allInstitutes.find(i => i.id === item.instId);
+        const instName = inst ? (inst.sigla || inst.nome) : 'Inst.';
+        const proc = localProcs.find(pr => pr.sigtap === item.sigtap);
+        const procName = proc ? proc.nome : `Procedimento ${item.sigtap}`;
+
+        // If user has multiple institutes, show Institute Name clearly.
+        const showInst = items.some(i => i.instId !== items[0].instId);
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td class="px-4 py-3 font-mono text-slate-500 text-xs">${item.sigtap}</td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800 dark:text-white">${procName}</span>
+                         ${showInst ? `<span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">${instName}</span>` : ''}
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                        <span class="size-1.5 rounded-full bg-red-600"></span> Pendente
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    modal.classList.remove('hidden');
 }
 
 async function renderDashboard() {
