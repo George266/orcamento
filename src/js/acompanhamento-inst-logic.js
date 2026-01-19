@@ -266,7 +266,7 @@ async function initAcompanhamentoInst() {
 }
 
 // --- DEADLINE ALERT LOGIC ---
-function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, config) {
+async function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, config) {
     const targetComp = DateUtils.getCurrentMonthLabel('short'); // "mmm/yy" (e.g., "jan/26")
 
     const endDeadline = config?.endMonthDeadline || 7;
@@ -283,6 +283,10 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
         p.competencia === targetComp &&
         allowedInstIds.includes(p.instId)
     );
+
+    // FETCH JUSTIFICATIONS
+    const existingJustifications = await Repository.getJustificativas(targetComp);
+    const justifiedSet = new Set(existingJustifications.map(j => `${j.instId}_${j.sigtap}`));
     console.log(`[DEBUG] Relevant Items Found: ${relevant.length}`);
 
     if (relevant.length === 0) return;
@@ -308,10 +312,9 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
         const key = `${p.instId}_${p.sigtap}`;
         if (processedKeys.has(key)) return;
 
-        // CHECK IF ALREADY JUSTIFIED (Local Flag)
-        const justifiedKey = `justified_${key}_${targetComp}`;
-        if (localStorage.getItem(justifiedKey)) {
-            console.log(`[DEBUG] Item ${key} already justified for ${targetComp}`);
+        // CHECK IF ALREADY JUSTIFIED (Firestore + Local Fallback)
+        if (justifiedSet.has(key)) {
+            console.log(`[DEBUG] Item ${key} found in database justifications.`);
             return;
         }
 
@@ -940,6 +943,52 @@ window.ignoreDeadlineAlert = function (type) {
     // Optional: Toast notification
     // alert('Aviso ocultado para esta competência.');
 };
+
+window.saveJustification = async (instId, sigtap, competencia) => {
+    const txtArea = document.getElementById(`just-${sigtap}`);
+    if (!txtArea) return;
+
+    const text = txtArea.value.trim();
+    if (!text) {
+        alert("Por favor, escreva uma justificativa.");
+        return;
+    }
+
+    try {
+        await Repository.saveJustificativa({
+            instId,
+            sigtap,
+            competencia,
+            texto: text,
+            userEmail: auth.currentUser?.email || 'unknown'
+        });
+
+        // Mark as justified locally to hide immediately
+        const key = `justified_${instId}_${sigtap}_${competencia}`;
+        localStorage.setItem(key, 'true');
+
+        // Update UI
+        const row = document.querySelector(`tr[data-sigtap="${sigtap}"]`);
+        if (row) {
+            row.style.opacity = '0.5';
+            row.innerHTML = `<td class="px-6 py-5 text-center text-green-600 font-bold bg-green-50">Justificativa enviada com sucesso!</td>`;
+            setTimeout(() => row.remove(), 2000);
+        }
+
+        // Check if list empty to close modal
+        setTimeout(() => {
+            const tbody = document.getElementById('alert-table-body');
+            if (tbody && tbody.children.length <= 1) { // 1 because we just removed one effectively
+                document.getElementById('modal-alert-prazo').classList.add('hidden');
+            }
+        }, 2200);
+
+    } catch (err) {
+        console.error("Erro ao salvar justificativa:", err);
+        alert("Erro ao salvar. Tente novamente.");
+    }
+};
+
 window.openGlobalBreakdown = (sigtap) => {
     // Find ANY group with this sigtap to get the global data (which assumes global stats are by sigtap)
     const groups = window.displayGroups || {};

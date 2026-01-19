@@ -27,6 +27,11 @@ export async function initAcompanhamento() {
     localProcs = await Repository.getProcedimentos();
     localProgramas = await Repository.getProgramas(); // Fetch programs
 
+    // Fetch Justifications for current view context (optimized later, for now maybe fetch all or by competence filter?)
+    // Since we don't know the filter yet, we might lazy load or fetch strictly by selected competence in renderTable.
+    // But init loads data. Let's rely on renderTable to fetch specific competence justifications if needed, 
+    // OR fetch all if manageable? Justifications are small. Let's fetch by competence inside renderTable to be safe/clean.
+
     // Check User Role
     const user = auth.currentUser;
     if (user) {
@@ -276,12 +281,19 @@ function showBudgetAlert(compLabel, dataList, config) {
 
         // Contact Logic
         const hasEmail = !!inst.email;
-        const hasPhone = !!(inst.celular || inst.telefone);
+        const hasPhone = !!(inst.celular || inst.telefone || inst.whatsapp);
 
         // Clean phone for WA link
-        const cleanPhone = (inst.celular || inst.telefone || '').replace(/\D/g, '');
-        const waLink = `https://wa.me/55${cleanPhone}`;
-        const mailLink = `mailto:${inst.email}`;
+        const valPhone = inst.celular || inst.telefone || '';
+        const cleanPhone = String(valPhone).replace(/\D/g, '');
+
+        // Dynamic Message
+        const msgText = `Olá ${inst.sigla || inst.nome}, identificamos pendências no lançamento de produção da competência ${humanComp}. Poderiam verificar?`;
+        const waLink = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msgText)}`;
+
+        const mailSubject = `Pendência de Lançamento - ${humanComp}`;
+        const mailBody = `Olá ${inst.sigla || inst.nome},\n\nIdentificamos pendências no lançamento de produção referente à competência ${humanComp}.\n\nFavor verificar e regularizar o quanto antes.\n\nAtenciosamente,\nGestão de Orçamento`;
+        const mailLink = `mailto:${inst.email}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`;
 
         // Limit details to X items
         const maxItems = 3;
@@ -314,14 +326,14 @@ function showBudgetAlert(compLabel, dataList, config) {
                 <div class="flex items-center justify-end gap-2">
                     <!-- WhatsApp -->
                      <a href="${hasPhone ? waLink : '#'}" target="_blank"
-                        class="size-8 flex items-center justify-center rounded-lg border ${hasPhone ? 'border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-300' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'} transition-all"
+                        class="size-8 flex items-center justify-center rounded-lg border transition-all ${hasPhone ? 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-green-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-green-400' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed pointer-events-none'}"
                         title="${hasPhone ? 'Enviar mensagem no WhatsApp' : 'Telefone não cadastrado'}">
                         ${waIcon}
                     </a>
 
                     <!-- Email -->
                     <a href="${hasEmail ? mailLink : '#'}"
-                        class="size-8 flex items-center justify-center rounded-lg border ${hasEmail ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'} transition-all"
+                        class="size-8 flex items-center justify-center rounded-lg border transition-all ${hasEmail ? 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-blue-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-blue-400' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed pointer-events-none'}"
                         title="${hasEmail ? 'Enviar E-mail' : 'E-mail não cadastrado'}">
                         <span class="material-symbols-outlined text-[18px]">mail</span>
                     </a>
@@ -383,7 +395,7 @@ function populateFilters() {
     }
 }
 
-function renderTable() {
+async function renderTable() {
     const tbody = document.getElementById('monitoring-table-body');
     if (!tbody) return;
 
@@ -398,6 +410,17 @@ function renderTable() {
     if (fProc) filtered = filtered.filter(p => p.sigtap === fProc);
     if (fPeriod) filtered = filtered.filter(p => p.competencia === fPeriod);
     if (fProg) filtered = filtered.filter(p => p.progId === fProg); // Apply Filter
+
+    // FETCH JUSTIFICATIONS if competence is selected
+    let currentJustificativas = [];
+    if (fPeriod) {
+        // Optimization: We could cache this
+        try {
+            currentJustificativas = await Repository.getJustificativas(fPeriod);
+        } catch (e) { console.error("Error fetching justifications", e); }
+    }
+    const justMap = new Map(); // key: instId_sigtap -> text
+    currentJustificativas.forEach(j => justMap.set(`${j.instId}_${j.sigtap}`, j));
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="13" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`; // Colspan increased
@@ -440,10 +463,24 @@ function renderTable() {
                 potentialFatInc: 0,
                 programs: new Set(), // To track unique programs
                 competencia: p.competencia,
+                justifications: [], // Store justifications found for this group
                 // Unit Values (for display, takes first valid found)
                 vSigtap: safeParseFloat(p.vlrSigtapBase),
                 vInc: safeParseFloat(p.vlrIncentivo)
             };
+        }
+
+        // Check for Justification
+        // Justification is per Institute+Sigtap.
+        // If this row (p) corresponds to an institute that has justified this sigtap:
+        const justKey = `${p.instId}_${p.sigtap}`;
+        if (justMap.has(justKey)) {
+            // Avoid duplicates if multiple programs for same inst/sigtap caused multiple rows
+            const justObj = justMap.get(justKey);
+            // Check if already added to group
+            if (!groups[key].justifications.find(j => j.id === justObj.id)) {
+                groups[key].justifications.push(justObj);
+            }
         }
 
         // Add item to group
@@ -556,12 +593,24 @@ function renderTable() {
         if (g.totalMeta > 0) {
             const icon = isMetaMet ? 'check_circle' : 'warning';
             const color = isMetaMet ? 'text-emerald-500' : 'text-amber-500';
-            const title = isMetaMet ? 'Meta Atingida' : 'Meta Não Atingida';
+
+            // Check if ANY item in this group has (Justification AND Offer < Meta)
+            const hasRelevantJustification = g.items.some(item => {
+                const just = g.justifications ? g.justifications.find(j => j.instId === item.instId) : null;
+                const finalOffer = parseInt(item.producao?.realizada || 0);
+                const meta = parseInt(item.ofertaMinima || 0);
+                return just && finalOffer < meta;
+            });
 
             // Clickable to open modal
             metaStatusHtml = `
                 <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-center gap-1 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors group/btn" title="Clique para ver detalhes por instituto">
-                    <span class="material-symbols-outlined ${color} font-bold text-[22px]">${icon}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined ${color} font-bold text-[22px]">${icon}</span>
+                        ${hasRelevantJustification ?
+                    `<span class="material-symbols-outlined text-amber-500 text-[18px]" title="Existem justificativas para itens abaixo da meta">assignment_late</span>`
+                    : ''}
+                    </div>
                     <span class="text-[10px] text-slate-400 font-medium group-hover/btn:text-primary transition-colors leading-none">clique para ver detalhes</span>
                 </button>
             `;
@@ -666,9 +715,37 @@ window.openBreakdownModal = (key) => {
         const prog = localProgramas.find(pg => pg.id === item.progId);
         const progName = prog ? prog.nome : (item.progId || '-');
 
+        // Find Justification for this item's institute/sigtap
+        const just = group.justifications ? group.justifications.find(j => j.instId === item.instId) : null;
+        let instNameDisplay = `<span>${instName}</span>`;
+
+        // Show justification ONLY if the target was not met
+        // Using loose comparison or verifying types. meta and finalOffer are numbers (parsed ints).
+        if (finalOffer < meta) {
+            const safeInst = instName.replace(/"/g, '&quot;');
+
+            if (just) {
+                const safeText = just.texto.replace(/"/g, '&quot;');
+                instNameDisplay += ` 
+                    <button onclick="window.viewJustification('${safeInst}', '${safeText}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors ml-2" title="Ver Justificativa">
+                        <span class="material-symbols-outlined text-amber-500 text-[18px]">assignment_late</span>
+                    </button>
+                `;
+            } else {
+                // NO JUSTIFICATION
+                instNameDisplay += ` 
+                    <button onclick="window.openContactModal('${item.instId}', '${safeInst}', '${group.sigtap}', '${group.procName}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ml-2" title="Solicitar Justificativa">
+                        <span class="material-symbols-outlined text-red-500 text-[18px]">assignment_late</span>
+                    </button>
+                `;
+            }
+        }
+
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300">${instName}</td>
+                <td class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                    ${instNameDisplay}
+                </td>
                 <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
                 <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
                 <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
@@ -687,6 +764,48 @@ window.openBreakdownModal = (key) => {
     }).join('');
 
     document.getElementById('modal-breakdown').classList.remove('hidden');
+};
+
+window.viewJustification = (instName, text) => {
+    document.getElementById('modal-just-inst-name').textContent = instName;
+    document.getElementById('modal-just-text').textContent = text; // textContent handles HTML entites safely usually, but if we passed encoded...
+    // The clicked attribute was encoded. textContent will decode if browser handles it, or we might need simple decode.
+    // Actually, onclick string will be parsed, and if we passed '&quot;', the JS receiver sees ".
+    // Let's rely on standard behavior.
+    document.getElementById('modal-justification-view').classList.remove('hidden');
+};
+
+window.openContactModal = (instId, instName, sigtap, procName) => {
+    document.getElementById('modal-contact-inst').textContent = instName;
+
+    // Find Institute Data
+    const inst = localInsts.find(i => i.id === instId);
+
+    // Setup WhatsApp
+    const btnWa = document.getElementById('btn-contact-whatsapp');
+    if (inst && inst.telefone) {
+        const phone = inst.telefone.replace(/\D/g, '');
+        const msg = encodeURIComponent(`Olá, ${instName}. Consta pendência de justificativa para o procedimento ${procName} (Cód: ${sigtap}). Poderiam verificar?`);
+        btnWa.href = `https://wa.me/55${phone}?text=${msg}`;
+        btnWa.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        btnWa.href = '#';
+        btnWa.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    // Setup Email
+    const btnEmail = document.getElementById('btn-contact-email');
+    if (inst && inst.email) {
+        const subject = encodeURIComponent(`Pendência de Justificativa - ${procName}`);
+        const body = encodeURIComponent(`Olá,\n\nVerificamos que não foi atingida a meta para o procedimento ${procName} (Cód: ${sigtap}) na competência atual e não consta justificativa lançado no sistema.\n\nFavor regularizar.\n\nAtt,\nGestão Orçamentária`);
+        btnEmail.href = `mailto:${inst.email}?subject=${subject}&body=${body}`;
+        btnEmail.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        btnEmail.href = '#';
+        btnEmail.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    document.getElementById('modal-contact-view').classList.remove('hidden');
 };
 
 window.saveBreakdownItem = async (pactId, value, groupKey) => {

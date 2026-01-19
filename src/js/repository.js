@@ -22,7 +22,8 @@ const COLL_USUARIOS = "usuarios";
 const COLL_PACTUACOES = "pactuacoes"; // Level 2 (Relations)
 const COLL_PRODUCAO = "producao";
 const COLL_LOGS = "logs";
-const COLL_CONFIG = "config"; // New Collection
+const COLL_CONFIG = "config";
+const COLL_JUSTIFICATIVAS = "justificativas";
 
 // --- HELPERS ---
 const normalizeId = (text) => {
@@ -130,6 +131,22 @@ export const Repository = {
         if (progId) q = query(q, where("progId", "==", progId));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    // JUSTIFICATIVAS
+    async getJustificativas(competencia) {
+        if (!competencia) return [];
+        const q = query(collection(db, COLL_JUSTIFICATIVAS), where("competencia", "==", competencia));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async saveJustificativa(data) {
+        // ID composite: instId_sigtap_competencia
+        const id = normalizeId(`${data.instId}_${data.sigtap}_${data.competencia}`);
+        const ref = doc(db, COLL_JUSTIFICATIVAS, id);
+        await setDoc(ref, { ...data, id, updatedAt: new Date() }, { merge: true });
+        return id;
     },
 
     // --- LOGS & ANALYTICS ---
