@@ -692,6 +692,13 @@ window.sendToIndividual = (phone) => {
 function checkGlobalCompliance(allPactuacoes, institutes, config) {
     const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
 
+    // Check Ignore
+    const ignoreKey = `monitor_ignored_${targetComp}`;
+    if (localStorage.getItem(ignoreKey) === 'true') {
+        console.log(`Monitor alert ignored for ${targetComp}`);
+        return;
+    }
+
     // Filter relevant items
     const periodItems = allPactuacoes.filter(p => p.competencia === targetComp);
     if (periodItems.length === 0) return;
@@ -785,6 +792,15 @@ function showMonitorModal(targetCompISO, list, institutes, config) {
 window.notifyAllPending = () => {
     alert("Notificações enviadas para todos os institutos listados.");
     document.getElementById('modal-monitoramento-prazo').classList.add('hidden');
+}
+
+window.ignoreMonitorAlert = (type) => {
+    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
+    const ignoreKey = `monitor_ignored_${targetComp}`;
+    localStorage.setItem(ignoreKey, 'true');
+
+    document.getElementById('modal-monitoramento-prazo').classList.add('hidden');
+    // alert('Alerta silenciado para esta competência.');
 }
 
 initDashboard();

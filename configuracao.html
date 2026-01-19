@@ -412,6 +412,18 @@
                                         <p class="text-xs text-slate-500 mb-2.5 ml-2">do mês subsequente.</p>
                                     </div>
                                 </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Final de
+                                            Competência</label>
+                                        <input type="number" id="cfg-end-month-deadline" value="7" min="1" max="15"
+                                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <p class="text-xs text-slate-500 mb-2.5 ml-2">dias úteis antes do fim.</p>
+                                    </div>
+                                </div>
                                 <div class="flex items-center gap-2 pt-2">
                                     <input type="checkbox" id="cfg-deadline-alert" checked
                                         class="rounded border-slate-300 text-primary focus:ring-primary/20">
@@ -792,6 +804,7 @@
             if (document.getElementById('cfg-deadline-rule')) {
                 document.getElementById('cfg-deadline-rule').value = config.deadlineRule || 'business_day';
                 document.getElementById('cfg-deadline-day').value = config.deadlineDay || 5;
+                document.getElementById('cfg-end-month-deadline').value = config.endMonthDeadline || 7;
                 document.getElementById('cfg-deadline-alert').checked = config.deadlineAlert !== false;
 
                 document.getElementById('cfg-msg-subject').value = config.msgSubject || 'Alerta de Produção - Gestão SUS';
@@ -803,6 +816,7 @@
             const config = {
                 deadlineRule: document.getElementById('cfg-deadline-rule').value,
                 deadlineDay: parseInt(document.getElementById('cfg-deadline-day').value),
+                endMonthDeadline: parseInt(document.getElementById('cfg-end-month-deadline').value),
                 deadlineAlert: document.getElementById('cfg-deadline-alert').checked,
                 msgSubject: document.getElementById('cfg-msg-subject').value,
                 msgBody: document.getElementById('cfg-msg-body').value,

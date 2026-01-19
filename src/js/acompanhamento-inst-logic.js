@@ -248,11 +248,19 @@ async function initAcompanhamentoInst() {
         const deadlineDay = config?.deadlineDay || 5;
         const deadlineRule = config?.deadlineRule || 'business_day';
         const deadlineAlert = config?.deadlineAlert !== false;
+        const endMonthDeadline = config?.endMonthDeadline || 7;
+        const isCriticalPeriod = DateUtils.isWithinLastBusinessDays(endMonthDeadline);
+        const isPastStandardDeadline = DateUtils.isPastDeadline(deadlineDay, deadlineRule);
 
-        if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
+        console.log(`[DEBUG] Init Alert: AlertEnabled=${deadlineAlert}, DayLimit=${deadlineDay}, Rule=${deadlineRule}`);
+        console.log(`[DEBUG] Conditions: PastStandard=${isPastStandardDeadline}, Critical=${isCriticalPeriod}`);
+
+        if (deadlineAlert && (isPastStandardDeadline || isCriticalPeriod)) {
             // Check compliance for ALL allowed ids (Global check for user)
             const allInstitutes = await Repository.getInstitutos();
-            checkDeadlineCompliance(allPactuacoes, allowedIds, allInstitutes, { deadlineDay, deadlineRule });
+            checkDeadlineCompliance(allPactuacoes, allowedIds, allInstitutes, config);
+        } else {
+            console.log('[DEBUG] Alert skipped: Conditions not met.');
         }
     });
 }
@@ -261,13 +269,37 @@ async function initAcompanhamentoInst() {
 function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, config) {
     const targetComp = DateUtils.getCurrentMonthLabel('short'); // "mmm/yy" (e.g., "jan/26")
 
+    const endDeadline = config?.endMonthDeadline || 7;
+    const isCriticalPeriod = DateUtils.isWithinLastBusinessDays(endDeadline);
+    const isPastStandardDeadline = DateUtils.isPastDeadline(config?.deadlineDay || 5, config?.deadlineRule || 'business_day');
+
+    console.log(`[DEBUG] CheckDeadline: Target=${targetComp}, EndDeadline=${endDeadline} (Config: ${config?.endMonthDeadline}), Critical=${isCriticalPeriod}`);
+    console.log(`[DEBUG] Allowed IDs:`, allowedInstIds);
+    console.log(`[DEBUG] isPastStandardDeadline: ${isPastStandardDeadline}`);
+    console.log(`[DEBUG] Config:`, config);
+
     // Filter pertinent data: Target Month AND User's Institutes
     const relevant = allPactuacoes.filter(p =>
         p.competencia === targetComp &&
         allowedInstIds.includes(p.instId)
     );
+    console.log(`[DEBUG] Relevant Items Found: ${relevant.length}`);
 
     if (relevant.length === 0) return;
+
+    // Check if ignored (ONLY if not critical period - Critical period overrides ignore?)
+    // User probably implies this is a MUST DO. "deve ser escrito meta não atingida"
+    // Let's assume critical period alerts show regardless or have their own ignore key?
+    // For now, respect the standard ignore key unless we want to force it.
+    // If it's a "Justification" request, maybe we shouldn't allow ignore until justified?
+    // Let's stick to standard ignore for now to avoid annoying loops, or use a distinct key.
+
+    // Using distinct key for critical alert to ensure it pops up even if early month was ignored
+    const ignoreKey = isCriticalPeriod ? `critical_ignored_${targetComp}` : `deadline_ignored_${targetComp}`;
+    if (localStorage.getItem(ignoreKey) === 'true') {
+        // console.log(`Alert ignored for ${targetComp}`);
+        return;
+    }
 
     const pendingItems = [];
     const processedKeys = new Set(); // Key: instId_sigtap
@@ -276,38 +308,70 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
         const key = `${p.instId}_${p.sigtap}`;
         if (processedKeys.has(key)) return;
 
+        // CHECK IF ALREADY JUSTIFIED (Local Flag)
+        const justifiedKey = `justified_${key}_${targetComp}`;
+        if (localStorage.getItem(justifiedKey)) {
+            console.log(`[DEBUG] Item ${key} already justified for ${targetComp}`);
+            return;
+        }
+
         const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
 
         const maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
         const totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
 
-        if (maxMeta > 0 && totalRealized === 0) {
+        // Early Month Check (Day 5): Alert if Realized == 0 (Not Started)
+        // Late Month Check (Last 7 Days): Alert if Realized < Meta (Not Achieved)
+
+        let isPending = false;
+        let statusType = 'DELAY'; // Default
+
+        if (isCriticalPeriod) {
+            if (maxMeta > 0 && totalRealized < maxMeta) {
+                isPending = true;
+                statusType = 'FAILURE'; // Meta não atingida
+            }
+        } else {
+            if (maxMeta > 0 && totalRealized === 0) {
+                isPending = true;
+                statusType = 'DELAY'; // Não iniciado
+            }
+        }
+
+        if (isPending) {
             pendingItems.push({
                 instId: p.instId,
                 sigtap: p.sigtap,
-                meta: maxMeta
+                meta: maxMeta,
+                realized: totalRealized,
+                type: statusType
             });
             processedKeys.add(key);
         }
     });
 
     if (pendingItems.length > 0) {
-        showDeadlineAlert(targetComp, pendingItems, allInstitutes, config);
+        showDeadlineAlert(targetComp, pendingItems, allInstitutes, config, isCriticalPeriod);
     }
 }
 
-function showDeadlineAlert(compLabel, items, allInstitutes, config) {
+function showDeadlineAlert(compLabel, items, allInstitutes, config, isCriticalPeriod = false) {
     const modal = document.getElementById('modal-alert-prazo');
     if (!modal) return;
 
     // Formatting Date Label
-    const [year, month] = compLabel.split('-');
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const humanComp = `${months[parseInt(month) - 1]} ${year}`;
+    // input: "jan/26"
+    // output desired: "Janeiro 2026"
+    const monthMap = { 'jan': 'Janeiro', 'fev': 'Fevereiro', 'mar': 'Março', 'abr': 'Abril', 'mai': 'Maio', 'jun': 'Junho', 'jul': 'Julho', 'ago': 'Agosto', 'set': 'Setembro', 'out': 'Outubro', 'nov': 'Novembro', 'dez': 'Dezembro' };
+    let humanComp = compLabel;
+    const parts = compLabel.split('/');
+    if (parts.length === 2 && monthMap[parts[0].toLowerCase()]) {
+        humanComp = `${monthMap[parts[0].toLowerCase()]} 20${parts[1]}`;
+    }
 
     document.getElementById('alert-month').textContent = humanComp;
 
-    // Calculate Deadline
+    // Calculate Deadline Date
     const today = new Date();
     let deadlineDate;
     const day = config?.deadlineDay || 5;
@@ -319,35 +383,101 @@ function showDeadlineAlert(compLabel, items, allInstitutes, config) {
         deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), day);
     }
 
-    document.getElementById('alert-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+    // Header & Message Updates
+    const titleEl = modal.querySelector('h3');
+    const msgEl = modal.querySelector('div.bg-red-50 p');
+    const ignoreBtn = modal.querySelector('button[onclick*="window.ignoreDeadlineAlert"]');
+
+    if (isCriticalPeriod) {
+        const endDeadline = config?.endMonthDeadline || 7;
+        titleEl.textContent = "Atenção: Fechamento de Competência";
+        msgEl.innerHTML = `Estamos nos <strong>últimos ${endDeadline} dias úteis</strong> do mês. Alguns procedimentos <strong>não atingiram a meta</strong> pactuada e exigem justificativa.`;
+
+        // HIDE IGNORE BUTTON during critical period - Must justify!
+        if (ignoreBtn) ignoreBtn.classList.add('hidden');
+
+    } else {
+        titleEl.textContent = "Atenção: Prazo de Lançamento";
+        msgEl.innerHTML = `O prazo regular para início dos lançamentos encerrou no dia <strong>${deadlineDate.toLocaleDateString('pt-BR')}</strong>. Identificamos pendências:`;
+
+        // Ensure ignore button is visible for standard alerts
+        if (ignoreBtn) {
+            ignoreBtn.classList.remove('hidden');
+            ignoreBtn.onclick = () => window.ignoreDeadlineAlert('month');
+            ignoreBtn.textContent = 'Não mostrar mais este aviso';
+        }
+    }
 
     // Render Items
     const tbody = document.getElementById('alert-table-body');
+    // Use global localProcs variable (already loaded from Firestore)
+    const procs = localProcs || [];
 
     tbody.innerHTML = items.map(item => {
-        const inst = allInstitutes.find(i => i.id === item.instId);
-        const instName = inst ? (inst.sigla || inst.nome) : 'Inst.';
-        const proc = localProcs.find(pr => pr.sigtap === item.sigtap);
-        const procName = proc ? proc.nome : `Procedimento ${item.sigtap}`;
+        // Find Procedure Name (Flexible string/number match)
+        console.log('[DEBUG] Looking for sigtap:', item.sigtap, 'Type:', typeof item.sigtap);
+        console.log('[DEBUG] Available procedures:', procs.length);
+        if (procs.length > 0) {
+            console.log('[DEBUG] First proc sample:', procs[0]);
+        }
 
-        const showInst = items.some(i => i.instId !== items[0].instId);
+        const proc = procs.find(p => {
+            const match = String(p.sigtap) === String(item.sigtap);
+            if (match) console.log('[DEBUG] MATCH FOUND:', p);
+            return match;
+        });
+        const procName = proc ? proc.nome : `Procedimento não encontrado`;
+
+        console.log('[DEBUG] Final procName:', procName);
+
+        let statusBadge = '';
+        let actionArea = '';
+
+        if (item.type === 'FAILURE') {
+            statusBadge = `<span class="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700 border border-red-100">Oferta mínima não realizada</span>`;
+
+            actionArea = `
+                <div class="w-full bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                    <textarea id="just-${item.sigtap}" rows="3" 
+                        class="w-full text-sm rounded-lg border-slate-200 bg-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500 mb-2"
+                        placeholder="Justifique o motivo..."></textarea>
+                    <div class="flex justify-end">
+                        <button id="btn-save-${item.sigtap}" onclick="window.saveJustification('${item.instId}', '${item.sigtap}', '${compLabel}')"
+                            class="text-xs bg-slate-800 text-white px-4 py-2 rounded-md hover:bg-slate-700 transition-colors font-medium">
+                            Salvar Justificativa
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            statusBadge = `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">Não Iniciado</span>`;
+            actionArea = ``;
+        }
 
         return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <td class="px-4 py-3 font-mono text-slate-500 text-xs">${item.sigtap}</td>
-                <td class="px-4 py-3">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-slate-800 dark:text-white">${procName}</span>
-                         ${showInst ? `<span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">${instName}</span>` : ''}
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 item-row border-b border-slate-100 dark:border-slate-800 last:border-0" data-sigtap="${item.sigtap}" data-type="${item.type}">
+            <td class="px-6 py-5">
+                <div class="flex flex-col gap-3">
+                    <!-- HEADER: CODE & NAME -->
+                    <div class="flex items-start gap-3">
+                        <span class="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded shrink-0">${item.sigtap}</span>
+                        <h4 class="font-bold text-slate-800 dark:text-white text-sm leading-tight pt-0.5">${procName}</h4>
                     </div>
-                </td>
-                <td class="px-4 py-3 text-center">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                        <span class="size-1.5 rounded-full bg-red-600"></span> Pendente
-                    </span>
-                </td>
-            </tr>
-        `;
+
+                    <!-- STATS -->
+                    <div class="text-xs text-slate-500">
+                        Realizado: <strong>${item.realized}</strong> / Meta: <strong>${item.meta}</strong>
+                    </div>
+
+                    <!-- BADGE -->
+                    ${statusBadge}
+                    
+                    <!-- ACTION AREA -->
+                    ${actionArea}
+                </div>
+            </td>
+        </tr>
+    `;
     }).join('');
 
     modal.classList.remove('hidden');
@@ -798,6 +928,18 @@ window.updateUnifiedOffer = async (sigtap, value) => {
 };
 
 // New Function for Exclusive Global Breakdown
+
+window.ignoreDeadlineAlert = function (type) {
+    const targetComp = DateUtils.getCurrentMonthLabel('short');
+    const ignoreKey = `deadline_ignored_${targetComp}`;
+    localStorage.setItem(ignoreKey, 'true');
+
+    const modal = document.getElementById('modal-alert-prazo');
+    if (modal) modal.classList.add('hidden');
+
+    // Optional: Toast notification
+    // alert('Aviso ocultado para esta competência.');
+};
 window.openGlobalBreakdown = (sigtap) => {
     // Find ANY group with this sigtap to get the global data (which assumes global stats are by sigtap)
     const groups = window.displayGroups || {};

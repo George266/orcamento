@@ -1,5 +1,6 @@
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
+import { DateUtils } from './utils/date-utils.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -127,7 +128,218 @@ export async function initAcompanhamento() {
 
     // Initial Render
     renderTable();
+
+    // Check Budget Deadline Alert
+    if (typeof Repository.getSystemConfig === 'function') {
+        const config = await Repository.getSystemConfig();
+        const deadlineDay = config?.deadlineDay || 5;
+        const deadlineRule = config?.deadlineRule || 'business_day';
+        const deadlineAlert = config?.deadlineAlert !== false;
+
+        if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
+            checkBudgetDeadlineCompliance(allPactuacoes, localInsts, { deadlineDay, deadlineRule });
+        }
+    } else {
+        console.warn('Repository.getSystemConfig not found - likely cached version. Please refresh.');
+    }
 }
+
+function checkBudgetDeadlineCompliance(allPactuacoes, institutes, config) {
+    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM" (Standard for deadline check)
+    // Actually, "Previous Month" label logic might return YYYY-MM depending on implementation.
+    // DateUtils.getPreviousMonthLabel('iso') returns "YYYY-MM" (e.g. "2023-11" if now is Dec).
+    // Let's verify if `p.competencia` uses "YYYY-MM" or "mmm/yy".
+    // In `acompanhamento-logic.js`, filters use `p.competencia`.
+    // Looking at `populateFilters`, it extracts from `allPactuacoes`, likely strings like "mmm/yy" or "YYYY-MM".
+    // Most recent data seems to form "oct/23" style (short).
+    // Let's infer the format from data or use a standard generator.
+    // If the system uses "mmm/yy", we need *that* format for the *previous* month.
+
+    // Check first available competence to guess format or assume "short" based on other files using "jan/26".
+    const sample = allPactuacoes[0]?.competencia;
+    const isShortFormat = sample && sample.includes('/');
+
+    let targetFilter = '';
+    if (isShortFormat) {
+        targetFilter = DateUtils.getPreviousMonthLabel('short');
+    } else {
+        targetFilter = DateUtils.getPreviousMonthLabel('iso'); // Default fallback
+    }
+
+    // DEBUG: Force check current if needed or stick to previous?
+    // User request: "quando der o 5o dia util... e nao tiver começado".
+    // Usually "Launching offers" is for the UPCOMING or CURRENT month in some contexts, but usually "Producão" is retrospective.
+    // However, "Plan Operativo" (Pactuacoes) is often set in advance?
+    // If "Lançamento de Oferta" means "Setting the Goals/Offer", it might be for the NEXT month?
+    // User said "não iniciaram o lançamento de oferta".
+    // Let's assume we check the *current* active competence for filling data.
+    // Which is usually the one returned by `getCurrentMonthLabel` if we are in the "filling period".
+    // Wait, `acompanhamento-inst-logic.js` used `getCurrentMonthLabel('short')` for the alert.
+    // So I will use `getCurrentMonthLabel` to match the Institute's own alert.
+
+    if (isShortFormat) {
+        targetFilter = DateUtils.getCurrentMonthLabel('short'); // "jan/26"
+    }
+
+    console.log(`[Deadline Check] Target: ${targetFilter}, DeadlineDay: ${config.deadlineDay}`);
+
+    const ignoreKey = `budget_ignored_${targetFilter}`;
+    if (localStorage.getItem(ignoreKey) === 'true') {
+        console.log('[Deadline Check] Alert ignored via localStorage.');
+        return;
+    }
+
+    // Analyze Data
+    const relevantItems = allPactuacoes.filter(p => p.competencia === targetFilter);
+    console.log(`[Deadline Check] Found ${relevantItems.length} items for ${targetFilter}`);
+
+    const statusMap = {}; // instId -> { started: false, pendingItems: [] }
+
+    // Iterate items to check status AND collect pending info
+    relevantItems.forEach(p => {
+        if (!statusMap[p.instId]) statusMap[p.instId] = { started: false, pendingItems: new Set() };
+
+        const prod = parseInt(p.producao?.realizada || 0);
+        const offer = parseInt(p.ofertado || 0);
+
+        if (prod > 0 || offer > 0) {
+            statusMap[p.instId].started = true;
+        } else {
+            // Collect info if this item is 0 (and institute overall not started?)
+            // We collect everything that is 0. If later we confirm institute started > 0 total, we ignore this list.
+            // BUT user wants to know WHAT they didn't launch IF they didn't launch anything.
+            // If they launched SOME things but not others, they are technically "Started" but incomplete.
+            // The request was "não começaram o lançamento". Defined as Total = 0.
+            // So we only show the list if `started` remains false at the end.
+
+            // Get Proc Name from localProcs
+            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+            const name = proc?.nome || p.sigtap;
+            statusMap[p.instId].pendingItems.add(name);
+        }
+    });
+
+    const nonCompliant = [];
+
+    localInsts.forEach(inst => {
+        const status = statusMap[inst.id];
+
+        // CASE 1: No rows exist for this institute in this period
+        // User requested to REMOVE this alert ("não precisaria desse nenhum item importado").
+        // Only show if they HAVE items (Importados) but haven't launched.
+        if (!status) return;
+
+        // CASE 2: Rows exist but nothing started (All 0)
+        if (!status.started) {
+            // Convert Set to Array
+            const details = Array.from(status.pendingItems);
+            nonCompliant.push({
+                inst,
+                details: details.length > 0 ? details : ["Nenhuma produção informada."]
+            });
+        }
+    });
+
+    console.log(`[Deadline Check] Non-compliant count: ${nonCompliant.length}`);
+
+    if (nonCompliant.length > 0) {
+        showBudgetAlert(targetFilter, nonCompliant, config);
+    }
+}
+
+function showBudgetAlert(compLabel, dataList, config) {
+    const modal = document.getElementById('modal-alert-prazo-orcamento');
+    if (!modal) return;
+
+    // Format Month
+    const monthMap = { 'jan': 'Janeiro', 'fev': 'Fevereiro', 'mar': 'Março', 'abr': 'Abril', 'mai': 'Maio', 'jun': 'Junho', 'jul': 'Julho', 'ago': 'Agosto', 'set': 'Setembro', 'out': 'Outubro', 'nov': 'Novembro', 'dez': 'Dezembro' };
+    let humanComp = compLabel;
+    const parts = compLabel.split('/');
+    if (parts.length === 2 && monthMap[parts[0].toLowerCase()]) {
+        humanComp = `${monthMap[parts[0].toLowerCase()]} 20${parts[1]}`;
+    }
+    document.getElementById('alert-orc-month').textContent = humanComp;
+
+    // Deadline Format
+    const today = new Date();
+    let deadlineDate;
+    if (config.deadlineRule === 'fixed_date') {
+        deadlineDate = new Date(today.getFullYear(), today.getMonth(), config.deadlineDay);
+    } else {
+        deadlineDate = DateUtils.getBusinessDay(today.getFullYear(), today.getMonth(), config.deadlineDay);
+    }
+    document.getElementById('alert-orc-deadline').textContent = deadlineDate.toLocaleDateString('pt-BR');
+
+    // Render Table
+    const tbody = document.getElementById('alert-orc-table-body');
+    tbody.innerHTML = dataList.map(({ inst, details }) => {
+
+        // Contact Logic
+        const hasEmail = !!inst.email;
+        const hasPhone = !!(inst.celular || inst.telefone);
+
+        // Clean phone for WA link
+        const cleanPhone = (inst.celular || inst.telefone || '').replace(/\D/g, '');
+        const waLink = `https://wa.me/55${cleanPhone}`;
+        const mailLink = `mailto:${inst.email}`;
+
+        // Limit details to X items
+        const maxItems = 3;
+        const totalItems = details.length;
+        const displayItems = details.slice(0, maxItems);
+        const remaining = totalItems - maxItems;
+
+        const detailsHtml = displayItems.map(d => `<div class="truncate" title="${d}">• ${d}</div>`).join('') +
+            (remaining > 0 ? `<div class="text-[10px] text-slate-400 mt-1 italic">+${remaining} outros itens</div>` : '');
+
+        // WhatsApp Icon SVG
+        const waIcon = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+            </svg>
+        `;
+
+        return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-colors">
+            <td class="px-4 py-3 align-top">
+                <div class="font-bold text-slate-700 dark:text-slate-300 text-sm">${inst.sigla || inst.nome}</div>
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">${inst.id}</div>
+            </td>
+            <td class="px-4 py-3 align-top">
+                <div class="text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
+                    ${detailsHtml}
+                </div>
+            </td>
+            <td class="px-4 py-3 align-middle text-right">
+                <div class="flex items-center justify-end gap-2">
+                    <!-- WhatsApp -->
+                     <a href="${hasPhone ? waLink : '#'}" target="_blank"
+                        class="size-8 flex items-center justify-center rounded-lg border ${hasPhone ? 'border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-300' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'} transition-all"
+                        title="${hasPhone ? 'Enviar mensagem no WhatsApp' : 'Telefone não cadastrado'}">
+                        ${waIcon}
+                    </a>
+
+                    <!-- Email -->
+                    <a href="${hasEmail ? mailLink : '#'}"
+                        class="size-8 flex items-center justify-center rounded-lg border ${hasEmail ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'} transition-all"
+                        title="${hasEmail ? 'Enviar E-mail' : 'E-mail não cadastrado'}">
+                        <span class="material-symbols-outlined text-[18px]">mail</span>
+                    </a>
+                </div>
+            </td>
+        </tr>
+    `}).join('');
+
+    modal.classList.remove('hidden');
+}
+
+window.ignoreBudgetAlert = (type) => {
+    // Re-calculate or pass the compLabel?
+    // We can just grab it from the UI or recalculate.
+    const targetComp = DateUtils.getCurrentMonthLabel('short');
+    localStorage.setItem(`budget_ignored_${targetComp}`, 'true');
+    document.getElementById('modal-alert-prazo-orcamento').classList.add('hidden');
+};
 
 function populateFilters() {
     const instSelect = document.getElementById('filter-inst');

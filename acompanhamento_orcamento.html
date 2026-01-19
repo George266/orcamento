@@ -354,8 +354,76 @@
             </div>
         </div>
     </div>
+    <!-- MODAL ALERT: PRAZO DE LANÇAMENTO (ORÇAMENTO) -->
+    <div id="modal-alert-prazo-orcamento"
+        class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-4xl w-full shadow-2xl border border-red-100 dark:border-red-900/30 relative overflow-hidden flex flex-col max-h-[90vh]">
+
+            <div class="relative z-10 flex flex-col h-full">
+                <!-- Header -->
+                <div class="flex items-center gap-4 mb-6 flex-shrink-0">
+                    <div
+                        class="bg-red-50 dark:bg-red-900/20 p-3 rounded-full border border-red-100 dark:border-red-800">
+                        <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-3xl">timer_off</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Prazo de Lançamento Expirado</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Competência: <span
+                                id="alert-orc-month" class="text-slate-800 dark:text-slate-200 font-bold">---</span></p>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div
+                    class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30 rounded-xl p-4 mb-6 flex-shrink-0">
+                    <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">
+                        O prazo regular encerrou no dia <strong id="alert-orc-deadline">---</strong>.
+                        Os seguintes Institutos possuem pendências de lançamento:
+                    </p>
+                </div>
+
+                <!-- Table Container -->
+                <div
+                    class="overflow-y-auto custom-scrollbar border border-slate-200 dark:border-slate-800 rounded-xl mb-6 bg-slate-50 dark:bg-slate-900/50 flex-1">
+                    <table class="w-full text-sm text-left">
+                        <thead
+                            class="text-xs text-slate-500 uppercase bg-white dark:bg-slate-800 sticky top-0 shadow-sm z-10">
+                            <tr>
+                                <th class="px-4 py-3 w-[25%]">Instituto</th>
+                                <th class="px-4 py-3 w-[50%]">Itens Pendentes (Não Iniciados)</th>
+                                <th class="px-4 py-3 w-[25%] text-right">Contatar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alert-orc-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="flex flex-col sm:flex-row items-center justify-end gap-3 w-full flex-shrink-0 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button onclick="window.ignoreBudgetAlert('month')"
+                        class="mb-2 sm:mb-0 mr-auto text-xs text-slate-500 hover:text-red-600 underline decoration-slate-300 hover:decoration-red-300 transition-colors">
+                        Não lembrar mais (mês)
+                    </button>
+
+                    <button onclick="document.getElementById('modal-alert-prazo-orcamento').classList.add('hidden')"
+                        class="px-4 py-2 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                        Lembrar depois
+                    </button>
+
+                    <button onclick="document.getElementById('modal-alert-prazo-orcamento').classList.add('hidden')"
+                        class="px-6 py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all hover:scale-[1.02]">
+                        Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script type="module" src="src/js/auth-guard.js"></script>
-    <script type="module" src="src/js/acompanhamento-logic.js?v=3"></script>
+    <script type="module" src="src/js/acompanhamento-logic.js?v=4"></script>
 </body>
 
 </html>

@@ -106,5 +106,49 @@ export const DateUtils = {
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ];
         return `${monthNames[prev.getMonth()]} ${prev.getFullYear()}`;
+    },
+
+    /**
+     * Helper to find the last business day of the month.
+     */
+    getLastBusinessDay: (year, month) => {
+        // Start from last day of month
+        let date = new Date(year, month + 1, 0);
+        while (date.getDay() === 0 || date.getDay() === 6) {
+            date.setDate(date.getDate() - 1);
+        }
+        return date;
+    },
+
+    /**
+     * Checks if today is within the last N business days of the month.
+     */
+    isWithinLastBusinessDays: (n = 7) => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+
+        let date = new Date(year, month + 1, 0); // Last day of month
+        let businessDaysFound = 0;
+
+        // Count backwards N business days to find the start of the "Critical Zone"
+        // If n=1, it is the last business day itself.
+        // If n=7, we go back 7 business days.
+
+        while (businessDaysFound < n) {
+            const day = date.getDay();
+            if (day !== 0 && day !== 6) {
+                businessDaysFound++;
+            }
+            if (businessDaysFound < n) {
+                date.setDate(date.getDate() - 1);
+            }
+        }
+
+        // `date` is now the start of the critical period (inclusive)
+        today.setHours(0, 0, 0, 0);
+        date.setHours(0, 0, 0, 0);
+
+        return today >= date;
     }
 };
