@@ -346,7 +346,17 @@ export const Repository = {
             }
         };
 
-        // 3. Save Metadata (Programs, Institutes, Procedures)
+        // 3. Save Metadata (Programs, Institutes, Procedures) - PRESERVE EXISTING
+
+        // Fetch existing IDs to prevent overwrite
+        const [existInsts, existProcs] = await Promise.all([
+            getDocs(collection(db, COLL_INSTITUTOS)),
+            getDocs(collection(db, COLL_PROCEDIMENTOS))
+        ]);
+
+        const existingInstIds = new Set(existInsts.docs.map(d => d.id));
+        const existingProcIds = new Set(existProcs.docs.map(d => d.id));
+
         const metadataItems = [
             ...Array.from(uniqueProgs).map(([id, nome]) => ({ type: 'prog', id, nome })),
             ...Array.from(uniqueInsts).map(([id, nome]) => ({ type: 'inst', id, nome })),
@@ -355,11 +365,19 @@ export const Repository = {
 
         await processBatch(metadataItems, (batch, item) => {
             if (item.type === 'prog') {
+                // Programs are groups, safe to update names if needed, or we can choose to skip too.
+                // Usually we want to ensure the Program exists.
                 batch.set(doc(db, COLL_PROGRAMAS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
             } else if (item.type === 'inst') {
-                batch.set(doc(db, COLL_INSTITUTOS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
+                // SKIP if exists
+                if (!existingInstIds.has(item.id)) {
+                    batch.set(doc(db, COLL_INSTITUTOS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
+                }
             } else if (item.type === 'proc') {
-                batch.set(doc(db, COLL_PROCEDIMENTOS, item.id), { sigtap: item.id, nome: item.nome, vlrSigtap: item.vlr, status: 'Ativo' }, { merge: true });
+                // SKIP if exists
+                if (!existingProcIds.has(item.id)) {
+                    batch.set(doc(db, COLL_PROCEDIMENTOS, item.id), { sigtap: item.id, nome: item.nome, vlrSigtap: item.vlr, status: 'Ativo' }, { merge: true });
+                }
             }
         }, 10, 30);
 
