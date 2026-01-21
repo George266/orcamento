@@ -227,6 +227,37 @@ export const Repository = {
         await this.logActivity('DELETE_ALL_PACTUACOES', { count: snapshot.size });
     },
 
+    async deleteAllTestData() {
+        // Delete all test data: pactuações, justificativas, and production
+        const collections = [
+            { name: COLL_PACTUACOES, label: 'Pactuações' },
+            { name: COLL_JUSTIFICATIVAS, label: 'Justificativas' },
+            { name: COLL_PRODUCAO, label: 'Produção' }
+        ];
+
+        const results = {};
+        const batchSize = 400;
+
+        for (const coll of collections) {
+            const snapshot = await getDocs(collection(db, coll.name));
+            const chunks = [];
+            for (let i = 0; i < snapshot.docs.length; i += batchSize) {
+                chunks.push(snapshot.docs.slice(i, i + batchSize));
+            }
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                chunk.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
+
+            results[coll.label] = snapshot.size;
+        }
+
+        await this.logActivity('DELETE_ALL_TEST_DATA', results);
+        return results;
+    },
+
     async duplicateCompetencia(sourceComp, targetComp) {
         if (!sourceComp || !targetComp) throw new Error("Competências inválidas.");
 
@@ -442,7 +473,11 @@ export const Repository = {
                 },
                 importedAt: new Date()
             };
-            batch.set(doc(db, COLL_PACTUACOES, pactId), pactData, { merge: true });
+
+            // DEBUG LOG REMOVED
+
+
+            batch.set(doc(db, COLL_PACTUACOES, pactId), pactData);
 
         }, 30, 100);
 

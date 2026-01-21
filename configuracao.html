@@ -539,9 +539,10 @@
                     <div
                         class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4 flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-bold text-slate-800 dark:text-white">Limpar todos os Incentivos</p>
-                            <p class="text-xs text-slate-500">Apaga apenas as <strong>Pactuações/Valores</strong>. Os
-                                cadastros de Institutos e Procedimentos são MANTIDOS.</p>
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">Limpar TODOS os Dados de Teste
+                            </p>
+                            <p class="text-xs text-slate-500">Apaga <strong>Pactuações, Justificativas e
+                                    Produção</strong>. Mantém apenas Institutos, Procedimentos e Programas.</p>
                         </div>
                         <button onclick="clearDatabase()"
                             class="bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
@@ -838,7 +839,7 @@
         // Initialize Tabs
         window.switchTab = (tab) => {
             // Hide all contents
-            ['tab-institutos', 'tab-procedimentos', 'tab-po', 'tab-importacao'].forEach(id => {
+            ['tab-institutos', 'tab-procedimentos', 'tab-po', 'tab-config', 'tab-importacao'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
@@ -983,9 +984,9 @@
         };
 
         window.clearDatabase = async () => {
-            if (!confirm('ATENÇÃO: Isso apagará TODOS os itens de incentivo/pactuação do sistema.\n\nEssa ação não pode ser desfeita. Tem certeza?')) return;
+            if (!confirm('ATENÇÃO: Isso apagará TODOS os dados de teste (Pactuações, Justificativas e Produção).\n\nEssa ação não pode ser desfeita. Tem certeza?')) return;
 
-            if (!checkAdminPassword('apagar TODOS os dados')) return;
+            if (!checkAdminPassword('apagar TODOS os dados de teste')) return;
 
             const btn = event.target;
             const originalText = btn.textContent;
@@ -993,8 +994,8 @@
             btn.textContent = 'Apagando...';
 
             try {
-                await Repository.deleteAllPactuacoes();
-                alert('Base de dados limpa com sucesso!');
+                const results = await Repository.deleteAllTestData();
+                alert(`Base de dados limpa com sucesso!\n\nItens apagados:\n- Pactuações: ${results['Pactuações']}\n- Justificativas: ${results['Justificativas']}\n- Produção: ${results['Produção']}`);
                 window.loadPO(); // Reload to show empty state
             } catch (error) {
                 console.error(error);
