@@ -554,12 +554,12 @@ window.autoSave = async function (pactId, field, value) {
     // Update local state
     pact.producao[field] = parseInt(value) || 0;
 
-    // Recalculate Total Realizada
-    pact.producao.realizada =
-        (parseInt(pact.producao.sem1) || 0) +
-        (parseInt(pact.producao.sem2) || 0) +
-        (parseInt(pact.producao.sem3) || 0) +
-        (parseInt(pact.producao.sem4) || 0);
+    // Recalculate Total Realizada - REMOVED: Realizada should not be auto-calculated from weeks.
+    // pact.producao.realizada =
+    //    (parseInt(pact.producao.sem1) || 0) +
+    //    (parseInt(pact.producao.sem2) || 0) +
+    //    (parseInt(pact.producao.sem3) || 0) +
+    //    (parseInt(pact.producao.sem4) || 0);
 
     // Update Firestore
     try {
