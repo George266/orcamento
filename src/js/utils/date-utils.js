@@ -150,5 +150,25 @@ export const DateUtils = {
         date.setHours(0, 0, 0, 0);
 
         return today >= date;
+    },
+
+    /**
+     * Parses a competencia string (e.g., "jan/26" or "fev/26") into a Date object
+     * @param {string} comp - Competencia in format "mmm/yy"
+     * @returns {Date}
+     */
+    parseCompetencia: (comp) => {
+        if (!comp) return new Date(0);
+
+        const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+        const parts = comp.toLowerCase().split('/');
+
+        if (parts.length !== 2) return new Date(0);
+
+        const monthIndex = shortMonths.indexOf(parts[0]);
+        if (monthIndex === -1) return new Date(0);
+
+        const year = parseInt('20' + parts[1]); // Assumes 20xx
+        return new Date(year, monthIndex, 1);
     }
 };

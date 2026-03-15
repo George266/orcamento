@@ -383,12 +383,36 @@ function populateFilters() {
 
     const periodSelect = document.getElementById('filter-period');
     if (periodSelect) {
-        const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort().reverse();
+        let competencias = [];
+        if (allPactuacoes.length > 0) {
+            competencias = [...new Set(allPactuacoes.map(p => p.competencia))];
+        }
+
+        // Always include current month
+        const currentComp = DateUtils.getCurrentMonthLabel('short');
+        if (!competencias.includes(currentComp)) {
+            competencias.push(currentComp);
+        }
+
+        // Sort Chronologically (Newest first)
+        const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+        const parseComp = (c) => {
+            if (!c) return 0;
+            const [m, y] = c.split('/');
+            if (!m || !y) return 0;
+            return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+        };
+        competencias.sort((a, b) => parseComp(b) - parseComp(a));
 
         // Strictly by competence, no "All" option to avoid confusion with "Geral"
         if (competencias.length > 0) {
             periodSelect.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
-            periodSelect.value = competencias[0];
+
+            // Default to current month
+            periodSelect.value = currentComp;
+
+            // Fallback if currentComp somehow failed selection (shouldn't happen if in list)
+            if (!periodSelect.value) periodSelect.value = competencias[0];
         } else {
             periodSelect.innerHTML = `<option value="">Nenhuma Competência</option>`;
         }
@@ -423,7 +447,7 @@ async function renderTable() {
     currentJustificativas.forEach(j => justMap.set(`${j.instId}_${j.sigtap}`, j));
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" class="px-6 py-12 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`; // Colspan increased
+        tbody.innerHTML = `<tr><td colspan="13" class="px-6 py-12 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`; // Colspan increased
         updateStats(0, 0, 0);
         renderPagination(0, 0, 0); // Clear pagination
         return;
@@ -432,23 +456,32 @@ async function renderTable() {
     // ------------------------------------------------------------------
     // 1. Group Data (Procedure + Program)
     // ------------------------------------------------------------------
-    // Helper: Safe Float Parse
+    // Helper: Clean SIGTAP (strip leading zeros and symbols)
+    const cleanSigtap = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
+
     const safeParseFloat = (val) => {
         if (typeof val === 'number') return val;
         if (!val) return 0;
-        // Remove 'R$', space, non-breaking space, then standard replace
-        let str = String(val).replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(",", ".");
+        // Robust parsing for Brazilian/International formats
+        let str = String(val).replace(/[R$\s\u00A0]/g, "").trim();
+        if (str.includes(',') && str.includes('.')) {
+            // Assume Brazilian format: 1.500,00
+            str = str.replace(/\./g, "").replace(",", ".");
+        } else if (str.includes(',')) {
+            // Only comma: 1500,00
+            str = str.replace(",", ".");
+        }
         let num = parseFloat(str);
         return isNaN(num) ? 0 : num;
     };
 
     const groups = {};
     filtered.forEach(p => {
-        // Grouping purely by Procedure (SIGTAP)
-        const key = p.sigtap;
+        // Grouping purely by Procedure (SIGTAP) - Cleaned for robust matching
+        const key = cleanSigtap(p.sigtap);
 
         if (!groups[key]) {
-            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === key);
             groups[key] = {
                 key,
                 sigtap: p.sigtap,
@@ -461,11 +494,11 @@ async function renderTable() {
                 totalProd: 0,
                 totalFatSigtap: 0,
                 potentialFatInc: 0,
-                programs: new Set(), // To track unique programs
+                programs: new Set(),
                 competencia: p.competencia,
-                justifications: [], // Store justifications found for this group
-                // Unit Values (for display, takes first valid found)
-                vSigtap: safeParseFloat(p.vlrSigtapBase),
+                justifications: [],
+                // Unit Values (Best available)
+                vSigtap: Math.max(safeParseFloat(p.vlrSigtapBase), safeParseFloat(proc?.vlrSigtap), 0),
                 vInc: safeParseFloat(p.vlrIncentivo)
             };
         }
@@ -491,10 +524,14 @@ async function renderTable() {
         const progName = prog ? prog.nome : (p.progId || '-');
         groups[key].programs.add(progName);
 
-        // ** Correct Accumulation of Sigtap per Item (regardless of meta) **
-        const prod = parseInt(p.producao?.aprovada || 0);
+        // ** Multi-source Unit Value Collection **
         const vSigtap = safeParseFloat(p.vlrSigtapBase);
-        groups[key].totalFatSigtap += (prod * vSigtap);
+        if (vSigtap > groups[key].vSigtap) groups[key].vSigtap = vSigtap;
+
+        const vInc = safeParseFloat(p.vlrIncentivo);
+        if (vInc > groups[key].vInc) groups[key].vInc = vInc;
+
+        const prod = parseInt(p.producao?.aprovada || 0);
         groups[key].totalProd += prod;
 
         let meta = parseInt(p.ofertaMinima || 0);
@@ -516,12 +553,11 @@ async function renderTable() {
 
     groupList.forEach(g => {
         // Partition items by program to check meta
-        // 1. Calculate Total Production for the Procedure (Group)
-        // Production counts for the procedure regardless of which "line" it was entered on.
-        let totalGroupProd = 0;
+        // 1. Finalize SIGTAP Financial based on best unit value found
+        g.totalFatSigtap = g.totalProd * g.vSigtap;
 
-        // Use reduce to sum 'producao.aprovada' from all items in the group
-        totalGroupProd = g.items.reduce((sum, item) => sum + (parseInt(item.producao?.aprovada || 0)), 0);
+        // 2. Calculate Total Production for the Procedure (Group)
+        let totalGroupProd = g.totalProd;
 
         // 2. Partition items by program to check meta
         const usageByProg = {};
@@ -537,7 +573,8 @@ async function renderTable() {
             if (isNaN(staticOffer)) staticOffer = 0;
             const itemOffer = offer > 0 ? offer : staticOffer;
 
-            const itemValInc = safeParseFloat(item.vlrIncentivo);
+            // Fallback for incentive unit value
+            const itemValInc = safeParseFloat(item.vlrIncentivo) || g.vInc || 0;
 
             usageByProg[pId].meta = Math.max(usageByProg[pId].meta, itemMeta);
             usageByProg[pId].offer += itemOffer;

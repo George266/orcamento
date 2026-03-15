@@ -163,8 +163,26 @@ async function initInstituteDashboard() {
 
         // Populate Month Selector first
         if (monthSelector && currentPactuacoes.length > 0) {
-            // ... existing month logic ...
-            const competencias = [...new Set(currentPactuacoes.map(p => p.competencia))].sort().reverse();
+            // Helper for parsing competency (local to ensure availability)
+            const parseCompLocal = (comp) => {
+                if (!comp) return new Date(0);
+                const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                const parts = comp.toLowerCase().split('/');
+                if (parts.length !== 2) return new Date(0);
+                const monthIndex = shortMonths.indexOf(parts[0]);
+                if (monthIndex === -1) return new Date(0);
+                const year = parseInt('20' + parts[1]);
+                return new Date(year, monthIndex, 1);
+            };
+
+            // Extract unique competencies and sort chronologically (newest first)
+            const competencias = [...new Set(currentPactuacoes.map(p => p.competencia))];
+            competencias.sort((a, b) => {
+                const dateA = parseCompLocal(a);
+                const dateB = parseCompLocal(b);
+                return dateB - dateA; // Descending (newest first)
+            });
+
             monthSelector.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
 
             monthSelector.addEventListener('change', (e) => {

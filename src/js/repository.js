@@ -350,8 +350,8 @@ export const Repository = {
             if (pNome) uniqueProgs.set(normalizeId(pNome), pNome);
             if (iNome) uniqueInsts.set(normalizeId(iNome), iNome);
             if (sCod) {
-                const pNomeProc = getCol(item, 'Procedimento', 'Proc', 'Desc').toString().trim();
-                const vBaseRaw = getCol(item, 'Valor Sigtap', 'Valor Unitário').toString().replace(',', '.');
+                const pNomeProc = getCol(item, 'Procedimento', 'Proc', 'Desc', 'Nome').toString().trim();
+                const vBaseRaw = getCol(item, 'Valor Sigtap', 'Valor Unitário', 'Base', 'Preço', 'Unitário', 'Vlr').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.');
                 const vBase = parseFloat(vBaseRaw || 0);
                 uniqueProcs.set(sCod, { nome: pNomeProc, vlr: vBase });
             }
@@ -455,13 +455,13 @@ export const Repository = {
                 indicacaoFeriado: getCol(row, 'Indicação Feriado'),
                 statusLinha: getCol(row, 'STATUS'),
                 // Quantification
-                ofertado: getCol(row, 'Ofertado') || 0,
-                ofertaMinima: getCol(row, 'SIGRAH', 'Minima', 'Pactuado') || 0,
-                totalOferta: getCol(row, 'Total Oferta') || 0,
+                ofertado: getCol(row, 'Ofertado', 'Oferta') || 0,
+                ofertaMinima: getCol(row, 'SIGRAH', 'Meta', 'Mínima', 'Pactuado', 'Pacto') || 0,
+                totalOferta: getCol(row, 'Total Oferta', 'Total Geral') || 0,
                 // Values
-                vlrSigtapBase: parseFloat(getCol(row, 'Valor Sigtap', 'Valor Unitário').toString().replace(',', '.') || 0),
-                vlrIncentivo: parseFloat(getCol(row, 'Incentivo').toString().replace(',', '.') || 0),
-                vlrTotalLinha: parseFloat(getCol(row, 'TOTAL').toString().replace(',', '.') || 0),
+                vlrSigtapBase: parseFloat(getCol(row, 'Valor Sigtap', 'Valor Unitário', 'Vlr Unit', 'Preço', 'Sigtap', 'Base').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
+                vlrIncentivo: parseFloat(getCol(row, 'Incentivo', 'Inc', 'Bonus', 'Vlr Inc').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
+                vlrTotalLinha: parseFloat(getCol(row, 'TOTAL', 'Financeiro', 'Vlr Total').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
                 // Weekly Production - Fallback logic for various formats
                 producao: {
                     sem1: getCol(row, '1º') || 0,

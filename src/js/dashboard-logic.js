@@ -22,9 +22,30 @@ export async function initDashboard() {
     const pactuacoes = await Repository.getPactuacoes();
     const monthSelector = document.getElementById('month-selector');
 
-    if (monthSelector && pactuacoes.length > 0) {
+    if (monthSelector) {
         // Extract unique competencies
-        const competencias = [...new Set(pactuacoes.map(p => p.competencia))].sort().reverse();
+        let competencias = [];
+        if (pactuacoes.length > 0) {
+            competencias = [...new Set(pactuacoes.map(p => p.competencia))];
+        }
+
+        // Always include current month
+        const currentComp = DateUtils.getCurrentMonthLabel('short'); // e.g., 'fev/26'
+        if (!competencias.includes(currentComp)) {
+            competencias.push(currentComp);
+        }
+
+        // Helper to parse 'mmm/yy' for sorting
+        const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+        const parseComp = (c) => {
+            if (!c) return 0;
+            const [m, y] = c.split('/');
+            if (!m || !y) return 0;
+            return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+        };
+
+        // Sort Descending (Newest first)
+        competencias.sort((a, b) => parseComp(b) - parseComp(a));
 
         monthSelector.innerHTML = competencias.map(c =>
             `<option value="${c}">${c}</option>`
@@ -35,7 +56,12 @@ export async function initDashboard() {
             updateDashboard(currentPeriod, pactuacoes);
         });
 
-        currentPeriod = monthSelector.value;
+        // Set default to current month if in list (which it is now)
+        // Or keep first item? Since we sorted desc, current month should be top or near top.
+        // But user specifically asked for "mes atual".
+        monthSelector.value = currentComp;
+        currentPeriod = currentComp;
+
         updateDashboard(currentPeriod, pactuacoes);
     } else {
         updateDashboard(null, pactuacoes);
@@ -134,7 +160,7 @@ async function updateDashboard(period = null, allPactuacoes = null) {
     const tableBody = document.getElementById('dashboard-table-body');
     if (tableBody) {
         if (groups.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 italic">Sem dados para este período.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
         } else {
             tableBody.innerHTML = groups.map(item => `
                 <tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

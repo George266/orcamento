@@ -20,6 +20,45 @@ let allPactuacoes = [];
 let allInstitutes = []; // New global
 let currentSort = { column: null, direction: 'asc' };
 
+function populateCompetenceFilter(selectElement, pactuacoes, preserveValue = false) {
+    if (!selectElement) return;
+
+    let competencias = [];
+    if (pactuacoes && pactuacoes.length > 0) {
+        competencias = [...new Set(pactuacoes.map(p => p.competencia))];
+    }
+
+    // Always include current month
+    const currentComp = DateUtils.getCurrentMonthLabel('short');
+    if (!competencias.includes(currentComp)) {
+        competencias.push(currentComp);
+    }
+
+    // Sort Chronologically (Newest first)
+    const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+    const parseComp = (c) => {
+        if (!c) return 0;
+        const [m, y] = c.split('/');
+        if (!m || !y) return 0;
+        return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+    };
+    competencias.sort((a, b) => parseComp(b) - parseComp(a));
+
+    if (competencias.length > 0) {
+        const previousVal = selectElement.value;
+        selectElement.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        if (preserveValue && previousVal && competencias.includes(previousVal)) {
+            selectElement.value = previousVal;
+        } else {
+            selectElement.value = currentComp;
+            if (selectElement.value !== currentComp) selectElement.value = competencias[0];
+        }
+    } else {
+        selectElement.innerHTML = '<option value="">Sem dados</option>';
+    }
+}
+
 async function initAcompanhamentoInst() {
     onAuthStateChanged(auth, async (user) => {
         if (!user) return;
@@ -142,18 +181,7 @@ async function initAcompanhamentoInst() {
                         // REFRESH COMPETENCE FILTER
                         const compFilter = document.getElementById('filter-competencia');
                         if (compFilter) {
-                            if (localPactuacoes.length > 0) {
-                                const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort().reverse();
-                                const currentVal = compFilter.value;
-                                compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
-                                if (comps.includes(currentVal)) {
-                                    compFilter.value = currentVal;
-                                } else if (comps.length > 0) {
-                                    compFilter.value = comps[0];
-                                }
-                            } else {
-                                compFilter.innerHTML = '<option value="">Sem dados</option>';
-                            }
+                            populateCompetenceFilter(compFilter, localPactuacoes, true);
                         }
 
                         renderTable();
@@ -199,9 +227,8 @@ async function initAcompanhamentoInst() {
 
         // Populate Filters (Initial)
         const compFilter = document.getElementById('filter-competencia');
-        if (localPactuacoes.length > 0) {
-            const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort().reverse();
-            compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (compFilter) {
+            populateCompetenceFilter(compFilter, localPactuacoes, false);
         }
 
         // Populate Program Filter
@@ -649,11 +676,22 @@ function renderTable() {
     // 2. Group by SIGTAP Only (Merge incentives)
     const groups = {};
     filtered.forEach(p => {
-        // Group Key is JUST SIGTAP now
-        const groupKey = p.sigtap;
+        // Helper for robust parsing
+        const cleanSigtap = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
+
+        const parseRobust = (v) => {
+            if (typeof v === 'number') return v;
+            let s = String(v || '0').replace(/[R$\s\u00A0]/g, "").trim();
+            if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, "").replace(",", ".");
+            else if (s.includes(',')) s = s.replace(",", ".");
+            return parseFloat(s) || 0;
+        };
+
+        // Group Key is JUST SIGTAP now - Cleaned for robust matching
+        const groupKey = cleanSigtap(p.sigtap);
 
         if (!groups[groupKey]) {
-            const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
+            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === groupKey);
             groups[groupKey] = {
                 key: groupKey,
                 sigtap: p.sigtap,
@@ -665,10 +703,20 @@ function renderTable() {
                 sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0,
                 programs: new Set(), // Track programs
                 // Globals
-                global: globalStats[p.sigtap] || { totalMeta: 0, totalRealizado: 0, breakdown: [] }
+                global: globalStats[p.sigtap] || { totalMeta: 0, totalRealizado: 0, breakdown: [] },
+                // Unit Values (Fallback)
+                vSigtap: parseRobust(p.vlrSigtapBase) || (proc?.vlrSigtap || 0),
+                vInc: parseRobust(p.vlrIncentivo) || 0
             };
         }
         groups[groupKey].items.push(p);
+
+        // Update unit values if better ones found in this row
+        const vSigtapRaw = parseRobust(p.vlrSigtapBase);
+        if (vSigtapRaw > groups[groupKey].vSigtap) groups[groupKey].vSigtap = vSigtapRaw;
+
+        const vIncRaw = parseRobust(p.vlrIncentivo);
+        if (vIncRaw > groups[groupKey].vInc) groups[groupKey].vInc = vIncRaw;
 
         // Track Program
         const prog = localProgs.find(pg => pg.id === p.progId);
@@ -765,7 +813,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (displayItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum procedimento encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
     } else {
         tbody.innerHTML = displayItems.map(group => {
             const target = group.maxMeta;
