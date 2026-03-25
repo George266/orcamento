@@ -644,32 +644,33 @@ function renderTable() {
     // We iterate over ALL pactuacoes to get the global picture
     const allFiltered = allPactuacoes.filter(p => p.competencia === compValue);
 
-    allFiltered.forEach(p => {
-        if (!globalStats[p.sigtap]) {
-            globalStats[p.sigtap] = {
-                totalMeta: 0,
-                totalRealizado: 0,
-                breakdown: []
-            };
-        }
+    // First pass: deduplicate by (sigtap + instId) to avoid double-counting
+    // when the same procedure appears in multiple incentives for the same institute
+    const globalInstMap = {}; // sigtap -> instId -> { meta, realizado }
 
+    allFiltered.forEach(p => {
+        if (!globalInstMap[p.sigtap]) globalInstMap[p.sigtap] = {};
+        const instEntry = globalInstMap[p.sigtap][p.instId];
         const meta = parseInt(p.ofertaMinima || 0);
         const real = parseInt(p.producao?.realizada || 0);
+        if (!instEntry) {
+            globalInstMap[p.sigtap][p.instId] = { meta, realizado: real };
+        } else {
+            // Same institute, different incentive: take max meta and max realizado (not sum)
+            instEntry.meta = Math.max(instEntry.meta, meta);
+            instEntry.realizado = Math.max(instEntry.realizado, real);
+        }
+    });
 
-        // Use Max Meta logic (Assuming Shared Goal)
-        globalStats[p.sigtap].totalMeta = Math.max(globalStats[p.sigtap].totalMeta, meta);
-        globalStats[p.sigtap].totalRealizado += real;
-
-        // Find Institute Name
-        // We know we only have access to "myInsts" usually, but "allPactuacoes" might contain others.
-        // We might need to fetch all institutes or store a map if we want names for everyone.
-        // For now, let's try to lookup in 'myInsts' if available, otherwise just use ID or generic.
-        // ACTUALLY: We need to load ALL institutes to get names properly if we want a full report.
-        // But let's assume valid IDs.
-        globalStats[p.sigtap].breakdown.push({
-            instId: p.instId,
-            meta,
-            realizado: real
+    // Second pass: build globalStats from deduplicated data
+    Object.keys(globalInstMap).forEach(sigtap => {
+        const instMap = globalInstMap[sigtap];
+        globalStats[sigtap] = { totalMeta: 0, totalRealizado: 0, breakdown: [] };
+        Object.keys(instMap).forEach(instId => {
+            const { meta, realizado } = instMap[instId];
+            globalStats[sigtap].totalMeta = Math.max(globalStats[sigtap].totalMeta, meta);
+            globalStats[sigtap].totalRealizado += realizado;
+            globalStats[sigtap].breakdown.push({ instId, meta, realizado });
         });
     });
 

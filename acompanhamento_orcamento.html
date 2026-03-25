@@ -239,39 +239,50 @@
                     <div id="table-scroll-container" class="overflow-x-auto cursor-grab active:cursor-grabbing">
                         <table class="w-full min-w-[1200px] border-collapse text-left">
                             <thead class="bg-gray-50 dark:bg-slate-800/50">
-                                <!--<th
-                                    class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Instituto</th>-->
-                                <th
-                                    class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Procedimento</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Meta</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Ofertado</th>
-                                <th
-                                    class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Status Meta</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Produzido</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Valor Sigtap</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Valor Incentivo</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Faturado Sigtap</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Faturado Incentivo</th>
-                                <th
-                                    class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                                    Total Financeiro</th>
+                                <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('proc')" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                        Procedimento <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('meta')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Meta <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('offer')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Ofertado <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Status Meta
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('prod')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Produzido <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Valor Sigtap
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    Valor Incentivo
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('sigtap')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Faturado Sigtap <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('inc')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Faturado Incentivo <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
+                                    <button onclick="window.sortTable('total')" class="flex items-center gap-1 ml-auto hover:text-primary transition-colors">
+                                        Total Financeiro <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </button>
+                                </th>
                                 </tr>
                             </thead>
                             <tbody id="monitoring-table-body"

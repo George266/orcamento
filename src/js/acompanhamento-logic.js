@@ -20,6 +20,10 @@ let userRole = null;
 let currentPage = 1;
 let itemsPerPage = 30;
 
+// Sort State
+let sortCol = null;
+let sortDir = 'asc';
+
 export async function initAcompanhamento() {
     // Load initial data
     allPactuacoes = await Repository.getPactuacoes();
@@ -563,7 +567,7 @@ async function renderTable() {
         const usageByProg = {};
         g.items.forEach(item => {
             const pId = item.progId || 'default';
-            if (!usageByProg[pId]) usageByProg[pId] = { meta: 0, offer: 0, unitVal: 0 };
+            if (!usageByProg[pId]) usageByProg[pId] = { meta: 0, offer: 0, unitVal: 0, instProds: {} };
 
             const itemMeta = parseInt(item.ofertaMinima || 0);
 
@@ -581,6 +585,16 @@ async function renderTable() {
 
             // Capture Unit Value (use max found or first non-zero)
             if (itemValInc > 0) usageByProg[pId].unitVal = itemValInc;
+
+            // Track production per institute to avoid double-counting
+            // when the same institute appears in multiple incentives
+            const prod = parseInt(item.producao?.aprovada || 0);
+            const instId = item.instId;
+            if (!(instId in usageByProg[pId].instProds)) {
+                usageByProg[pId].instProds[instId] = prod;
+            } else {
+                usageByProg[pId].instProds[instId] = Math.max(usageByProg[pId].instProds[instId], prod);
+            }
         });
 
         // Calculate Realized vs Missed for the Group
@@ -591,8 +605,10 @@ async function renderTable() {
             const prog = usageByProg[pId];
             const isMet = prog.meta > 0 ? (prog.offer >= prog.meta) : true;
 
-            // Calculate Potential based on TOTAL GROUP PRODUCTION
-            const potential = totalGroupProd * prog.unitVal;
+            // Sum production per institute (deduplicated) to avoid double-counting
+            // when the same procedure appears in multiple incentives
+            const progProd = Object.values(prog.instProds).reduce((sum, v) => sum + v, 0);
+            const potential = progProd * prog.unitVal;
 
             // Store status for global stats
             programStatusMap[`${g.sigtap}-${pId}`] = isMet;
@@ -606,7 +622,31 @@ async function renderTable() {
     });
 
     // ------------------------------------------------------------------
-    // 2. Pagination (on Groups now)
+    // 2. Sort
+    // ------------------------------------------------------------------
+    if (sortCol) {
+        groupList.sort((a, b) => {
+            let va, vb;
+            const totalIncA = a.realizedInc + a.missedInc;
+            const totalIncB = b.realizedInc + b.missedInc;
+            switch (sortCol) {
+                case 'proc':    va = a.procName.toLowerCase(); vb = b.procName.toLowerCase(); break;
+                case 'meta':    va = a.totalMeta;   vb = b.totalMeta;   break;
+                case 'offer':   va = a.totalOffer;  vb = b.totalOffer;  break;
+                case 'prod':    va = a.totalProd;   vb = b.totalProd;   break;
+                case 'sigtap':  va = a.totalFatSigtap; vb = b.totalFatSigtap; break;
+                case 'inc':     va = totalIncA;     vb = totalIncB;     break;
+                case 'total':   va = a.totalFatSigtap + totalIncA; vb = b.totalFatSigtap + totalIncB; break;
+                default:        va = 0; vb = 0;
+            }
+            if (va < vb) return sortDir === 'asc' ? -1 : 1;
+            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // 3. Pagination (on Groups now)
     // ------------------------------------------------------------------
     const totalItems = groupList.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -715,6 +755,20 @@ async function renderTable() {
     // Save groups globally for modal access
     window.rowGroups = groups;
 
+    // Update sort icons in header
+    document.querySelectorAll('thead button[onclick^="window.sortTable"]').forEach(btn => {
+        const col = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (!icon) return;
+        if (col === sortCol) {
+            icon.textContent = sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward';
+            icon.classList.add('text-primary');
+        } else {
+            icon.textContent = 'unfold_more';
+            icon.classList.remove('text-primary');
+        }
+    });
+
     updateStats(0, 0, 0, filtered, programStatusMap); // Pass computed status map
     renderPagination(totalItems, startIndex + 1, endIndex);
 }
@@ -722,6 +776,17 @@ async function renderTable() {
 // ------------------------------------------------------------------
 // Modal Functions
 // ------------------------------------------------------------------
+window.sortTable = (col) => {
+    if (sortCol === col) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortCol = col;
+        sortDir = 'asc';
+    }
+    currentPage = 1;
+    renderTable();
+};
+
 window.openBreakdownModal = (key) => {
     const group = window.rowGroups[key];
     if (!group) return;
@@ -731,74 +796,97 @@ window.openBreakdownModal = (key) => {
     document.getElementById('modal-subtitle').textContent = `Incentivo(s): ${progLabel} | Meta Global: ${formatNumber(group.totalMeta)}`;
 
     const tbody = document.getElementById('modal-breakdown-body');
-    tbody.innerHTML = group.items.map(item => {
-        const inst = localInsts.find(i => i.id === item.instId);
-        const instName = inst?.sigla || inst?.nome || 'Desconhecido';
 
-        let meta = parseInt(item.ofertaMinima || 0);
-
-        let offer = parseInt(item.producao?.realizada);
-        if (isNaN(offer)) offer = 0;
-        let staticOffer = parseInt(item.ofertado);
-        if (isNaN(staticOffer)) staticOffer = 0;
-        const finalOffer = offer > 0 ? offer : staticOffer;
-
-        let prod = parseInt(item.producao?.aprovada);
-        if (isNaN(prod)) prod = 0;
-
-        // Determine if this row met its specific meta (if applicable) or if we just show values
-        // Usually meta is checked globally, but here we show individual contributions.
-
-        const prog = localProgramas.find(pg => pg.id === item.progId);
-        const progName = prog ? prog.nome : (item.progId || '-');
-
-        // Find Justification for this item's institute/sigtap
-        const just = group.justifications ? group.justifications.find(j => j.instId === item.instId) : null;
-        let instNameDisplay = `<span>${instName}</span>`;
-
-        // Show justification ONLY if the target was not met
-        // Using loose comparison or verifying types. meta and finalOffer are numbers (parsed ints).
-        if (finalOffer < meta) {
-            const safeInst = instName.replace(/"/g, '&quot;');
-
-            if (just) {
-                const safeText = just.texto.replace(/"/g, '&quot;');
-                instNameDisplay += ` 
-                    <button onclick="window.viewJustification('${safeInst}', '${safeText}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors ml-2" title="Ver Justificativa">
-                        <span class="material-symbols-outlined text-amber-500 text-[18px]">assignment_late</span>
-                    </button>
-                `;
-            } else {
-                // NO JUSTIFICATION
-                instNameDisplay += ` 
-                    <button onclick="window.openContactModal('${item.instId}', '${safeInst}', '${group.sigtap}', '${group.procName}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ml-2" title="Solicitar Justificativa">
-                        <span class="material-symbols-outlined text-red-500 text-[18px]">assignment_late</span>
-                    </button>
-                `;
-            }
+    // Group items by instId to support rowspan on Instituto and Produzido columns
+    const itemsByInst = {};
+    const instOrder = [];
+    group.items.forEach(item => {
+        if (!itemsByInst[item.instId]) {
+            itemsByInst[item.instId] = [];
+            instOrder.push(item.instId);
         }
+        itemsByInst[item.instId].push(item);
+    });
 
-        return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300 flex items-center">
-                    ${instNameDisplay}
-                </td>
-                <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
-                <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
-                <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
-                <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
-                <td class="py-3 px-2 text-right">
-                    <input 
-                        type="number" 
-                        value="${prod}" 
+    const rows = [];
+    instOrder.forEach(instId => {
+        const instItems = itemsByInst[instId];
+        const rowspan = instItems.length;
+
+        instItems.forEach((item, idx) => {
+            const isFirst = idx === 0;
+            const inst = localInsts.find(i => i.id === item.instId);
+            const instName = inst?.sigla || inst?.nome || 'Desconhecido';
+
+            let meta = parseInt(item.ofertaMinima || 0);
+
+            let offer = parseInt(item.producao?.realizada);
+            if (isNaN(offer)) offer = 0;
+            let staticOffer = parseInt(item.ofertado);
+            if (isNaN(staticOffer)) staticOffer = 0;
+            const finalOffer = offer > 0 ? offer : staticOffer;
+
+            let prod = parseInt(item.producao?.aprovada);
+            if (isNaN(prod)) prod = 0;
+
+            const prog = localProgramas.find(pg => pg.id === item.progId);
+            const progName = prog ? prog.nome : (item.progId || '-');
+
+            let instCellHtml = '';
+            let prodCellHtml = '';
+
+            if (isFirst) {
+                // Instituto cell spanning all rows of this institute
+                const just = group.justifications ? group.justifications.find(j => j.instId === instId) : null;
+                let instNameDisplay = `<span>${instName}</span>`;
+
+                // Check if any item for this institute is below its meta
+                const anyBelowMeta = instItems.some(i => {
+                    const iOffer = parseInt(i.producao?.realizada || 0) || parseInt(i.ofertado || 0);
+                    return iOffer < parseInt(i.ofertaMinima || 0);
+                });
+
+                if (anyBelowMeta) {
+                    const safeInst = instName.replace(/"/g, '&quot;');
+                    if (just) {
+                        const safeText = just.texto.replace(/"/g, '&quot;');
+                        instNameDisplay += `<button onclick="window.viewJustification('${safeInst}', '${safeText}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors ml-2" title="Ver Justificativa"><span class="material-symbols-outlined text-amber-500 text-[18px]">assignment_late</span></button>`;
+                    } else {
+                        instNameDisplay += `<button onclick="window.openContactModal('${instId}', '${safeInst}', '${group.sigtap}', '${group.procName}')" class="inline-flex items-center justify-center p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ml-2" title="Solicitar Justificativa"><span class="material-symbols-outlined text-red-500 text-[18px]">assignment_late</span></button>`;
+                    }
+                }
+
+                const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+                instCellHtml = `<td${rowspanAttr} class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300 align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
+                    <div class="flex items-center">${instNameDisplay}</div>
+                </td>`;
+
+                // Produzido cell spanning all rows of this institute (one input per institute)
+                prodCellHtml = `<td${rowspanAttr} class="py-3 px-2 text-right align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
+                    <input
+                        type="number"
+                        value="${prod}"
                         onchange="window.saveBreakdownItem('${item.id}', this.value, '${key}')"
                         class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
                     />
-                </td>
-                <td class="py-3 px-2 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
-            </tr>
-        `;
-    }).join('');
+                </td>`;
+            }
+
+            rows.push(`
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50${!isFirst ? ' border-t border-slate-100 dark:border-slate-800' : ''}">
+                    ${instCellHtml}
+                    <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
+                    <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
+                    <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
+                    <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
+                    ${prodCellHtml}
+                    <td class="py-3 px-2 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
+                </tr>
+            `);
+        });
+    });
+
+    tbody.innerHTML = rows.join('');
 
     document.getElementById('modal-breakdown').classList.remove('hidden');
 };
