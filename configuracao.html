@@ -639,8 +639,8 @@
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Competência</label>
-                            <input type="text" id="item-competencia" placeholder="Ex: Geral ou jan/26"
-                                class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                            <select id="item-competencia"
+                                class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Oferta
@@ -1133,6 +1133,21 @@
             procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
                 localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
 
+            // Populate Competencia Select (Form)
+            const compSelect = document.getElementById('item-competencia');
+            const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const now = new Date();
+            const compOptions = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
+            for (let i = -3; i <= 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const label = `${shortMonths[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
+                compOptions.push(`<option value="${label}">${label}</option>`);
+            }
+            compSelect.innerHTML = compOptions.join('');
+            // Pre-select current month
+            const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
+            compSelect.value = currentLabel;
+
             // Populate Filter Select
             const filterSelect = document.getElementById('filter-instituto');
             filterSelect.innerHTML = `<option value="">Todos os Institutos</option>` +
@@ -1611,6 +1626,20 @@
             procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
                 localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
 
+            // Populate Competencia Select (Form)
+            const compSelect = document.getElementById('item-competencia');
+            const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const now = new Date();
+            const compOptions = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
+            for (let i = -3; i <= 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const label = `${shortMonths[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
+                compOptions.push(`<option value="${label}">${label}</option>`);
+            }
+            compSelect.innerHTML = compOptions.join('');
+            const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
+            compSelect.value = currentLabel;
+
             // We do NOT render table anymore
 
             // Need to fetch items if we are editing, but openItensModal signature relies on local data? 
@@ -1625,7 +1654,7 @@
                     document.getElementById('item-id').value = item.id;
                     document.getElementById('item-inst').value = item.instId;
                     document.getElementById('item-proc').value = item.sigtap;
-                    document.getElementById('item-competencia').value = item.competencia; // Text input now
+                    document.getElementById('item-competencia').value = item.competencia;
                     document.getElementById('item-qtd').value = item.ofertaMinima;
                     document.getElementById('item-vlr').value = item.vlrIncentivo;
 
