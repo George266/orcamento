@@ -24,6 +24,7 @@ const COLL_PRODUCAO = "producao";
 const COLL_LOGS = "logs";
 const COLL_CONFIG = "config";
 const COLL_JUSTIFICATIVAS = "justificativas";
+const COLL_GRUPOS_OFERTA = "gruposOferta";
 
 // --- HELPERS ---
 const normalizeId = (text) => {
@@ -88,6 +89,23 @@ export const Repository = {
 
     async deleteInstituto(id) {
         await deleteDoc(doc(db, COLL_INSTITUTOS, id));
+    },
+
+    // GRUPOS DE OFERTA
+    async getGruposOferta() {
+        const snapshot = await getDocs(collection(db, COLL_GRUPOS_OFERTA));
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async saveGrupoOferta(grupo) {
+        const id = grupo.id || normalizeId(grupo.nome);
+        const ref = doc(db, COLL_GRUPOS_OFERTA, id);
+        await setDoc(ref, { ...grupo, id }, { merge: true });
+        return id;
+    },
+
+    async deleteGrupoOferta(id) {
+        await deleteDoc(doc(db, COLL_GRUPOS_OFERTA, id));
     },
 
     // PROCEDIMENTOS

@@ -14,6 +14,7 @@ let allPactuacoes = [];
 let localInsts = [];
 let localProcs = [];
 let localProgramas = []; // Added programs
+let localGruposOferta = [];
 let userRole = null;
 
 // Pagination State
@@ -29,7 +30,8 @@ export async function initAcompanhamento() {
     allPactuacoes = await Repository.getPactuacoes();
     localInsts = await Repository.getInstitutos();
     localProcs = await Repository.getProcedimentos();
-    localProgramas = await Repository.getProgramas(); // Fetch programs
+    localProgramas = await Repository.getProgramas();
+    localGruposOferta = await Repository.getGruposOferta();
 
     // Fetch Justifications for current view context (optimized later, for now maybe fetch all or by competence filter?)
     // Since we don't know the filter yet, we might lazy load or fetch strictly by selected competence in renderTable.
@@ -64,8 +66,7 @@ export async function initAcompanhamento() {
 
     // Event Listeners
     document.getElementById('filter-inst')?.addEventListener('change', renderTable);
-    document.getElementById('filter-proc')?.addEventListener('change', renderTable);
-    document.getElementById('filter-prog')?.addEventListener('change', renderTable); // Added program filter listener
+    document.getElementById('filter-prog')?.addEventListener('change', renderTable);
     document.getElementById('filter-period')?.addEventListener('change', renderTable);
 
     // Click-to-edit for Offer (only works if element exists/rendered by permissions)
@@ -124,8 +125,8 @@ export async function initAcompanhamento() {
     document.getElementById('btn-filter')?.addEventListener('click', renderTable);
     document.getElementById('btn-clear')?.addEventListener('click', () => {
         document.getElementById('filter-inst').value = '';
-        document.getElementById('filter-proc').value = '';
-        document.getElementById('filter-prog').value = ''; // Clear program filter
+        clearProcAutocomplete();
+        document.getElementById('filter-prog').value = '';
         const periodSelect = document.getElementById('filter-period');
         if (periodSelect) {
             // Re-select the latest competence on clear
@@ -357,6 +358,84 @@ window.ignoreBudgetAlert = (type) => {
     document.getElementById('modal-alert-prazo-orcamento').classList.add('hidden');
 };
 
+function initProcAutocomplete(items) {
+    const input = document.getElementById('filter-proc-input');
+    const hidden = document.getElementById('filter-proc');
+    const dropdown = document.getElementById('proc-dropdown');
+    const clearBtn = document.getElementById('proc-clear-btn');
+    if (!input || !hidden || !dropdown || !clearBtn) return;
+
+    function showDropdown(filtered) {
+        if (filtered.length === 0) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+        dropdown.innerHTML = filtered.map(item =>
+            `<li data-value="${item.value}"
+                class="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 dark:hover:bg-slate-700 text-text-main dark:text-white">
+                ${item.label}
+            </li>`
+        ).join('');
+        dropdown.classList.remove('hidden');
+    }
+
+    function selectItem(value, label) {
+        hidden.value = value;
+        input.value = label;
+        dropdown.classList.add('hidden');
+        clearBtn.classList.remove('hidden');
+        renderTable();
+    }
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        hidden.value = '';
+        clearBtn.classList.toggle('hidden', q === '');
+        if (q === '') {
+            dropdown.classList.add('hidden');
+            renderTable();
+            return;
+        }
+        const filtered = items.filter(it => it.label.toLowerCase().includes(q));
+        showDropdown(filtered);
+    });
+
+    input.addEventListener('focus', () => {
+        const q = input.value.trim().toLowerCase();
+        if (q && !hidden.value) {
+            const filtered = items.filter(it => it.label.toLowerCase().includes(q));
+            showDropdown(filtered);
+        }
+    });
+
+    dropdown.addEventListener('mousedown', (e) => {
+        const li = e.target.closest('li[data-value]');
+        if (li) selectItem(li.dataset.value, li.textContent.trim());
+    });
+
+    clearBtn.addEventListener('click', () => {
+        clearProcAutocomplete();
+        renderTable();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!document.getElementById('proc-autocomplete-wrapper')?.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+function clearProcAutocomplete() {
+    const input = document.getElementById('filter-proc-input');
+    const hidden = document.getElementById('filter-proc');
+    const dropdown = document.getElementById('proc-dropdown');
+    const clearBtn = document.getElementById('proc-clear-btn');
+    if (input) input.value = '';
+    if (hidden) hidden.value = '';
+    if (dropdown) dropdown.classList.add('hidden');
+    if (clearBtn) clearBtn.classList.add('hidden');
+}
+
 function populateFilters() {
     const instSelect = document.getElementById('filter-inst');
     if (instSelect) {
@@ -364,16 +443,13 @@ function populateFilters() {
             localInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
     }
 
-    const procSelect = document.getElementById('filter-proc');
-    if (procSelect) {
-        // Unique procs present in pactuacoes
-        const uniqueProcIds = [...new Set(allPactuacoes.map(p => p.sigtap))];
-        procSelect.innerHTML = `<option value="">Todos os Procedimentos</option>` +
-            uniqueProcIds.map(id => {
-                const p = localProcs.find(pr => pr.sigtap === id);
-                return `<option value="${id}">${id} - ${p?.nome || '???'}</option>`;
-            }).join('');
-    }
+    // Autocomplete para Procedimento
+    const uniqueProcIds = [...new Set(allPactuacoes.map(p => p.sigtap))];
+    const procItems = uniqueProcIds.map(id => {
+        const p = localProcs.find(pr => pr.sigtap === id);
+        return { value: id, label: `${id} - ${p?.nome || '???'}` };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+    initProcAutocomplete(procItems);
 
     // Populate Program Filter
     const progSelect = document.getElementById('filter-prog');
@@ -481,19 +557,23 @@ async function renderTable() {
 
     const groups = {};
     filtered.forEach(p => {
-        // Grouping purely by Procedure (SIGTAP) - Cleaned for robust matching
-        const key = cleanSigtap(p.sigtap);
+        // If item belongs to a unified offer group, key is "grupo_<grupoId>"
+        // Otherwise key is the cleaned SIGTAP
+        const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+        const key = grupo ? `grupo_${grupo.id}` : cleanSigtap(p.sigtap);
 
         if (!groups[key]) {
-            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === key);
+            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === cleanSigtap(p.sigtap));
             groups[key] = {
                 key,
                 sigtap: p.sigtap,
-                procName: proc?.nome || 'Procedimento',
+                procName: grupo ? grupo.nome : (proc?.nome || 'Procedimento'),
                 code: p.sigtap,
+                isGrupo: !!grupo,
+                grupoId: grupo?.id || null,
                 items: [],
                 // Aggregates
-                totalMeta: 0,
+                totalMeta: grupo ? parseInt(grupo.ofertaMinima || 0) : 0,
                 totalOffer: 0,
                 totalProd: 0,
                 totalFatSigtap: 0,
@@ -508,13 +588,9 @@ async function renderTable() {
         }
 
         // Check for Justification
-        // Justification is per Institute+Sigtap.
-        // If this row (p) corresponds to an institute that has justified this sigtap:
         const justKey = `${p.instId}_${p.sigtap}`;
         if (justMap.has(justKey)) {
-            // Avoid duplicates if multiple programs for same inst/sigtap caused multiple rows
             const justObj = justMap.get(justKey);
-            // Check if already added to group
             if (!groups[key].justifications.find(j => j.id === justObj.id)) {
                 groups[key].justifications.push(justObj);
             }
@@ -538,10 +614,13 @@ async function renderTable() {
         const prod = parseInt(p.producao?.aprovada || 0);
         groups[key].totalProd += prod;
 
-        let meta = parseInt(p.ofertaMinima || 0);
-        groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
+        // Meta: for grupo items, fixed from group definition; for individual, take max
+        if (!grupo) {
+            const meta = parseInt(p.ofertaMinima || 0);
+            groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
+        }
 
-        // Offer for display (sum? or max? Usually Sum for Group if multiple)
+        // Offer: always sum production across all items in the group
         let offer = parseInt(p.producao?.realizada);
         if (isNaN(offer)) offer = 0;
         let staticOffer = parseInt(p.ofertado);
@@ -704,14 +783,33 @@ async function renderTable() {
 
         const totalRow = fatSigtap + fatInc;
 
+        let procCellHtml;
+        if (g.isGrupo) {
+            const grupoObj = localGruposOferta.find(gr => gr.id === g.grupoId);
+            const procNames = (grupoObj?.procedimentos || []).map(s => {
+                const pr = localProcs.find(x => x.sigtap === s);
+                return pr ? pr.nome : s;
+            });
+            procCellHtml = `
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-sm font-bold text-slate-700 dark:text-slate-300">${g.procName}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide whitespace-nowrap">Oferta Unificada</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1 max-w-[280px]" title="${procNames.join(' + ')}">${procNames.join(' + ')}</div>
+                <div class="text-xs text-slate-400 uppercase mt-0.5">${g.competencia}</div>
+            `;
+        } else {
+            procCellHtml = `
+                <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${g.procName}">${g.procName}</div>
+                <div class="text-xs font-mono text-slate-400">${g.code}</div>
+                <div class="text-xs text-slate-400 uppercase mt-0.5">${g.competencia}</div>
+            `;
+        }
+
         return `
             <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
                 <!-- Procedure -->
-                <td class="px-6 py-4">
-                    <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title="${g.procName}">${g.procName}</div>
-                    <div class="text-xs font-mono text-slate-400">${g.code}</div>
-                    <div class="text-xs text-slate-400 uppercase mt-0.5">${g.competencia}</div>
-                </td>
+                <td class="px-6 py-4">${procCellHtml}</td>
                 
                 <!-- Meta (Total) -->
                 <td class="px-6 py-4 text-right font-mono text-sm font-bold">${formatNumber(g.totalMeta)}</td>

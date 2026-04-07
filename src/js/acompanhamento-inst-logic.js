@@ -18,6 +18,7 @@ let localProcs = [];
 let localProgs = [];
 let allPactuacoes = [];
 let allInstitutes = []; // New global
+let localGruposOferta = [];
 let currentSort = { column: null, direction: 'asc' };
 
 function populateCompetenceFilter(selectElement, pactuacoes, preserveValue = false) {
@@ -80,7 +81,8 @@ async function initAcompanhamentoInst() {
         allPactuacoes = await Repository.getPactuacoes();
         localProcs = await Repository.getProcedimentos();
         localProgs = await Repository.getProgramas();
-        allInstitutes = await Repository.getInstitutos(); // Fetch ALL for breakdown lookup
+        allInstitutes = await Repository.getInstitutos();
+        localGruposOferta = await Repository.getGruposOferta();
 
         // Hide old filter container if it exists
         const instFilterContainer = document.getElementById('container-filter-inst');
@@ -333,45 +335,53 @@ async function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitu
     }
 
     const pendingItems = [];
-    const processedKeys = new Set(); // Key: instId_sigtap
+    const processedKeys = new Set(); // Key: instId_sigtap OR instId_grupo_<grupoId>
 
     relevant.forEach(p => {
-        const key = `${p.instId}_${p.sigtap}`;
+        const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+        // For grupo items, use a shared key per (instId + grupoId) so all sigtaps in the group are evaluated together
+        const key = grupo ? `${p.instId}_grupo_${grupo.id}` : `${p.instId}_${p.sigtap}`;
         if (processedKeys.has(key)) return;
 
-        // CHECK IF ALREADY JUSTIFIED (Firestore + Local Fallback)
-        if (justifiedSet.has(key)) {
-            console.log(`[DEBUG] Item ${key} found in database justifications.`);
+        // CHECK IF ALREADY JUSTIFIED
+        const justKey = `${p.instId}_${p.sigtap}`;
+        if (!grupo && justifiedSet.has(justKey)) {
+            console.log(`[DEBUG] Item ${justKey} found in database justifications.`);
             return;
         }
 
-        const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
+        let maxMeta, totalRealized;
 
-        const maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
-        const totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
-
-        // Early Month Check (Day 5): Alert if Realized == 0 (Not Started)
-        // Late Month Check (Last 7 Days): Alert if Realized < Meta (Not Achieved)
+        if (grupo) {
+            // Unified group: sum production of ALL sigtaps in the group for this institute
+            const grupoItems = relevant.filter(i => i.instId === p.instId && i.grupoOfertaId === grupo.id);
+            maxMeta = parseInt(grupo.ofertaMinima || 0);
+            totalRealized = grupoItems.reduce((sum, i) => sum + parseInt(i.producao?.realizada || 0), 0);
+        } else {
+            const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
+            maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
+            totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
+        }
 
         let isPending = false;
-        let statusType = 'DELAY'; // Default
+        let statusType = 'DELAY';
 
         if (isCriticalPeriod) {
             if (maxMeta > 0 && totalRealized < maxMeta) {
                 isPending = true;
-                statusType = 'FAILURE'; // Meta não atingida
+                statusType = 'FAILURE';
             }
         } else {
             if (maxMeta > 0 && totalRealized === 0) {
                 isPending = true;
-                statusType = 'DELAY'; // Não iniciado
+                statusType = 'DELAY';
             }
         }
 
         if (isPending) {
             pendingItems.push({
                 instId: p.instId,
-                sigtap: p.sigtap,
+                sigtap: grupo ? `(grupo: ${grupo.nome})` : p.sigtap,
                 meta: maxMeta,
                 realized: totalRealized,
                 type: statusType
@@ -674,10 +684,9 @@ function renderTable() {
         });
     });
 
-    // 2. Group by SIGTAP Only (Merge incentives)
+    // 2. Group by SIGTAP (or by grupoOfertaId when unified)
     const groups = {};
     filtered.forEach(p => {
-        // Helper for robust parsing
         const cleanSigtap = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
 
         const parseRobust = (v) => {
@@ -688,46 +697,41 @@ function renderTable() {
             return parseFloat(s) || 0;
         };
 
-        // Group Key is JUST SIGTAP now - Cleaned for robust matching
-        const groupKey = cleanSigtap(p.sigtap);
+        const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+        const groupKey = grupo ? `grupo_${grupo.id}` : cleanSigtap(p.sigtap);
 
         if (!groups[groupKey]) {
-            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === groupKey);
+            const proc = localProcs.find(pr => cleanSigtap(pr.sigtap) === cleanSigtap(p.sigtap));
             groups[groupKey] = {
                 key: groupKey,
                 sigtap: p.sigtap,
-                procName: proc?.nome || 'Procedimento',
+                procName: grupo ? grupo.nome : (proc?.nome || 'Procedimento'),
+                isGrupo: !!grupo,
+                grupoId: grupo?.id || null,
                 items: [],
-                totalMeta: 0,
-                maxMeta: 0,
+                totalMeta: grupo ? parseInt(grupo.ofertaMinima || 0) : 0,
+                maxMeta: grupo ? parseInt(grupo.ofertaMinima || 0) : 0,
                 totalRealizado: 0,
                 sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0,
-                programs: new Set(), // Track programs
-                // Globals
+                programs: new Set(),
                 global: globalStats[p.sigtap] || { totalMeta: 0, totalRealizado: 0, breakdown: [] },
-                // Unit Values (Fallback)
                 vSigtap: parseRobust(p.vlrSigtapBase) || (proc?.vlrSigtap || 0),
                 vInc: parseRobust(p.vlrIncentivo) || 0
             };
         }
         groups[groupKey].items.push(p);
 
-        // Update unit values if better ones found in this row
         const vSigtapRaw = parseRobust(p.vlrSigtapBase);
         if (vSigtapRaw > groups[groupKey].vSigtap) groups[groupKey].vSigtap = vSigtapRaw;
 
         const vIncRaw = parseRobust(p.vlrIncentivo);
         if (vIncRaw > groups[groupKey].vInc) groups[groupKey].vInc = vIncRaw;
 
-        // Track Program
         const prog = localProgs.find(pg => pg.id === p.progId);
         groups[groupKey].programs.add(prog ? prog.nome : (p.progId || ''));
 
-        if (!groups[groupKey].instStats) {
-            groups[groupKey].instStats = {};
-        }
+        if (!groups[groupKey].instStats) groups[groupKey].instStats = {};
 
-        // Initialize Stats for this Institute if not present
         if (!groups[groupKey].instStats[p.instId]) {
             groups[groupKey].instStats[p.instId] = {
                 maxMeta: 0,
@@ -736,19 +740,31 @@ function renderTable() {
         }
 
         const stats = groups[groupKey].instStats[p.instId];
-        const meta = parseInt(p.ofertaMinima || 0);
 
-        // Update Max Meta for this Institute (Shared Goal Logic within Inst)
-        stats.maxMeta = Math.max(stats.maxMeta, meta);
+        // Meta: for grupo items fixed from group; for individual take max
+        if (!grupo) {
+            const meta = parseInt(p.ofertaMinima || 0);
+            stats.maxMeta = Math.max(stats.maxMeta, meta);
+            groups[groupKey].maxMeta = Math.max(groups[groupKey].maxMeta, meta);
+            groups[groupKey].totalMeta = Math.max(groups[groupKey].totalMeta, meta);
+        }
 
-        // Capture Production (Mirrored within Inst, so we can just take the value of any/latest)
-        // We use Math.max just in case of slight sync inconsistency, favoring the positive value
+        // Production: for grupo items SUM semanas (each sigtap contributes separately)
         if (!p.producao) p.producao = {};
-        stats.sem1 = Math.max(stats.sem1, parseInt(p.producao.sem1 || 0));
-        stats.sem2 = Math.max(stats.sem2, parseInt(p.producao.sem2 || 0));
-        stats.sem3 = Math.max(stats.sem3, parseInt(p.producao.sem3 || 0));
-        stats.sem4 = Math.max(stats.sem4, parseInt(p.producao.sem4 || 0));
-        stats.sem5 = Math.max(stats.sem5, parseInt(p.producao.sem5 || 0));
+        if (grupo) {
+            // Sum production across all sigtaps in the group
+            stats.sem1 = (stats.sem1 || 0) + parseInt(p.producao.sem1 || 0);
+            stats.sem2 = (stats.sem2 || 0) + parseInt(p.producao.sem2 || 0);
+            stats.sem3 = (stats.sem3 || 0) + parseInt(p.producao.sem3 || 0);
+            stats.sem4 = (stats.sem4 || 0) + parseInt(p.producao.sem4 || 0);
+            stats.sem5 = (stats.sem5 || 0) + parseInt(p.producao.sem5 || 0);
+        } else {
+            stats.sem1 = Math.max(stats.sem1, parseInt(p.producao.sem1 || 0));
+            stats.sem2 = Math.max(stats.sem2, parseInt(p.producao.sem2 || 0));
+            stats.sem3 = Math.max(stats.sem3, parseInt(p.producao.sem3 || 0));
+            stats.sem4 = Math.max(stats.sem4, parseInt(p.producao.sem4 || 0));
+            stats.sem5 = Math.max(stats.sem5, parseInt(p.producao.sem5 || 0));
+        }
     });
 
     // Finalize Calculation: Aggregate InstStats to Group Totals
@@ -765,8 +781,11 @@ function renderTable() {
             sumSem5 += st.sem5;
         });
 
-        group.maxMeta = maxMetaVal;
-        group.totalMeta = maxMetaVal; // Consistent
+        // For grupo items, meta is fixed from the group definition — don't overwrite with 0
+        if (!group.isGrupo) {
+            group.maxMeta = maxMetaVal;
+            group.totalMeta = maxMetaVal;
+        }
         group.sem1 = sumSem1;
         group.sem2 = sumSem2;
         group.sem3 = sumSem3;
@@ -827,11 +846,9 @@ function renderTable() {
             const inputState = canEdit ? '' : 'disabled';
             const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : 'bg-slate-50 text-slate-500';
 
-            // Meta Check (Based on displayed Max Meta)
             const isMetaMet = target > 0 && group.totalRealizado >= target;
 
-            // Program Label (Multiple or Single)
-            const progNames = Array.from(group.programs).filter(Boolean); // Remove empty
+            const progNames = Array.from(group.programs).filter(Boolean);
             const uniqueProgs = [...new Set(progNames)];
             const progLabel = uniqueProgs.length > 1 ? `Vários (${uniqueProgs.length})` : uniqueProgs[0];
 
@@ -853,10 +870,77 @@ function renderTable() {
                     <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
                         <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
                     </div>
-                 `;
+                `;
             }
 
-            // Generate 5 inputs
+            // ── GRUPO DE OFERTA UNIFICADA: header row + sub-rows per procedure ──
+            if (group.isGrupo) {
+                const grupoObj = localGruposOferta.find(gr => gr.id === group.grupoId);
+
+                // Header row — meta, progress bar, no inputs
+                const headerRow = `
+                    <tr class="bg-indigo-50/60 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
+                        <td class="px-6 py-3" colspan="2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-black text-slate-900 dark:text-white">${group.procName}</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide whitespace-nowrap">Oferta Unificada</span>
+                                ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100">${progLabel}</span>` : ''}
+                            </div>
+                        </td>
+                        <td class="px-6 py-3 whitespace-nowrap text-center text-sm font-black text-indigo-700">
+                            ${formatNumber(target)} <span class="text-[10px] font-normal text-slate-400">total</span>
+                        </td>
+                        <td class="px-6 py-3 align-middle" colspan="6">
+                            <div class="flex flex-col gap-1 max-w-[240px]">
+                                ${statusContent}
+                            </div>
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <button onclick="window.openDetailModal('${group.key}')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg border border-indigo-100" title="Ver Detalhes">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                        </td>
+                    </tr>`;
+
+                // Sub-rows — one per procedure in the group
+                const subRows = (grupoObj?.procedimentos || []).map(sigtap => {
+                    const proc = localProcs.find(x => x.sigtap === sigtap);
+                    const procName = proc?.nome || sigtap;
+                    // Find the matching pactuacao item for this institute + sigtap
+                    const pact = group.items.find(i => i.sigtap === sigtap);
+                    const pactId = pact?.id || '';
+                    const semVals = [1,2,3,4,5].map(w => parseInt(pact?.producao?.[`sem${w}`] || 0));
+                    const subTotal = semVals.reduce((s, v) => s + v, 0);
+
+                    const subWeekInputs = [1,2,3,4,5].map((w, idx) => `
+                        <td class="px-2 py-3 whitespace-nowrap text-center">
+                            <input
+                                onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value, '${pactId}')"
+                                class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
+                                min="0" value="${semVals[idx]}" type="number" ${inputState}
+                            />
+                        </td>`).join('');
+
+                    return `
+                    <tr class="border-b border-indigo-50 dark:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800/30 transition-colors">
+                        <td class="pl-10 pr-4 py-3" colspan="2">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px] text-indigo-300">subdirectory_arrow_right</span>
+                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">${procName}</span>
+                                <span class="text-[10px] font-mono text-slate-400">${sigtap}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-3 text-center text-xs font-bold text-slate-500">${formatNumber(subTotal)}</td>
+                        <td class="px-4 py-3 text-center text-[10px] text-slate-400" colspan="1">—</td>
+                        ${subWeekInputs}
+                        <td></td>
+                    </tr>`;
+                }).join('');
+
+                return headerRow + subRows;
+            }
+
+            // ── ITEM INDIVIDUAL (original logic) ──
             const weeks = [1, 2, 3, 4, 5];
             const weekInputs = weeks.map(w => {
                 const val = group[`sem${w}`];
@@ -865,18 +949,15 @@ function renderTable() {
                         <input
                             onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value)"
                             class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
-                            min="0" 
-                            value="${val}" 
-                            type="number" 
-                            ${inputState}
+                            min="0" value="${val}" type="number" ${inputState}
                         />
                     </td>
-                 `;
+                `;
             }).join('');
 
             return `
              <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row">
-                <td class="px-6 py-4">
+                <td class="px-6 py-4" colspan="2">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title="${group.procName}">${group.procName}</span>
                         <div class="flex items-center gap-2 mt-0.5">
@@ -894,9 +975,9 @@ function renderTable() {
                     </div>
                 </td>
                 ${weekInputs}
-                 <td class="px-6 py-4 whitespace-nowrap text-center">
+                <td class="px-6 py-4 whitespace-nowrap text-center">
                     <button onclick="window.openDetailModal('${group.key}')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg" title="Ver Detalhes">
-                         <span class="material-symbols-outlined text-[20px]">visibility</span>
+                        <span class="material-symbols-outlined text-[20px]">visibility</span>
                     </button>
                 </td>
             </tr>
@@ -908,31 +989,49 @@ function renderTable() {
     window.displayGroups = groups;
 }
 
-window.updateUnifiedWeek = async (groupKey, weekField, value) => {
+window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null) => {
     const val = parseInt(value) || 0;
     const group = window.displayGroups[groupKey];
-    if (group) {
-        // Optimistic Update
-        group[weekField] = val;
-        // Recalc total
-        group.totalRealizado = (group.sem1 || 0) + (group.sem2 || 0) + (group.sem3 || 0) + (group.sem4 || 0) + (group.sem5 || 0);
+    if (!group) return;
 
-        // Update all items in group (Mirroring the value)
+    if (group.isGrupo && pactId) {
+        // Unified group: update only the specific pactuacao (one procedure's input)
+        const pact = group.items.find(i => i.id === pactId);
+        if (!pact) return;
+        if (!pact.producao) pact.producao = {};
+        pact.producao[weekField] = val;
+        pact.producao.realizada = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
+
+        // Recalc group total from ALL items
+        group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.producao?.realizada) || 0), 0);
+        // Also update group semX totals
+        [1,2,3,4,5].forEach(w => {
+            group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
+        });
+
+        try {
+            await Repository.savePactuacao({ id: pact.id, producao: pact.producao });
+            const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
+            if (localIdx !== -1) localPactuacoes[localIdx].producao = { ...pact.producao };
+            renderTable();
+        } catch (error) {
+            console.error("Error updating week for grupo item:", error);
+            alert("Erro ao salvar semana.");
+        }
+    } else {
+        // Individual item: original mirror logic
+        group[weekField] = val;
+        group.totalRealizado = [1,2,3,4,5].reduce((s, w) => s + (group[`sem${w}`] || 0), 0);
+
         const updatePromises = group.items.map(async (pact) => {
             if (!pact.producao) pact.producao = {};
-            pact.producao[weekField] = val; // Set the same value
-            pact.producao.realizada = (pact.producao.sem1 || 0) + (pact.producao.sem2 || 0) + (pact.producao.sem3 || 0) + (pact.producao.sem4 || 0) + (pact.producao.sem5 || 0);
-
-            return Repository.savePactuacao({
-                id: pact.id,
-                producao: pact.producao
-            });
+            pact.producao[weekField] = val;
+            pact.producao.realizada = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
+            return Repository.savePactuacao({ id: pact.id, producao: pact.producao });
         });
 
         try {
             await Promise.all(updatePromises);
-
-            // Update local state (Optimistic already done on group object, but sync localPactuacoes)
             group.items.forEach(pact => {
                 const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
                 if (localIdx !== -1) {
@@ -941,8 +1040,7 @@ window.updateUnifiedWeek = async (groupKey, weekField, value) => {
                     localPactuacoes[localIdx].producao.realizada = pact.producao.realizada;
                 }
             });
-
-            renderTable(); // Re-render to update totals and progress bars
+            renderTable();
         } catch (error) {
             console.error("Error bulk updating week:", error);
             alert("Erro ao salvar semana.");

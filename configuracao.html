@@ -184,6 +184,10 @@
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
                 Incentivos
             </button>
+            <button onclick="switchTab('grupos')" id="btn-tab-grupos"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
+                Grupos de Oferta
+            </button>
             <button onclick="switchTab('config')" id="btn-tab-config"
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white whitespace-nowrap">
                 Configuração
@@ -323,6 +327,15 @@
                                 class="material-symbols-outlined absolute right-2 top-2.5 text-slate-400 text-sm pointer-events-none">arrow_drop_down</span>
                         </div>
 
+                        <!-- Search Procedure (items) -->
+                        <div class="relative flex-1 md:w-52">
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">vaccines</span>
+                            <input type="text" id="search-proc-po" onkeyup="window.renderPO()"
+                                placeholder="Buscar procedimento..."
+                                class="pl-9 pr-4 py-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm">
+                        </div>
+
                         <!-- Filter Competence -->
                         <div class="relative flex-1 md:w-36">
                             <span
@@ -332,7 +345,7 @@
                         </div>
 
                         <!-- Replicate Button -->
-                        <button onclick="window.openModal('modal-replicar')"
+                        <button onclick="window.openReplicarModal()"
                             class="bg-white border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
                             <span class="material-symbols-outlined text-[18px]">content_copy</span>
                             <span>Replicar Valores</span>
@@ -365,6 +378,36 @@
                 </div>
             </div>
         </div>
+        </div>
+
+        <!-- TAB: GRUPOS DE OFERTA -->
+        <div id="tab-grupos" class="tab-content hidden">
+            <div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Grupos de Oferta Unificada</h2>
+                        <p class="text-xs text-slate-500 mt-1">Agrupe procedimentos que compartilham uma meta coletiva (ex: 1.000 mamografias entre rastreamento e diagnóstica).</p>
+                    </div>
+                    <button onclick="openModal('modal-grupo', null, 'grupo')"
+                        class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">add</span> Novo Grupo
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider">Nome do Grupo</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider">Programa</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">Procedimentos</th>
+                                <th class="px-6 py-3 text-right text-[10px] font-black text-slate-500 uppercase tracking-wider">Meta Unificada</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-grupos" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <div id="tab-config" class="tab-content hidden">
@@ -605,7 +648,7 @@
         <div id="modal-itens-incentivo"
             class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div
-                class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-4xl w-full shadow-2xl overflow-y-auto max-h-[95vh]">
+                class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-6xl w-full shadow-2xl overflow-y-auto max-h-[95vh]">
                 <div class="flex items-start justify-between mb-6">
                     <div>
                         <h3 class="text-xl font-bold" id="item-modal-title">Itens do Programa</h3>
@@ -643,14 +686,18 @@
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Oferta
-                                Mínima</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Grupo de Oferta</label>
+                            <select id="item-grupo"
+                                class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"
+                                onchange="window.onItemGrupoChange()"></select>
+                        </div>
+                        <div class="md:col-span-1" id="item-qtd-container">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Oferta Mín.</label>
                             <input type="number" id="item-qtd"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Incentivo
-                                (R$)</label>
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Incentivo (R$)</label>
                             <input type="number" step="0.01" id="item-vlr"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                         </div>
@@ -668,6 +715,49 @@
                     </div>
 
     </main>
+
+    <!-- MODAL: GRUPO DE OFERTA -->
+    <div id="modal-grupo"
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 class="text-xl font-bold mb-4" id="modal-grupo-title">Grupo de Oferta</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome do Grupo</label>
+                    <input type="text" id="grupo-nome" placeholder="Ex: Mamografia"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Programa</label>
+                        <select id="grupo-prog"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Meta Unificada</label>
+                        <input type="number" id="grupo-meta" placeholder="Ex: 1000"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Procedimentos do Grupo</label>
+                    <input type="text" id="grupo-proc-search" placeholder="Filtrar procedimentos..."
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm mb-2"
+                        oninput="window.filterGrupoProcs()">
+                    <div id="grupo-proc-list"
+                        class="border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Selecione os procedimentos cuja produção soma para atingir a meta.</p>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeModal('modal-grupo')"
+                    class="flex-1 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
+                <button onclick="saveGrupoOferta()"
+                    class="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors">Salvar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL: INSTITUTO -->
     <div id="modal-instituto"
@@ -836,10 +926,11 @@
         let localProcedimentos = [];
         let localProgramas = [];
         let localPactuacoes = [];
+        let localGruposOferta = [];
         // Initialize Tabs
         window.switchTab = (tab) => {
             // Hide all contents
-            ['tab-institutos', 'tab-procedimentos', 'tab-po', 'tab-config', 'tab-importacao'].forEach(id => {
+            ['tab-institutos', 'tab-procedimentos', 'tab-po', 'tab-grupos', 'tab-config', 'tab-importacao'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
@@ -853,7 +944,7 @@
             if (selected) selected.classList.remove('hidden');
 
             // Update buttons
-            ['institutos', 'procedimentos', 'incentivos', 'config', 'importacao'].forEach(t => {
+            ['institutos', 'procedimentos', 'incentivos', 'grupos', 'config', 'importacao'].forEach(t => {
                 const btn = document.getElementById(`btn-tab-${t}`);
                 if (btn) {
                     if (t === tab) {
@@ -870,6 +961,7 @@
             if (tab === 'institutos') window.loadInstitutos();
             if (tab === 'procedimentos') window.loadProcedimentos();
             if (tab === 'incentivos') window.loadPO();
+            if (tab === 'grupos') window.loadGruposOferta();
             if (tab === 'config') window.loadSystemConfig();
         };
 
@@ -1086,6 +1178,29 @@
                 }
             }
 
+            if (entity === 'grupo') {
+                const titleEl = document.getElementById('modal-grupo-title');
+                const progSel = document.getElementById('grupo-prog');
+                progSel.innerHTML = `<option value="">Selecione o Programa...</option>` +
+                    localProgramas.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+                document.getElementById('grupo-proc-search').value = '';
+                const selected = id ? (localGruposOferta.find(x => x.id === id)?.procedimentos || []) : [];
+                if (id) {
+                    const g = localGruposOferta.find(x => x.id === id);
+                    titleEl.textContent = 'Editar Grupo de Oferta';
+                    document.getElementById('grupo-nome').value = g.nome;
+                    progSel.value = g.progId || '';
+                    document.getElementById('grupo-meta').value = g.ofertaMinima || '';
+                } else {
+                    titleEl.textContent = 'Novo Grupo de Oferta';
+                    document.getElementById('grupo-nome').value = '';
+                    progSel.value = '';
+                    document.getElementById('grupo-meta').value = '';
+                }
+                window._grupoSelectedProcs = selected;
+                window.renderGrupoProcList('');
+            }
+
             if (modalId === 'modal-po') {
                 const titleEl = document.getElementById('modal-po-title');
                 const statusContainer = document.getElementById('po-status-container');
@@ -1148,6 +1263,14 @@
             const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
             compSelect.value = currentLabel;
 
+            // Populate Grupo Select (Form)
+            const grupoSelect = document.getElementById('item-grupo');
+            if (localGruposOferta.length === 0) await Repository.getGruposOferta().then(r => { localGruposOferta = r; });
+            const gruposDoPrograma = localGruposOferta.filter(g => g.progId === progId);
+            grupoSelect.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
+                gruposDoPrograma.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
+            document.getElementById('item-qtd-container').style.display = '';
+
             // Populate Filter Select
             const filterSelect = document.getElementById('filter-instituto');
             filterSelect.innerHTML = `<option value="">Todos os Institutos</option>` +
@@ -1172,12 +1295,26 @@
             document.getElementById('item-inst').value = '';
             document.getElementById('item-proc').value = '';
             document.getElementById('item-competencia').value = '';
+            document.getElementById('item-grupo').value = '';
             document.getElementById('item-qtd').value = '';
             document.getElementById('item-vlr').value = '';
+            document.getElementById('item-qtd-container').style.display = '';
 
             document.getElementById('btn-delete-item').classList.add('hidden');
             document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">add</span>';
             document.getElementById('btn-save-item').title = "Adicionar";
+        };
+
+        window.onItemGrupoChange = () => {
+            const grupoId = document.getElementById('item-grupo').value;
+            const qtdContainer = document.getElementById('item-qtd-container');
+            if (grupoId) {
+                // Group handles the meta — hide individual ofertaMinima
+                qtdContainer.style.display = 'none';
+                document.getElementById('item-qtd').value = '0';
+            } else {
+                qtdContainer.style.display = '';
+            }
         };
 
         window.editItemIncentivo = (id) => {
@@ -1339,12 +1476,14 @@
             const progId = document.getElementById('item-prog-id').value;
             const itemId = document.getElementById('item-id').value;
 
+            const grupoOfertaId = document.getElementById('item-grupo').value || null;
             const item = {
                 progId,
                 instId: document.getElementById('item-inst').value,
                 sigtap: document.getElementById('item-proc').value,
                 competencia: document.getElementById('item-competencia').value,
-                ofertaMinima: document.getElementById('item-qtd').value,
+                grupoOfertaId,
+                ofertaMinima: grupoOfertaId ? 0 : (document.getElementById('item-qtd').value || 0),
                 vlrIncentivo: document.getElementById('item-vlr').value,
                 updatedAt: new Date()
             };
@@ -1352,14 +1491,35 @@
             if (itemId) item.id = itemId;
 
             await Repository.savePactuacao(item);
-            window.loadItensIncentivo(progId);
-            window.resetItemForm();
-            window.loadPO(); // Update main page counts
+            window.loadPO(); // Reload main page (includes pactuacoes)
+            window.closeModal('modal-itens-incentivo');
         };
 
         // window.deleteItemIncentivo removed (replaced by deleteItemFromForm)
 
         // --- LOADERS ---
+        window.openReplicarModal = () => {
+            const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const parseComp = (c) => {
+                if (!c) return -1;
+                const [m, y] = c.toLowerCase().split('/');
+                return parseInt(y) * 12 + months.indexOf(m);
+            };
+            const nextComp = (c) => {
+                const [m, y] = c.toLowerCase().split('/');
+                let mi = months.indexOf(m), yi = parseInt(y);
+                mi++;
+                if (mi >= 12) { mi = 0; yi++; }
+                return `${months[mi]}/${String(yi).padStart(2, '0')}`;
+            };
+            const comps = [...new Set((localPactuacoes || []).map(p => p.competencia).filter(Boolean))];
+            comps.sort((a, b) => parseComp(a) - parseComp(b));
+            const lastComp = comps[comps.length - 1] || '';
+            document.getElementById('rep-origem').value = lastComp;
+            document.getElementById('rep-destino').value = lastComp ? nextComp(lastComp) : '';
+            window.openModal('modal-replicar');
+        };
+
         window.confirmReplicar = async () => {
             const origem = document.getElementById('rep-origem').value.trim();
             const destino = document.getElementById('rep-destino').value.trim();
@@ -1440,6 +1600,104 @@
             `).join('');
         };
 
+        window.loadGruposOferta = async () => {
+            if (localProgramas.length === 0) localProgramas = await Repository.getProgramas();
+            localGruposOferta = await Repository.getGruposOferta();
+            window.renderGruposOferta();
+        };
+
+        window.renderGruposOferta = () => {
+            const tbody = document.getElementById('table-grupos');
+            if (!tbody) return;
+            if (localGruposOferta.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400 text-sm">Nenhum grupo cadastrado.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = localGruposOferta.map(g => {
+                const prog = localProgramas.find(p => p.id === g.progId);
+                const procs = g.procedimentos || [];
+                const procNames = procs.map(s => {
+                    const p = localProcedimentos.find(x => x.sigtap === s);
+                    return p ? p.nome : s;
+                });
+                return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${g.nome}</td>
+                    <td class="px-6 py-4 text-xs text-slate-500">${prog ? prog.nome : g.progId || '-'}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="text-xs text-slate-500" title="${procNames.join(', ')}">${procs.length} procedimento${procs.length !== 1 ? 's' : ''}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-mono text-sm">${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')}</td>
+                    <td class="px-6 py-4 text-center flex justify-center gap-2">
+                        <button onclick="window.openModal('modal-grupo', '${g.id}', 'grupo')" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+                        <button onclick="window.deleteGrupoOferta('${g.id}')" class="text-slate-400 hover:text-red-500"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        };
+
+        window.renderGrupoProcList = (filter) => {
+            const list = document.getElementById('grupo-proc-list');
+            const q = (filter || '').toLowerCase();
+            const procs = localProcedimentos.filter(p =>
+                p.status === 'Ativo' &&
+                ((p.nome || '').toLowerCase().includes(q) || (p.sigtap || '').includes(q))
+            );
+            if (procs.length === 0) {
+                list.innerHTML = `<div class="px-3 py-3 text-slate-400 text-xs">Nenhum procedimento encontrado.</div>`;
+                return;
+            }
+            list.innerHTML = procs.map(p => `
+                <label class="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                    <input type="checkbox" value="${p.sigtap}"
+                        ${(window._grupoSelectedProcs || []).includes(p.sigtap) ? 'checked' : ''}
+                        onchange="window.toggleGrupoProc('${p.sigtap}', this.checked)"
+                        class="rounded text-primary">
+                    <span class="font-mono text-[11px] text-slate-400 shrink-0">${p.sigtap}</span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">${p.nome}</span>
+                </label>
+            `).join('');
+        };
+
+        window.filterGrucoProcs = window.filterGrupoProcs = () => {
+            const q = document.getElementById('grupo-proc-search').value;
+            window.renderGrupoProcList(q);
+        };
+
+        window.toggleGrupoProc = (sigtap, checked) => {
+            if (!window._grupoSelectedProcs) window._grupoSelectedProcs = [];
+            if (checked) {
+                if (!window._grupoSelectedProcs.includes(sigtap)) window._grupoSelectedProcs.push(sigtap);
+            } else {
+                window._grupoSelectedProcs = window._grupoSelectedProcs.filter(s => s !== sigtap);
+            }
+        };
+
+        window.saveGrupoOferta = async () => {
+            const nome = document.getElementById('grupo-nome').value.trim();
+            if (!nome) { alert('Informe o nome do grupo.'); return; }
+            const procedimentos = window._grupoSelectedProcs || [];
+            if (procedimentos.length === 0) { alert('Selecione pelo menos um procedimento.'); return; }
+            const grupo = {
+                nome,
+                progId: document.getElementById('grupo-prog').value,
+                ofertaMinima: parseInt(document.getElementById('grupo-meta').value) || 0,
+                procedimentos,
+            };
+            if (currentEditId) grupo.id = currentEditId;
+            await Repository.saveGrupoOferta(grupo);
+            localGruposOferta = await Repository.getGruposOferta();
+            window.renderGruposOferta();
+            closeModal('modal-grupo');
+        };
+
+        window.deleteGrupoOferta = async (id) => {
+            if (!confirm('Excluir este grupo de oferta?')) return;
+            await Repository.deleteGrupoOferta(id);
+            localGruposOferta = await Repository.getGruposOferta();
+            window.renderGruposOferta();
+        };
+
         window.loadPO = async () => {
             localProgramas = await Repository.getProgramas();
             localPactuacoes = await Repository.getPactuacoes();
@@ -1462,6 +1720,7 @@
         window.renderPO = () => {
             const query = document.getElementById('search-po').value.toLowerCase();
             const filterInst = document.getElementById('main-filter-inst')?.value || '';
+            const filterProc = (document.getElementById('search-proc-po')?.value || '').toLowerCase();
 
             // Handle Month Picker Conversion (YYYY-MM -> mmm/yy)
             const filterCompInput = document.getElementById('main-filter-comp')?.value;
@@ -1497,6 +1756,12 @@
                 }
                 if (filterComp) { // Using the converted 'mmm/yy' string
                     progItens = progItens.filter(it => (it.competencia || '').toLowerCase() === filterComp);
+                }
+                if (filterProc) {
+                    progItens = progItens.filter(it => {
+                        const proc = localProcedimentos.find(pr => pr.id == it.sigtap);
+                        return (proc?.nome || '').toLowerCase().includes(filterProc) || (it.sigtap || '').includes(filterProc);
+                    });
                 }
 
                 const totalItens = progItens.length;
@@ -1560,6 +1825,7 @@
                                         <th class="px-6 py-3 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('competencia')">
                                             Comp. <span class="sort-icon">${currentSortPO.field === 'competencia' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
                                         </th>
+                                        <th class="px-6 py-3 text-center">Grupo</th>
                                         <th class="px-6 py-3 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" onclick="window.sortPOItems('ofertaMinima')">
                                             Oferta Mínima <span class="sort-icon">${currentSortPO.field === 'ofertaMinima' ? (currentSortPO.direction === 'asc' ? '↑' : '↓') : ''}</span>
                                         </th>
@@ -1573,12 +1839,14 @@
                                     ${progItens.length > 0 ? progItens.map(item => {
                     const inst = localInstitutos.find(i => i.id == item.instId);
                     const proc = localProcedimentos.find(pr => pr.id == item.sigtap);
+                    const grupo = item.grupoOfertaId ? localGruposOferta.find(g => g.id === item.grupoOfertaId) : null;
                     return `
                                             <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50/50">
                                                 <td class="px-6 py-4 text-xs font-bold">${inst?.sigla || inst?.nome || '???'}</td>
                                                 <td class="px-6 py-4 text-xs">${proc?.nome || '???'}</td>
                                                 <td class="px-6 py-4 text-center text-[10px]">${item.competencia || ''}</td>
-                                                <td class="px-6 py-4 text-right font-mono text-xs">${parseInt(item.ofertaMinima || 0).toLocaleString()}</td>
+                                                <td class="px-6 py-4 text-center text-[10px]">${grupo ? `<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">${grupo.nome}</span>` : '-'}</td>
+                                                <td class="px-6 py-4 text-right">${grupo ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold">${parseInt(grupo.ofertaMinima || 0).toLocaleString('pt-BR')}</span>` : `<span class="font-mono text-xs">${parseInt(item.ofertaMinima || 0).toLocaleString()}</span>`}</td>
                                                 <td class="px-6 py-4 text-right font-mono text-xs text-primary">R$ ${parseFloat(item.vlrIncentivo || 0).toFixed(2)}</td>
                                                 <td class="px-6 py-4 text-center">
                                                     <button onclick="window.openItensModal('${p.id}', '${item.id}')" class="text-slate-400 hover:text-primary transition-colors">
@@ -1640,11 +1908,13 @@
             const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
             compSelect.value = currentLabel;
 
-            // We do NOT render table anymore
-
-            // Need to fetch items if we are editing, but openItensModal signature relies on local data? 
-            // Previous logic loaded items for the table. Now we only need the specific item if editing.
-            // Items are presumably in localPactuacoes (loaded in loadPO).
+            // Populate Grupo Select (Form)
+            const grupoSel = document.getElementById('item-grupo');
+            if (localGruposOferta.length === 0) localGruposOferta = await Repository.getGruposOferta();
+            const gruposDoProgr = localGruposOferta.filter(g => g.progId === progId);
+            grupoSel.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
+                gruposDoProgr.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
+            document.getElementById('item-qtd-container').style.display = '';
 
             // If editItemId is passed, find it in localPactuacoes
             if (editItemId) {
@@ -1655,8 +1925,10 @@
                     document.getElementById('item-inst').value = item.instId;
                     document.getElementById('item-proc').value = item.sigtap;
                     document.getElementById('item-competencia').value = item.competencia;
+                    document.getElementById('item-grupo').value = item.grupoOfertaId || '';
                     document.getElementById('item-qtd').value = item.ofertaMinima;
                     document.getElementById('item-vlr').value = item.vlrIncentivo;
+                    window.onItemGrupoChange();
 
                     document.getElementById('btn-delete-item').classList.remove('hidden');
                     document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>';
