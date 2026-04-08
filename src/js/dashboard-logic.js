@@ -94,18 +94,23 @@ async function updateDashboard(period = null, allPactuacoes = null) {
     let totalRealizado = 0;
     let totalFinanceiro = 0;
 
+    const seenKpiKeys = new Set();
     filtered.forEach(p => {
         const pact = parseInt(p.ofertaMinima || 0);
         const real = parseInt(p.producao?.realizada || 0);
-
-        // Financial impact = (Base SIGTAP + Incentive) * Production
         const vBase = parseFloat(p.vlrSigtapBase || 0);
         const vInc = parseFloat(p.vlrIncentivo || 0);
-        const financeiroLinha = (vBase + vInc) * real;
 
         totalPactuado += pact;
-        totalRealizado += real;
-        totalFinanceiro += financeiroLinha;
+
+        // Production and SIGTAP base value counted only once per procedure+institute
+        const kpiKey = `${p.sigtap}-${p.instId}`;
+        if (!seenKpiKeys.has(kpiKey)) {
+            seenKpiKeys.add(kpiKey);
+            totalRealizado += real;
+            totalFinanceiro += vBase * real;
+        }
+        totalFinanceiro += vInc * real;
     });
 
     // Update Indicators
@@ -130,6 +135,7 @@ async function updateDashboard(period = null, allPactuacoes = null) {
 
     // Grouping for Table (by Procedimento)
     const groupsMap = {};
+    const seenTableKeys = new Set();
     filtered.forEach(p => {
         const key = p.sigtap;
         if (!groupsMap[key]) {
@@ -143,7 +149,12 @@ async function updateDashboard(period = null, allPactuacoes = null) {
             };
         }
         groupsMap[key].pactuado += parseInt(p.ofertaMinima || 0);
-        groupsMap[key].ofertado += parseInt(p.producao?.realizada || 0);
+        // Production counted only once per procedure+institute combination
+        const tableKey = `${p.sigtap}-${p.instId}`;
+        if (!seenTableKeys.has(tableKey)) {
+            seenTableKeys.add(tableKey);
+            groupsMap[key].ofertado += parseInt(p.producao?.realizada || 0);
+        }
         if (p.progId) groupsMap[key].progIds.add(p.progId);
     });
 
@@ -237,12 +248,19 @@ function renderCharts(currentData, allPactuacoes) {
     if (rankingContainer) {
         // Aggregate by Institute
         const instStats = {};
+        const seenRankingKeys = new Set();
         currentData.forEach(p => {
             if (!instStats[p.instId]) instStats[p.instId] = { id: p.instId, total: 0 };
             const vBase = parseFloat(p.vlrSigtapBase || 0);
             const vInc = parseFloat(p.vlrIncentivo || 0);
             const real = parseInt(p.producao?.realizada || 0);
-            instStats[p.instId].total += (vBase + vInc) * real;
+            // SIGTAP base value counted only once per procedure+institute
+            const rankKey = `${p.instId}-${p.sigtap}`;
+            if (!seenRankingKeys.has(rankKey)) {
+                seenRankingKeys.add(rankKey);
+                instStats[p.instId].total += vBase * real;
+            }
+            instStats[p.instId].total += vInc * real;
         });
 
         // Convert to array, sort, take top 5
@@ -313,15 +331,23 @@ function renderCharts(currentData, allPactuacoes) {
             const breakdown = {};
             let monthlyTotal = 0;
 
+            const seenEvolutionKeys = new Set();
             items.forEach(p => {
                 const vBase = parseFloat(p.vlrSigtapBase || 0);
                 const vInc = parseFloat(p.vlrIncentivo || 0);
-                const real = parseInt(p.producao?.realizada || 0); // User confirmed "Realizado"
-                const value = (vBase + vInc) * real;
+                const real = parseInt(p.producao?.realizada || 0);
 
                 if (!breakdown[p.instId]) breakdown[p.instId] = 0;
-                breakdown[p.instId] += value;
-                monthlyTotal += value;
+
+                // SIGTAP base value counted only once per procedure+institute
+                const evoKey = `${p.instId}-${p.sigtap}`;
+                if (!seenEvolutionKeys.has(evoKey)) {
+                    seenEvolutionKeys.add(evoKey);
+                    breakdown[p.instId] += vBase * real;
+                    monthlyTotal += vBase * real;
+                }
+                breakdown[p.instId] += vInc * real;
+                monthlyTotal += vInc * real;
             });
 
             return { comp, monthlyTotal, breakdown };
@@ -412,10 +438,16 @@ function renderCharts(currentData, allPactuacoes) {
     const goalContainer = document.getElementById('chart-goal-container');
     if (goalContainer) {
         const instStats = {};
+        const seenGoalKeys = new Set();
         currentData.forEach(p => {
             if (!instStats[p.instId]) instStats[p.instId] = { id: p.instId, pact: 0, real: 0 };
             instStats[p.instId].pact += parseInt(p.ofertaMinima || 0);
-            instStats[p.instId].real += parseInt(p.producao?.realizada || 0);
+            // Production counted only once per procedure+institute
+            const goalKey = `${p.instId}-${p.sigtap}`;
+            if (!seenGoalKeys.has(goalKey)) {
+                seenGoalKeys.add(goalKey);
+                instStats[p.instId].real += parseInt(p.producao?.realizada || 0);
+            }
         });
 
         const sortedStats = Object.values(instStats)

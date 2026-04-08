@@ -1532,9 +1532,22 @@
             const btn = event.target;
             const originalText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = 'Copiando...';
+            btn.textContent = 'Verificando...';
 
             try {
+                const existingCount = await Repository.countCompetencia(destino);
+                if (existingCount > 0) {
+                    const confirmado = confirm(
+                        `⚠️ Atenção!\n\nA competência "${destino.toUpperCase()}" já possui ${existingCount} registro(s).\n\nAo continuar, esses dados serão sobrescritos e a produção registrada será zerada.\n\nDeseja prosseguir mesmo assim?`
+                    );
+                    if (!confirmado) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        return;
+                    }
+                }
+
+                btn.textContent = 'Copiando...';
                 const count = await Repository.duplicateCompetencia(origem, destino);
                 alert(`Sucesso! ${count} itens foram replicados para ${destino}.`);
                 window.closeModal('modal-replicar');
@@ -1699,8 +1712,11 @@
         };
 
         window.loadPO = async () => {
-            localProgramas = await Repository.getProgramas();
-            localPactuacoes = await Repository.getPactuacoes();
+            [localProgramas, localPactuacoes, localGruposOferta] = await Promise.all([
+                Repository.getProgramas(),
+                Repository.getPactuacoes(),
+                Repository.getGruposOferta()
+            ]);
             window.renderPO();
         };
 

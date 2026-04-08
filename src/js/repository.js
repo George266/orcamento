@@ -276,6 +276,13 @@ export const Repository = {
         return results;
     },
 
+    async countCompetencia(comp) {
+        if (!comp) return 0;
+        const q = query(collection(db, COLL_PACTUACOES), where("competencia", "==", comp));
+        const snapshot = await getDocs(q);
+        return snapshot.size;
+    },
+
     async duplicateCompetencia(sourceComp, targetComp) {
         if (!sourceComp || !targetComp) throw new Error("Competências inválidas.");
 

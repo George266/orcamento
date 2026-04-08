@@ -242,9 +242,9 @@
                 <!-- Main Data Table -->
                 <div
                     class="flex flex-col overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm">
-                    <div id="table-scroll-container" class="overflow-x-auto cursor-grab active:cursor-grabbing">
+                    <div id="table-scroll-container" class="overflow-auto max-h-[calc(100vh-260px)] cursor-grab active:cursor-grabbing">
                         <table class="w-full min-w-[1200px] border-collapse text-left">
-                            <thead class="bg-gray-50 dark:bg-slate-800/50">
+                            <thead class="bg-gray-50 dark:bg-slate-800/50 sticky top-0 z-10">
                                 <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-slate-400">
                                     <button onclick="window.sortTable('proc')" class="flex items-center gap-1 hover:text-primary transition-colors">
                                         Procedimento <span class="material-symbols-outlined text-[14px]">unfold_more</span>

@@ -792,9 +792,25 @@ function renderTable() {
         group.sem4 = sumSem4;
         group.sem5 = sumSem5;
 
-        // Final Total Realized
-        group.totalRealizado = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
+        // Total pelas semanas da própria instituição
+        const semanasTotal = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
+
+        if (group.isGrupo && group.grupoId) {
+            // Para oferta unificada: soma toda a produção de todos os institutos
+            // de todos os sigtaps do grupo — o status é da rede, não do instituto
+            group.totalRealizado = allPactuacoes
+                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
+                .reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
+        } else {
+            // Para procedimentos individuais: usa as semanas locais
+            const globalRealized = allPactuacoes
+                .filter(p => p.competencia === compValue && p.sigtap === group.sigtap)
+                .reduce((max, p) => Math.max(max, parseInt(p.producao?.realizada || 0)), 0);
+            group.totalRealizado = Math.max(semanasTotal, globalRealized);
+        }
     });
+
+    const cleanSigtapFn = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
 
     // 3. Search Filter (on Groups)
     let displayItems = Object.values(groups);
@@ -880,7 +896,7 @@ function renderTable() {
                 // Header row — meta, progress bar, no inputs
                 const headerRow = `
                     <tr class="bg-indigo-50/60 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
-                        <td class="px-6 py-3" colspan="2">
+                        <td class="px-6 py-3">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-sm font-black text-slate-900 dark:text-white">${group.procName}</span>
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide whitespace-nowrap">Oferta Unificada</span>
@@ -912,10 +928,11 @@ function renderTable() {
                     const semVals = [1,2,3,4,5].map(w => parseInt(pact?.producao?.[`sem${w}`] || 0));
                     const subTotal = semVals.reduce((s, v) => s + v, 0);
 
+                    // All procedures in the group are editable — pass sigtap so a pactuação can be auto-created if missing
                     const subWeekInputs = [1,2,3,4,5].map((w, idx) => `
                         <td class="px-2 py-3 whitespace-nowrap text-center">
                             <input
-                                onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value, '${pactId}')"
+                                onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value, '${pactId}', '${sigtap}')"
                                 class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
                                 min="0" value="${semVals[idx]}" type="number" ${inputState}
                             />
@@ -941,6 +958,14 @@ function renderTable() {
             }
 
             // ── ITEM INDIVIDUAL (original logic) ──
+
+            // Procedimentos de outros institutos ficam somente leitura
+            const isShared = !!group.isSharedFromOther;
+            const effectiveInputState = (isShared || !canEdit) ? 'disabled' : '';
+            const effectiveActiveClass = (isShared || !canEdit)
+                ? 'bg-slate-50 text-slate-400 cursor-not-allowed'
+                : 'bg-white focus:ring-primary focus:border-primary';
+
             const weeks = [1, 2, 3, 4, 5];
             const weekInputs = weeks.map(w => {
                 const val = group[`sem${w}`];
@@ -948,21 +973,22 @@ function renderTable() {
                     <td class="px-2 py-4 whitespace-nowrap text-center">
                         <input
                             onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value)"
-                            class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
-                            min="0" value="${val}" type="number" ${inputState}
+                            class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${effectiveActiveClass}"
+                            min="0" value="${val}" type="number" ${effectiveInputState}
                         />
                     </td>
                 `;
             }).join('');
 
             return `
-             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row">
-                <td class="px-6 py-4" colspan="2">
+             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row ${isShared ? 'opacity-80' : ''}">
+                <td class="px-6 py-4">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title="${group.procName}">${group.procName}</span>
                         <div class="flex items-center gap-2 mt-0.5">
                             <span class="text-xs text-slate-500 font-mono">Cód: ${group.sigtap}</span>
                             ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100" title="${progNames.join(', ')}">${progLabel}</span>` : ''}
+                            ${isShared ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold border border-amber-100" title="Produção compartilhada entre institutos">Oferta compartilhada</span>` : ''}
                         </div>
                     </div>
                 </td>
@@ -989,10 +1015,55 @@ function renderTable() {
     window.displayGroups = groups;
 }
 
-window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null) => {
+function renderTableKeepFocus() {
+    const inputs = Array.from(document.querySelectorAll('#table-acompanhamento-inst input[type="number"]'));
+    const focusIdx = inputs.indexOf(document.activeElement);
+    renderTable();
+    if (focusIdx !== -1) {
+        const newInputs = document.querySelectorAll('#table-acompanhamento-inst input[type="number"]');
+        if (newInputs[focusIdx]) newInputs[focusIdx].focus();
+    }
+}
+
+window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sigtap = null) => {
     const val = parseInt(value) || 0;
     const group = window.displayGroups[groupKey];
     if (!group) return;
+
+    if (group.isGrupo && !pactId && sigtap) {
+        // No pactuação exists for this procedure yet — auto-create from a sibling item in the group
+        const template = group.items[0];
+        if (!template) return;
+        const newPact = {
+            instId: template.instId,
+            competencia: template.competencia,
+            progId: template.progId,
+            grupoOfertaId: template.grupoOfertaId,
+            sigtap,
+            ofertaMinima: 0,
+            vlrSigtapBase: template.vlrSigtapBase || 0,
+            vlrIncentivo: template.vlrIncentivo || 0,
+            producao: { sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0, realizada: 0 },
+        };
+        newPact.producao[weekField] = val;
+        newPact.producao.realizada = val;
+        try {
+            const newId = await Repository.savePactuacao(newPact);
+            newPact.id = newId;
+            group.items.push(newPact);
+            localPactuacoes.push(newPact);
+            // Recalc group totals
+            group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.producao?.realizada) || 0), 0);
+            [1,2,3,4,5].forEach(w => {
+                group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
+            });
+            renderTableKeepFocus();
+        } catch (error) {
+            console.error("Erro ao criar pactuação automática:", error);
+            alert("Erro ao salvar. Tente novamente.");
+        }
+        return;
+    }
 
     if (group.isGrupo && pactId) {
         // Unified group: update only the specific pactuacao (one procedure's input)
@@ -1013,7 +1084,7 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null) => 
             await Repository.savePactuacao({ id: pact.id, producao: pact.producao });
             const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
             if (localIdx !== -1) localPactuacoes[localIdx].producao = { ...pact.producao };
-            renderTable();
+            renderTableKeepFocus();
         } catch (error) {
             console.error("Error updating week for grupo item:", error);
             alert("Erro ao salvar semana.");
@@ -1040,7 +1111,7 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null) => 
                     localPactuacoes[localIdx].producao.realizada = pact.producao.realizada;
                 }
             });
-            renderTable();
+            renderTableKeepFocus();
         } catch (error) {
             console.error("Error bulk updating week:", error);
             alert("Erro ao salvar semana.");
@@ -1069,7 +1140,7 @@ window.updateUnifiedOffer = async (sigtap, value) => {
         try {
             await Promise.all(updatePromises);
             // Re-render to update progress bars correctly
-            renderTable();
+            renderTableKeepFocus();
         } catch (error) {
             console.error("Error bulk updating offer:", error);
             alert("Erro ao salvar oferta unificada.");
@@ -1240,73 +1311,185 @@ window.openGlobalBreakdown = (sigtap) => {
 };
 
 window.openDetailModal = (groupKey) => {
-    // If displayGroups isn't ready, verify if renderTable ran. 
-    // It should be by the time button is clicked.
     const groups = window.displayGroups || {};
     const group = groups[groupKey];
-
     if (!group) return;
 
-    const sigtap = group.sigtap; // Extract sigtap from group
-
+    const sigtap = group.sigtap;
     const modal = document.getElementById('modal-detalhe-lancamento');
-    if (modal) {
-        document.getElementById('modal-title').textContent = group.procName;
-        document.getElementById('modal-subtitle').textContent = `Cód. SIGTAP: ${sigtap}`;
+    if (!modal) return;
 
-        // Ensure header is visible
-        const thead = modal.querySelector('thead');
-        if (thead) thead.classList.remove('hidden');
+    document.getElementById('modal-title').textContent = group.procName;
+    document.getElementById('modal-subtitle').textContent = `Cód. SIGTAP: ${sigtap}`;
 
-        // Ensure standard legend is visible
-        const infoLegend = document.getElementById('modal-info-legend');
-        if (infoLegend) infoLegend.classList.remove('hidden');
+    // Hide unused elements from other modal views
+    const thead = modal.querySelector('thead');
+    if (thead) thead.classList.add('hidden');
+    const infoLegend = document.getElementById('modal-info-legend');
+    if (infoLegend) infoLegend.classList.add('hidden');
+    const oldGlobal = document.getElementById('dynamic-global-section');
+    if (oldGlobal) oldGlobal.remove();
 
-        // Ensure standard footer is visible
-        const modalFooter = document.getElementById('modal-footer');
-        if (modalFooter) modalFooter.classList.remove('hidden');
+    // Ensure footer visible
+    const modalFooter = document.getElementById('modal-footer');
+    if (modalFooter) modalFooter.classList.remove('hidden');
 
-        const tbody = document.getElementById('modal-table-body');
-        tbody.innerHTML = group.items.map(item => {
-            const prog = localProgs.find(p => p.id === item.progId);
-            const progName = prog ? prog.nome : (item.progId || 'Incentivo Padrão');
+    const currentComp = document.getElementById('filter-competencia')?.value || '';
+    const cleanSigtapFn = s => (s || '').replace(/\D/g, '');
+    const userInstIds = new Set(group.items.map(i => i.instId));
+    const redeBody = document.getElementById('modal-rede-body');
 
-            const meta = parseInt(item.ofertaMinima || 0);
-            const real = parseInt(item.producao?.realizada || 0);
-            const progress = meta > 0 ? (real / meta) * 100 : 0;
+    if (group.isGrupo && group.grupoId) {
+        // ── GRUPO DE OFERTA: barra única do total, detalhamento por instituto ──
+        const grupoObj = localGruposOferta.find(g => g.id === group.grupoId);
+        const grupaMeta = parseInt(grupoObj?.ofertaMinima || 0);
 
-            let statusColor = 'bg-primary';
-            if (progress >= 100) statusColor = 'bg-green-500';
-            else if (progress < 50) statusColor = 'bg-yellow-500';
+        // Soma toda a produção do grupo por instituto (todos os sigtaps do grupo)
+        const allForGrupo = allPactuacoes.filter(p =>
+            p.grupoOfertaId === group.grupoId && p.competencia === currentComp
+        );
+        const byInst = {};
+        allForGrupo.forEach(p => {
+            if (!byInst[p.instId]) byInst[p.instId] = { real: 0 };
+            byInst[p.instId].real += parseInt(p.producao?.realizada || 0);
+        });
 
-            return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td class="px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    ${progName}
-                </td>
-                <td class="px-4 py-3 text-right text-sm font-mono text-slate-600 dark:text-slate-400">
-                    ${formatNumber(meta)}
-                </td>
-                <td class="px-4 py-3 text-right text-sm font-mono font-bold text-slate-900 dark:text-white">
-                    ${formatNumber(real)}
-                </td>
-                 <td class="px-4 py-3 align-middle">
-                     <div class="flex items-center gap-2">
-                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 flex-1">
-                            <div class="${statusColor} h-1.5 rounded-full" style="width: ${Math.min(progress, 100)}%"></div>
+        const totalReal = Object.values(byInst).reduce((s, v) => s + v.real, 0);
+        const totalProgress = grupaMeta > 0 ? Math.min((totalReal / grupaMeta) * 100, 100) : 0;
+        let totalBarColor = 'bg-primary';
+        if (totalProgress >= 100) totalBarColor = 'bg-green-500';
+        else if (totalProgress < 50) totalBarColor = 'bg-yellow-400';
+
+        // Ordena: instituto do usuário primeiro, depois alfabético
+        const instEntries = Object.entries(byInst).sort(([aId], [bId]) => {
+            const aIsUser = userInstIds.has(aId), bIsUser = userInstIds.has(bId);
+            if (aIsUser !== bIsUser) return aIsUser ? -1 : 1;
+            const aName = allInstitutes.find(i => i.id === aId)?.sigla || aId;
+            const bName = allInstitutes.find(i => i.id === bId)?.sigla || bId;
+            return aName.localeCompare(bName);
+        });
+
+        const metaAtingida = totalProgress >= 100;
+
+        if (redeBody) {
+            redeBody.innerHTML = `
+                <!-- Barra total do grupo -->
+                <div class="px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-700 ${metaAtingida ? 'bg-green-50/60 dark:bg-green-900/10' : ''}">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total do grupo</span>
+                            ${metaAtingida ? `<span class="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-100 dark:bg-green-800/30 dark:text-green-400 px-2 py-0.5 rounded-full"><span class="material-symbols-outlined text-[12px]">check_circle</span> Meta atingida</span>` : ''}
                         </div>
-                        <span class="text-[10px] font-bold text-slate-500">${Math.round(progress)}%</span>
+                        <span class="text-xs font-bold ${metaAtingida ? 'text-green-700 dark:text-green-400' : 'text-slate-700 dark:text-slate-200'}">
+                            ${formatNumber(totalReal)} <span class="text-slate-300 mx-0.5">/</span> ${formatNumber(grupaMeta)}
+                        </span>
                     </div>
-                </td>
-            </tr>
-        `}).join('');
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                            <div class="${totalBarColor} h-2.5 rounded-full transition-all" style="width:${totalProgress}%"></div>
+                        </div>
+                        <span class="text-xs font-bold ${metaAtingida ? 'text-green-600' : 'text-slate-500'} w-10 text-right">${Math.round(totalProgress)}%</span>
+                    </div>
+                </div>
+                <!-- Detalhamento por instituto -->
+                <div class="px-4 pt-2 pb-1">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contribuição por instituto</span>
+                </div>
+                ${instEntries.map(([instId, stats]) => {
+                    const inst = allInstitutes.find(i => i.id === instId);
+                    const instSigla = inst ? (inst.sigla || inst.nome) : instId;
+                    const instNome = inst?.nome || instId;
+                    const isUser = userInstIds.has(instId);
+                    const contrib = grupaMeta > 0 ? Math.min((stats.real / grupaMeta) * 100, 100) : 0;
+                    const userBadge = isUser
+                        ? `<span class="ml-1 text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">Seu inst.</span>`
+                        : '';
+                    const metaBadge = metaAtingida
+                        ? `<span class="flex items-center gap-0.5 text-[9px] font-bold text-green-700 dark:text-green-400"><span class="material-symbols-outlined text-[11px]">check_circle</span> Meta atingida</span>`
+                        : '';
+                    return `
+                    <div class="flex items-center gap-3 px-4 py-2.5 ${metaAtingida ? 'bg-green-50/40 dark:bg-green-900/5' : isUser ? 'bg-blue-50/60 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'} transition-colors">
+                        <div class="w-28 shrink-0">
+                            <span class="text-sm font-semibold ${isUser ? 'text-primary' : 'text-slate-700 dark:text-slate-200'} truncate block" title="${instNome}">${instSigla}</span>
+                            ${userBadge}
+                            ${metaBadge}
+                        </div>
+                        <div class="flex-1 flex items-center gap-2">
+                            <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                                <div class="${metaAtingida ? 'bg-green-500' : isUser ? 'bg-primary' : 'bg-slate-400'} h-1.5 rounded-full" style="width:${contrib}%"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-bold ${metaAtingida ? 'text-green-700 dark:text-green-400' : isUser ? 'text-primary' : 'text-slate-700 dark:text-slate-200'} shrink-0 w-8 text-right">${formatNumber(stats.real)}</span>
+                    </div>`;
+                }).join('')}
+            `;
+        }
+    } else {
+        // ── PROCEDIMENTO INDIVIDUAL: comparativo por instituto com meta própria ──
+        const allForSigtap = allPactuacoes.filter(p =>
+            cleanSigtapFn(p.sigtap) === cleanSigtapFn(sigtap) &&
+            p.competencia === currentComp
+        );
 
-        // Remove old dynamic section if present
-        const oldGlobal = document.getElementById('dynamic-global-section');
-        if (oldGlobal) oldGlobal.remove();
+        const byInst = {};
+        allForSigtap.forEach(p => {
+            if (!byInst[p.instId]) byInst[p.instId] = { meta: 0, real: 0 };
+            byInst[p.instId].meta = Math.max(byInst[p.instId].meta, parseInt(p.ofertaMinima || 0));
+            byInst[p.instId].real += parseInt(p.producao?.realizada || 0);
+        });
 
-        modal.classList.remove('hidden');
+        const instEntries = Object.entries(byInst).sort(([aId], [bId]) => {
+            const aIsUser = userInstIds.has(aId), bIsUser = userInstIds.has(bId);
+            if (aIsUser !== bIsUser) return aIsUser ? -1 : 1;
+            const aName = allInstitutes.find(i => i.id === aId)?.sigla || aId;
+            const bName = allInstitutes.find(i => i.id === bId)?.sigla || bId;
+            return aName.localeCompare(bName);
+        });
+
+        if (redeBody) {
+            if (instEntries.length === 0) {
+                redeBody.innerHTML = `<div class="px-4 py-6 text-center text-sm text-slate-400">Nenhum dado encontrado para esta competência.</div>`;
+            } else {
+                redeBody.innerHTML = instEntries.map(([instId, stats]) => {
+                    const inst = allInstitutes.find(i => i.id === instId);
+                    const instSigla = inst ? (inst.sigla || inst.nome) : instId;
+                    const instNome = inst?.nome || instId;
+                    const isUser = userInstIds.has(instId);
+                    const progress = stats.meta > 0 ? Math.min((stats.real / stats.meta) * 100, 100) : 0;
+                    const atingida = progress >= 100;
+                    let barColor = 'bg-primary';
+                    if (atingida) barColor = 'bg-green-500';
+                    else if (progress < 50) barColor = 'bg-yellow-400';
+                    const userBadge = isUser
+                        ? `<span class="ml-1 text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">Seu inst.</span>`
+                        : '';
+                    const metaBadge = atingida
+                        ? `<span class="flex items-center gap-0.5 text-[9px] font-bold text-green-700 dark:text-green-400"><span class="material-symbols-outlined text-[11px]">check_circle</span> Meta atingida</span>`
+                        : '';
+                    return `
+                    <div class="flex items-center gap-3 px-4 py-3 ${atingida ? 'bg-green-50/50 dark:bg-green-900/10' : isUser ? 'bg-blue-50/60 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'} transition-colors">
+                        <div class="w-28 shrink-0">
+                            <span class="text-sm font-semibold ${atingida ? 'text-green-700 dark:text-green-400' : isUser ? 'text-primary' : 'text-slate-700 dark:text-slate-200'} truncate block" title="${instNome}">${instSigla}</span>
+                            ${userBadge}
+                            ${metaBadge}
+                        </div>
+                        <div class="flex-1 flex items-center gap-2">
+                            <div class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                                <div class="${barColor} h-1.5 rounded-full" style="width:${progress}%"></div>
+                            </div>
+                            <span class="text-[10px] font-bold ${atingida ? 'text-green-600' : 'text-slate-400'} w-8 text-right">${Math.round(progress)}%</span>
+                        </div>
+                        <div class="text-xs shrink-0 text-right">
+                            <span class="font-bold ${atingida ? 'text-green-700 dark:text-green-400' : 'text-slate-800 dark:text-white'}">${formatNumber(stats.real)}</span>
+                            <span class="mx-0.5 text-slate-300">/</span><span class="text-slate-500">${formatNumber(stats.meta)}</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
     }
+
+    modal.classList.remove('hidden');
 };
 
 window.closeDetailModal = () => {

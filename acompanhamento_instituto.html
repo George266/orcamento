@@ -243,7 +243,7 @@
                     class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
-                            <thead class="bg-slate-50 dark:bg-slate-800/50">
+                            <thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
                                 <tr>
                                     <th data-sort="procedimento"
                                         class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px] cursor-pointer group select-none"
@@ -257,12 +257,12 @@
                                     <th data-sort="meta"
                                         class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                         scope="col">
-                                        Meta
+                                        Oferta Mínima
                                     </th>
                                     <th data-sort="status"
                                         class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                         scope="col">
-                                        Status Geral
+                                        Status Oferta
                                     </th>
                                     <th class="px-2 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                         scope="col">Sem 1</th>
@@ -308,24 +308,14 @@
                 </button>
             </div>
 
-            <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-6">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
-                        <tr>
-                            <th class="px-4 py-3">Incentivo / Programa</th>
-                            <th class="px-4 py-3 text-right">Meta</th>
-                            <th class="px-4 py-3 text-right">Ofertado</th>
-                            <th class="px-4 py-3">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-table-body"
-                        class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                        <!-- JS populated -->
-                    </tbody>
-                </table>
+            <!-- Comparativo por instituto na rede -->
+            <div id="modal-rede-body" class="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 mb-6">
+                <!-- JS populated -->
             </div>
 
-            <div id="modal-info-legend" class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
+            <!-- Mantido para openGlobalBreakdown (ficará oculto nesta view) -->
+            <div id="modal-table-body" class="hidden"></div>
+            <div id="modal-info-legend" class="hidden bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
                 <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg mt-0.5">info</span>
                 <p class="text-xs text-blue-800 dark:text-blue-200">
                     Ao definir o valor na tela anterior, ele será aplicado automaticamente para <strong>todos</strong>

@@ -267,9 +267,9 @@
                                 placeholder="Buscar código ou nome..." type="text" />
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div id="table-scroll-container" class="overflow-auto max-h-[calc(100vh-260px)] cursor-grab active:cursor-grabbing">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                            <thead class="bg-slate-50 dark:bg-slate-900">
+                            <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
                                 <tr>
                                     <th scope="col"
                                         class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -443,7 +443,7 @@
             </div>
         </div>
     </div>
-    <script type="module" src="/src/js/lancamento-logic.js?v=12345"></script>
+    <script type="module" src="/src/js/lancamento-logic.js"></script>
 </body>
 
 </html>

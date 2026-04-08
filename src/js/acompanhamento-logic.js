@@ -583,7 +583,9 @@ async function renderTable() {
                 justifications: [],
                 // Unit Values (Best available)
                 vSigtap: Math.max(safeParseFloat(p.vlrSigtapBase), safeParseFloat(proc?.vlrSigtap), 0),
-                vInc: safeParseFloat(p.vlrIncentivo)
+                vInc: safeParseFloat(p.vlrIncentivo),
+                // Track seen institutes to avoid double-counting production
+                seenProdInstIds: new Set()
             };
         }
 
@@ -611,22 +613,26 @@ async function renderTable() {
         const vInc = safeParseFloat(p.vlrIncentivo);
         if (vInc > groups[key].vInc) groups[key].vInc = vInc;
 
-        const prod = parseInt(p.producao?.aprovada || 0);
-        groups[key].totalProd += prod;
-
         // Meta: for grupo items, fixed from group definition; for individual, take max
         if (!grupo) {
             const meta = parseInt(p.ofertaMinima || 0);
             groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
         }
 
-        // Offer: always sum production across all items in the group
-        let offer = parseInt(p.producao?.realizada);
-        if (isNaN(offer)) offer = 0;
-        let staticOffer = parseInt(p.ofertado);
-        if (isNaN(staticOffer)) staticOffer = 0;
-        const finalOffer = offer > 0 ? offer : staticOffer;
-        groups[key].totalOffer += finalOffer;
+        // Production and offer counted only once per institute (avoid double-counting multiple incentives)
+        if (!groups[key].seenProdInstIds.has(p.instId)) {
+            groups[key].seenProdInstIds.add(p.instId);
+
+            const prod = parseInt(p.producao?.aprovada || 0);
+            groups[key].totalProd += prod;
+
+            let offer = parseInt(p.producao?.realizada);
+            if (isNaN(offer)) offer = 0;
+            let staticOffer = parseInt(p.ofertado);
+            if (isNaN(staticOffer)) staticOffer = 0;
+            const finalOffer = offer > 0 ? offer : staticOffer;
+            groups[key].totalOffer += finalOffer;
+        }
     });
 
     const groupList = Object.values(groups);
@@ -656,8 +662,10 @@ async function renderTable() {
             if (isNaN(staticOffer)) staticOffer = 0;
             const itemOffer = offer > 0 ? offer : staticOffer;
 
-            // Fallback for incentive unit value
-            const itemValInc = safeParseFloat(item.vlrIncentivo) || g.vInc || 0;
+            // Fallback for incentive unit value only when field is truly absent (null/undefined/empty)
+            const rawVlrInc = item.vlrIncentivo;
+            const hasVlrInc = rawVlrInc !== null && rawVlrInc !== undefined && rawVlrInc !== '';
+            const itemValInc = hasVlrInc ? safeParseFloat(rawVlrInc) : (g.vInc || 0);
 
             usageByProg[pId].meta = Math.max(usageByProg[pId].meta, itemMeta);
             usageByProg[pId].offer += itemOffer;
@@ -1058,21 +1066,14 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
         await Promise.all(updatePromises);
         console.log(`Synced production ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId})`);
 
-        // Recalc Group Totals
-        // Note: Total Prod is usually Sum of all PROD items. 
-        // But if we double count per program, we might be inflating "Total Prod" if it's supposed to be "Unique Procedures".
-        // Use loop:
-        group.totalProd = group.items.reduce((sum, i) => sum + (parseInt(i.producao?.aprovada) || 0), 0);
-        // Wait, if we have 2 programs for same procedure, we are summing 4 + 4 = 8?
-        // Logic check: "Produzido (Total)" column. 
-        // If the table line is "Holter", and we did 4 Holters. We expect "4".
-        // But if `items` contains 2 rows (one for each program), and both have 4.
-        // Then reduce sums to 8. 
-        // We should fix this calculation logic to count unique production or max per institute?
-        // HOWEVER, "Ofertado (Total)" logic (line 251ish in old code, now refactored inside loop)
-        // was summing offers. 
-        // Let's stick to simple Sum for now to avoid breaking existing "Total" definition unless user complains "Doubled".
-        // Actually, previous logic just summed everything. So we keep summing.
+        // Recalc Group Totals (deduplicate by instId to avoid double-counting multiple incentives)
+        const seenRecalcInstIds = new Set();
+        group.totalProd = group.items.reduce((sum, i) => {
+            if (seenRecalcInstIds.has(i.instId)) return sum;
+            seenRecalcInstIds.add(i.instId);
+            return sum + (parseInt(i.producao?.aprovada) || 0);
+        }, 0);
+        group.totalFatSigtap = group.totalProd * group.vSigtap;
 
         // Re-render table to reflect new totals (and financial calculations)
         renderTable();
