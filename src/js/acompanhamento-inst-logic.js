@@ -621,7 +621,7 @@ window.deletePact = async function (id) {
         // Re-check empty state
         const tbody = document.getElementById('table-acompanhamento-inst');
         if (localPactuacoes.length === 0 && tbody) {
-            tbody.innerHTML = `<tr><td colspan="11" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado.</td></tr>`;
         }
 
     } catch (error) {
@@ -849,7 +849,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (displayItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
     } else {
         tbody.innerHTML = displayItems.map(group => {
             const target = group.maxMeta;
@@ -905,6 +905,15 @@ function renderTable() {
                         </td>
                         <td class="px-6 py-3 whitespace-nowrap text-center text-sm font-black text-indigo-700">
                             ${formatNumber(target)} <span class="text-[10px] font-normal text-slate-400">total</span>
+                        </td>
+                        <td class="px-6 py-3 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center gap-1.5">
+                                <span class="text-sm font-black ${isMetaMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-700 dark:text-indigo-300'}">${formatNumber(group.totalRealizado)}</span>
+                                <div class="w-20 bg-slate-200 dark:bg-slate-600 rounded-full h-1.5">
+                                    <div class="${statusColor} h-1.5 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-400">${Math.round(progress)}% da meta</span>
+                            </div>
                         </td>
                         <td class="px-6 py-3 align-middle" colspan="6">
                             <div class="flex flex-col gap-1 max-w-[240px]">
@@ -994,6 +1003,15 @@ function renderTable() {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-bold">
                     ${formatNumber(target)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-sm font-black ${isMetaMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'}">${formatNumber(group.totalRealizado)}</span>
+                        <div class="w-20 bg-slate-200 dark:bg-slate-600 rounded-full h-1.5">
+                            <div class="${statusColor} h-1.5 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
+                        </div>
+                        <span class="text-[10px] text-slate-400">${Math.round(progress)}% da meta</span>
+                    </div>
                 </td>
                 <td class="px-6 py-4 align-middle">
                     <div class="flex flex-col gap-1 max-w-[140px] mx-auto">
