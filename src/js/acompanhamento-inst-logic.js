@@ -355,7 +355,7 @@ async function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitu
         if (grupo) {
             // Unified group: sum production of ALL sigtaps in the group for this institute
             const grupoItems = relevant.filter(i => i.instId === p.instId && i.grupoOfertaId === grupo.id);
-            maxMeta = parseInt(grupo.ofertaMinima || 0);
+            maxMeta = grupoItems.reduce((sum, i) => sum + (parseInt(i.ofertado || 0)), 0);
             totalRealized = grupoItems.reduce((sum, i) => sum + parseInt(i.producao?.realizada || 0), 0);
         } else {
             const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
@@ -781,10 +781,14 @@ function renderTable() {
             sumSem5 += st.sem5;
         });
 
-        // For grupo items, meta is fixed from the group definition — don't overwrite with 0
         if (!group.isGrupo) {
             group.maxMeta = maxMetaVal;
             group.totalMeta = maxMetaVal;
+        } else {
+            // Para grupos/redes: usa o ofertado do próprio instituto como meta individual
+            const instTarget = group.items.reduce((sum, p) => sum + (parseInt(p.ofertado || 0)), 0);
+            group.maxMeta = instTarget;
+            group.totalMeta = instTarget;
         }
         group.sem1 = sumSem1;
         group.sem2 = sumSem2;
@@ -796,11 +800,9 @@ function renderTable() {
         const semanasTotal = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
 
         if (group.isGrupo && group.grupoId) {
-            // Para oferta unificada: soma toda a produção de todos os institutos
-            // de todos os sigtaps do grupo — o status é da rede, não do instituto
-            group.totalRealizado = allPactuacoes
-                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
-                .reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
+            // Usa produção do próprio instituto (semanas ou producao.realizada)
+            const itemsRealized = group.items.reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
+            group.totalRealizado = Math.max(semanasTotal, itemsRealized);
         } else {
             // Para procedimentos individuais: usa as semanas locais
             const globalRealized = allPactuacoes

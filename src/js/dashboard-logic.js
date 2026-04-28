@@ -15,14 +15,15 @@ let localInsts = [];
 let localProcs = [];
 
 let localUsers = []; // Cache functionality
-let currentPeriod = null;
+let selectedPeriods = [];
 let currentCommData = null; // Store data for the active modal
 
 export async function initDashboard() {
     const pactuacoes = await Repository.getPactuacoes();
     const monthSelector = document.getElementById('month-selector');
 
-    if (monthSelector) {
+    const checkboxesContainer = document.getElementById('period-checkboxes');
+    if (checkboxesContainer) {
         // Extract unique competencies
         let competencias = [];
         if (pactuacoes.length > 0) {
@@ -30,12 +31,11 @@ export async function initDashboard() {
         }
 
         // Always include current month
-        const currentComp = DateUtils.getCurrentMonthLabel('short'); // e.g., 'fev/26'
+        const currentComp = DateUtils.getCurrentMonthLabel('short');
         if (!competencias.includes(currentComp)) {
             competencias.push(currentComp);
         }
 
-        // Helper to parse 'mmm/yy' for sorting
         const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
         const parseComp = (c) => {
             if (!c) return 0;
@@ -44,27 +44,73 @@ export async function initDashboard() {
             return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
         };
 
-        // Sort Descending (Newest first)
         competencias.sort((a, b) => parseComp(b) - parseComp(a));
 
-        monthSelector.innerHTML = competencias.map(c =>
-            `<option value="${c}">${c}</option>`
-        ).join('');
+        checkboxesContainer.innerHTML = competencias.map(c => `
+            <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                <input type="checkbox" value="${c}" class="period-checkbox rounded accent-primary w-3.5 h-3.5" />
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">${c}</span>
+            </label>
+        `).join('');
 
-        monthSelector.addEventListener('change', (e) => {
-            currentPeriod = e.target.value;
-            updateDashboard(currentPeriod, pactuacoes);
+        const btn = document.getElementById('period-selector-btn');
+        const dropdown = document.getElementById('period-selector-dropdown');
+        const labelEl = document.getElementById('period-selector-label');
+        const selectAllBtn = document.getElementById('period-select-all-btn');
+        const clearBtn = document.getElementById('period-clear-btn');
+
+        const getCheckboxes = () => checkboxesContainer.querySelectorAll('.period-checkbox');
+
+        const updateLabel = () => {
+            if (selectedPeriods.length === 0) {
+                labelEl.textContent = 'Todos os períodos';
+            } else if (selectedPeriods.length === 1) {
+                labelEl.textContent = selectedPeriods[0];
+            } else {
+                labelEl.textContent = `${selectedPeriods.length} competências`;
+            }
+        };
+
+        // Default: current month selected
+        const defaultCb = checkboxesContainer.querySelector(`input[value="${currentComp}"]`);
+        if (defaultCb) defaultCb.checked = true;
+        selectedPeriods = [currentComp];
+        updateLabel();
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
         });
 
-        // Set default to current month if in list (which it is now)
-        // Or keep first item? Since we sorted desc, current month should be top or near top.
-        // But user specifically asked for "mes atual".
-        monthSelector.value = currentComp;
-        currentPeriod = currentComp;
+        document.addEventListener('click', (e) => {
+            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
 
-        updateDashboard(currentPeriod, pactuacoes);
+        checkboxesContainer.addEventListener('change', () => {
+            selectedPeriods = Array.from(getCheckboxes()).filter(cb => cb.checked).map(cb => cb.value);
+            updateLabel();
+            updateDashboard(selectedPeriods, pactuacoes);
+        });
+
+        selectAllBtn.addEventListener('click', () => {
+            getCheckboxes().forEach(cb => cb.checked = true);
+            selectedPeriods = [...competencias];
+            updateLabel();
+            updateDashboard(selectedPeriods, pactuacoes);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            getCheckboxes().forEach(cb => cb.checked = false);
+            selectedPeriods = [];
+            updateLabel();
+            updateDashboard(selectedPeriods, pactuacoes);
+        });
+
+        updateDashboard(selectedPeriods, pactuacoes);
     } else {
-        updateDashboard(null, pactuacoes);
+        updateDashboard([], pactuacoes);
     }
 
     // --- GLOBAL DEADLINE MONITOR ---
@@ -79,15 +125,16 @@ export async function initDashboard() {
     }
 }
 
-async function updateDashboard(period = null, allPactuacoes = null) {
+async function updateDashboard(periods = [], allPactuacoes = null) {
     currentPactuacoes = allPactuacoes || await Repository.getPactuacoes();
     localInsts = await Repository.getInstitutos();
     localUsers = await Repository.getUsers();
     localProcs = await Repository.getProcedimentos();
     window.localProgramas = await Repository.getProgramas(); // Make available for charts
 
-    // Filter by period if provided (matching "competencia")
-    const filtered = period ? currentPactuacoes.filter(p => p.competencia === period) : currentPactuacoes;
+    const filtered = periods.length > 0
+        ? currentPactuacoes.filter(p => periods.includes(p.competencia))
+        : currentPactuacoes;
 
     // Calculate Totals
     let totalPactuado = 0;
@@ -317,9 +364,12 @@ function renderCharts(currentData, allPactuacoes) {
         };
 
         const sortedComps = allCompetencias.sort((a, b) => parseComp(a) - parseComp(b));
-        const currentIndex = sortedComps.indexOf(currentPeriod);
+        const latestPeriod = selectedPeriods.length > 0
+            ? selectedPeriods.reduce((a, b) => parseComp(a) >= parseComp(b) ? a : b)
+            : sortedComps[sortedComps.length - 1];
+        const rawIdx = sortedComps.indexOf(latestPeriod);
+        const currentIndex = rawIdx >= 0 ? rawIdx : sortedComps.length - 1;
 
-        // Take up to 6 items ending at currentIndex
         const sliceStart = Math.max(0, currentIndex - 5);
         const last6Comps = sortedComps.slice(sliceStart, currentIndex + 1);
 
@@ -365,7 +415,7 @@ function renderCharts(currentData, allPactuacoes) {
             const parts = d.comp.split('/');
             const m = parts[0];
             const y = parts[1];
-            const isCurrent = d.comp === currentPeriod;
+            const isCurrent = selectedPeriods.length === 0 || selectedPeriods.includes(d.comp);
 
             // Generate stacked segments
             const segments = Object.entries(d.breakdown).map(([instId, val], idx) => {
@@ -570,7 +620,7 @@ function renderCharts(currentData, allPactuacoes) {
 
 window.openDetalhamento = (sigtap) => {
     const proc = localProcs.find(p => p.sigtap === sigtap);
-    const filtered = currentPactuacoes.filter(p => p.sigtap === sigtap && p.competencia === currentPeriod);
+    const filtered = currentPactuacoes.filter(p => p.sigtap === sigtap && (selectedPeriods.length === 0 || selectedPeriods.includes(p.competencia)));
 
     document.getElementById('detail-proc-nome').textContent = proc?.nome || `Procedimento ${sigtap}`;
     document.getElementById('detail-proc-sigtap').textContent = `Código SIGTAP: ${sigtap}`;

@@ -939,7 +939,6 @@ window.openBreakdownModal = (key) => {
             const progName = prog ? prog.nome : (item.progId || '-');
 
             let instCellHtml = '';
-            let prodCellHtml = '';
 
             if (isFirst) {
                 // Instituto cell spanning all rows of this institute
@@ -966,17 +965,17 @@ window.openBreakdownModal = (key) => {
                 instCellHtml = `<td${rowspanAttr} class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300 align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
                     <div class="flex items-center">${instNameDisplay}</div>
                 </td>`;
-
-                // Produzido cell spanning all rows of this institute (one input per institute)
-                prodCellHtml = `<td${rowspanAttr} class="py-3 px-2 text-right align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
-                    <input
-                        type="number"
-                        value="${prod}"
-                        onchange="window.saveBreakdownItem('${item.id}', this.value, '${key}')"
-                        class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
-                    />
-                </td>`;
             }
+
+            // Each row gets its own Produzido input (different SIGTAPs = independent production)
+            const prodCellHtml = `<td class="py-3 px-2 text-right align-middle">
+                <input
+                    type="number"
+                    value="${prod}"
+                    onchange="window.saveBreakdownItem('${item.id}', this.value, '${key}')"
+                    class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
+                />
+            </td>`;
 
             rows.push(`
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50${!isFirst ? ' border-t border-slate-100 dark:border-slate-800' : ''}">
@@ -1051,10 +1050,13 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
     if (!masterItem) return;
 
     const targetInstId = masterItem.instId;
+    const targetSigtap = String(masterItem.sigtap || '').replace(/\D/g, '');
 
-    // Filter ALL items in this group that belong to the same Institute
-    // Logic: Production is per Procedure per Institute, so it applies to all Incentive programs.
-    const itemsToUpdate = group.items.filter(i => i.instId === targetInstId);
+    // Update only items with the same SIGTAP+Institute (same procedure, possibly multiple programs)
+    const itemsToUpdate = group.items.filter(i => {
+        const iSigtap = String(i.sigtap || '').replace(/\D/g, '');
+        return i.instId === targetInstId && iSigtap === targetSigtap;
+    });
 
     try {
         const updatePromises = itemsToUpdate.map(item => {
@@ -1064,13 +1066,14 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
         });
 
         await Promise.all(updatePromises);
-        console.log(`Synced production ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId})`);
+        console.log(`Synced production ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId}, SIGTAP: ${targetSigtap})`);
 
-        // Recalc Group Totals (deduplicate by instId to avoid double-counting multiple incentives)
-        const seenRecalcInstIds = new Set();
+        // Recalc Group Totals (deduplicate by instId+sigtap to avoid double-counting multiple programs for same procedure)
+        const seenRecalcKeys = new Set();
         group.totalProd = group.items.reduce((sum, i) => {
-            if (seenRecalcInstIds.has(i.instId)) return sum;
-            seenRecalcInstIds.add(i.instId);
+            const k = `${i.instId}_${String(i.sigtap || '').replace(/\D/g, '')}`;
+            if (seenRecalcKeys.has(k)) return sum;
+            seenRecalcKeys.add(k);
             return sum + (parseInt(i.producao?.aprovada) || 0);
         }, 0);
         group.totalFatSigtap = group.totalProd * group.vSigtap;

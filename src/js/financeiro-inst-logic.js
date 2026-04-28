@@ -257,7 +257,8 @@ function renderTable() {
         }
 
         const prod = p.producao || {};
-        const offer = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        const weekSum = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        const offer = weekSum > 0 ? weekSum : (parseInt(prod.realizada) || 0);
         globalStatus[p.sigtap].offer += offer;
     });
 
@@ -286,9 +287,10 @@ function renderTable() {
         const group = aggregated[p.sigtap];
         group.items.push(p);
 
-        // --- Calculate "Ofertado" (Sum of Weeks) ---
+        // --- Calculate "Ofertado" (Sum of Weeks, fallback to realizada) ---
         const prod = p.producao || {};
-        const ofertado = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        const weekSumOff = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
+        const ofertado = weekSumOff > 0 ? weekSumOff : (parseInt(prod.realizada) || 0);
         group.ofertado += ofertado;
 
         // --- Calculate "Realizado" (Budget Input) ---

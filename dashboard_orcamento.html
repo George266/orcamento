@@ -150,11 +150,28 @@
                     mensal.</p>
             </div>
             <div class="flex gap-3">
-                <select id="month-selector"
-                    class="h-10 pl-4 pr-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold shadow-sm focus:ring-primary">
-                    <option value="2023-11">Novembro / 2023</option>
-                    <option value="2023-10" selected>Outubro / 2023</option>
-                </select>
+                <div class="relative" id="period-selector-wrapper">
+                    <button id="period-selector-btn"
+                        class="h-10 pl-4 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold shadow-sm flex items-center gap-1 hover:border-primary transition-colors min-w-[140px]">
+                        <span id="period-selector-label" class="flex-1 text-left">Carregando...</span>
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">expand_more</span>
+                    </button>
+                    <div id="period-selector-dropdown"
+                        class="hidden absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 w-48">
+                        <div class="p-2 border-b border-slate-100 dark:border-slate-700 flex gap-1">
+                            <button id="period-select-all-btn"
+                                class="flex-1 text-[11px] text-center px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 font-semibold transition-colors">
+                                Todos
+                            </button>
+                            <button id="period-clear-btn"
+                                class="flex-1 text-[11px] text-center px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 font-semibold transition-colors">
+                                Limpar
+                            </button>
+                        </div>
+                        <div id="period-checkboxes" class="p-2 flex flex-col gap-0.5 max-h-60 overflow-y-auto">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
