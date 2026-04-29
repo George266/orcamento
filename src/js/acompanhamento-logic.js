@@ -585,7 +585,9 @@ async function renderTable() {
                 vSigtap: Math.max(safeParseFloat(p.vlrSigtapBase), safeParseFloat(proc?.vlrSigtap), 0),
                 vInc: safeParseFloat(p.vlrIncentivo),
                 // Track seen institutes to avoid double-counting production
-                seenProdInstIds: new Set()
+                seenProdInstIds: new Set(),
+                // Track max offer per institute (handles multiple incentive entries)
+                instMaxOffer: {}
             };
         }
 
@@ -619,19 +621,36 @@ async function renderTable() {
             groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
         }
 
-        // Production and offer counted only once per institute (avoid double-counting multiple incentives)
+        // Production: deduplicate by institute (first occurrence only)
         if (!groups[key].seenProdInstIds.has(p.instId)) {
             groups[key].seenProdInstIds.add(p.instId);
-
             const prod = parseInt(p.producao?.aprovada || 0);
             groups[key].totalProd += prod;
+        }
 
-            let offer = parseInt(p.producao?.realizada);
-            if (isNaN(offer)) offer = 0;
-            let staticOffer = parseInt(p.ofertado);
-            if (isNaN(staticOffer)) staticOffer = 0;
-            const finalOffer = offer > 0 ? offer : staticOffer;
-            groups[key].totalOffer += finalOffer;
+        // Offer: track max per institute (handles multiple incentive entries for same procedure)
+        // Uses weekly sums as primary source, falls back to realizada or static ofertado
+        const semOffer = (parseInt(p.producao?.sem1 || 0) + parseInt(p.producao?.sem2 || 0) +
+            parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0));
+        const realizadaOffer = parseInt(p.producao?.realizada || 0);
+        const staticOfertado = parseInt(p.ofertado || 0);
+        const thisInstOffer = Math.max(realizadaOffer, semOffer, staticOfertado);
+        groups[key].instMaxOffer[p.instId] = Math.max(groups[key].instMaxOffer[p.instId] || 0, thisInstOffer);
+    });
+
+    // Finalize totalOffer from per-institute max offers
+    Object.values(groups).forEach(g => {
+        g.totalOffer = Object.values(g.instMaxOffer).reduce((sum, v) => sum + v, 0);
+    });
+
+    // Remove standalone entries for SIGTAPs already covered by a unified group
+    const sigtapsInGrupos = new Set();
+    Object.values(groups).forEach(g => {
+        if (g.isGrupo) g.items.forEach(item => sigtapsInGrupos.add(cleanSigtap(item.sigtap)));
+    });
+    Object.keys(groups).forEach(key => {
+        if (!groups[key].isGrupo && sigtapsInGrupos.has(cleanSigtap(groups[key].sigtap))) {
+            delete groups[key];
         }
     });
 
@@ -656,11 +675,11 @@ async function renderTable() {
 
             const itemMeta = parseInt(item.ofertaMinima || 0);
 
-            let offer = parseInt(item.producao?.realizada);
-            if (isNaN(offer)) offer = 0;
-            let staticOffer = parseInt(item.ofertado);
-            if (isNaN(staticOffer)) staticOffer = 0;
-            const itemOffer = offer > 0 ? offer : staticOffer;
+            const itemSemOffer = (parseInt(item.producao?.sem1 || 0) + parseInt(item.producao?.sem2 || 0) +
+                parseInt(item.producao?.sem3 || 0) + parseInt(item.producao?.sem4 || 0) + parseInt(item.producao?.sem5 || 0));
+            const itemRealizada = parseInt(item.producao?.realizada || 0);
+            const itemStaticOffer = parseInt(item.ofertado || 0);
+            const itemOffer = Math.max(itemRealizada, itemSemOffer, itemStaticOffer);
 
             // Fallback for incentive unit value only when field is truly absent (null/undefined/empty)
             const rawVlrInc = item.vlrIncentivo;
@@ -926,17 +945,22 @@ window.openBreakdownModal = (key) => {
 
             let meta = parseInt(item.ofertaMinima || 0);
 
+            const semOfferModal = (parseInt(item.producao?.sem1 || 0) + parseInt(item.producao?.sem2 || 0) +
+                parseInt(item.producao?.sem3 || 0) + parseInt(item.producao?.sem4 || 0) + parseInt(item.producao?.sem5 || 0));
             let offer = parseInt(item.producao?.realizada);
             if (isNaN(offer)) offer = 0;
             let staticOffer = parseInt(item.ofertado);
             if (isNaN(staticOffer)) staticOffer = 0;
-            const finalOffer = offer > 0 ? offer : staticOffer;
+            const finalOffer = Math.max(offer, semOfferModal, staticOffer);
 
             let prod = parseInt(item.producao?.aprovada);
             if (isNaN(prod)) prod = 0;
 
             const prog = localProgramas.find(pg => pg.id === item.progId);
             const progName = prog ? prog.nome : (item.progId || '-');
+
+            const itemProc = group.isGrupo ? localProcs.find(pr => pr.sigtap === item.sigtap) : null;
+            const itemProcName = itemProc?.nome || item.sigtap;
 
             let instCellHtml = '';
 
@@ -945,9 +969,14 @@ window.openBreakdownModal = (key) => {
                 const just = group.justifications ? group.justifications.find(j => j.instId === instId) : null;
                 let instNameDisplay = `<span>${instName}</span>`;
 
-                // Check if any item for this institute is below its meta
-                const anyBelowMeta = instItems.some(i => {
-                    const iOffer = parseInt(i.producao?.realizada || 0) || parseInt(i.ofertado || 0);
+                // Se a meta global da rede já foi atingida, nenhum instituto recebe alerta
+                const isGlobalMetaMet = group.totalMeta > 0 && group.totalOffer >= group.totalMeta;
+
+                // Check if any item for this institute is below its meta (only when global meta not met)
+                const anyBelowMeta = !isGlobalMetaMet && instItems.some(i => {
+                    const iSem = (parseInt(i.producao?.sem1 || 0) + parseInt(i.producao?.sem2 || 0) +
+                        parseInt(i.producao?.sem3 || 0) + parseInt(i.producao?.sem4 || 0) + parseInt(i.producao?.sem5 || 0));
+                    const iOffer = Math.max(parseInt(i.producao?.realizada || 0), iSem, parseInt(i.ofertado || 0));
                     return iOffer < parseInt(i.ofertaMinima || 0);
                 });
 
@@ -980,7 +1009,10 @@ window.openBreakdownModal = (key) => {
             rows.push(`
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50${!isFirst ? ' border-t border-slate-100 dark:border-slate-800' : ''}">
                     ${instCellHtml}
-                    <td class="py-3 px-2 text-xs text-slate-500">${progName}</td>
+                    <td class="py-3 px-2 text-xs text-slate-500">
+                        ${group.isGrupo ? `<div class="font-medium text-slate-700 dark:text-slate-300">${itemProcName}</div>` : ''}
+                        <div class="${group.isGrupo ? 'text-[11px] text-slate-400 mt-0.5' : ''}">${progName}</div>
+                    </td>
                     <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
                     <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
                     <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>

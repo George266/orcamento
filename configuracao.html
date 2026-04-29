@@ -263,6 +263,10 @@
                                 placeholder="Buscar procedimento..."
                                 class="pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-xs w-48 md:w-64 focus:ring-2 focus:ring-primary/20 transition-all outline-none">
                         </div>
+                        <button onclick="window.openAuditModal()"
+                            class="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2" title="Temporário — remover após correção dos dados">
+                            <span class="material-symbols-outlined text-[18px]">bug_report</span> Auditar SIGTAP
+                        </button>
                         <button onclick="openModal('modal-procedimento')"
                             class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
                             <span class="material-symbols-outlined text-[18px]">add</span> Novo
@@ -849,6 +853,27 @@
     </div>
 
     <!-- MODAL: PROCEDIMENTO -->
+    <!-- MODAL: AUDITORIA SIGTAP (temporário — remover após corrigir dados) -->
+    <div id="modal-audit-sigtap"
+        class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-amber-600">Auditoria de Procedimentos SIGTAP</h3>
+                    <p class="text-xs text-slate-500 mt-1">Procedimentos com inconsistências de código. <strong class="text-red-500">Botão temporário — remover após corrigir os dados.</strong></p>
+                </div>
+                <button onclick="document.getElementById('modal-audit-sigtap').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div id="audit-results" class="overflow-y-auto flex-1 space-y-3 pr-1 min-h-[100px]"></div>
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <button onclick="document.getElementById('modal-audit-sigtap').classList.add('hidden')"
+                    class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-procedimento"
         class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl">
@@ -860,9 +885,11 @@
                         class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Código SIGTAP</label>
-                    <input type="text" id="proc-sigtap"
-                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Código SIGTAP <span class="text-slate-400 font-normal normal-case">(10 dígitos)</span></label>
+                    <input type="text" id="proc-sigtap" maxlength="10"
+                        oninput="this.value=this.value.replace(/\D/g,'')"
+                        onblur="if(this.value)this.value=this.value.replace(/\D/g,'').padStart(10,'0')"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Valor SIGTAP (Base SUS)</label>
@@ -1246,7 +1273,7 @@
             // Populate Proc Select (Form)
             const procSelect = document.getElementById('item-proc');
             procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
-                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
+                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.sigtap}">${p.sigtap} - ${p.nome}</option>`).join('');
 
             // Populate Competencia Select (Form)
             const compSelect = document.getElementById('item-competencia');
@@ -1366,9 +1393,24 @@
         };
 
         window.saveProcedimento = async () => {
+            const nome = document.getElementById('proc-nome').value.trim();
+            const sigtapRaw = document.getElementById('proc-sigtap').value.trim().replace(/\D/g, '');
+            const sigtap = sigtapRaw.padStart(10, '0').slice(-10);
+
+            if (!nome) { alert('Informe o nome do procedimento.'); return; }
+            if (!sigtapRaw) { alert('Informe o código SIGTAP.'); return; }
+            if (sigtapRaw.length > 10) { alert('Código SIGTAP deve ter no máximo 10 dígitos.'); return; }
+
+            const duplicate = localProcedimentos.find(p => p.sigtap === sigtap && p.id !== currentEditId);
+            if (duplicate) {
+                alert(`Já existe um procedimento com SIGTAP ${sigtap}:\n"${duplicate.nome}"`);
+                return;
+            }
+
+            document.getElementById('proc-sigtap').value = sigtap;
             const proc = {
-                nome: document.getElementById('proc-nome').value,
-                sigtap: document.getElementById('proc-sigtap').value,
+                nome,
+                sigtap,
                 vlrSigtap: parseFloat(document.getElementById('proc-vlr-sigtap').value) || 0,
                 status: document.getElementById('proc-status').value
             };
@@ -1954,7 +1996,7 @@
             // Populate Proc Select (Form)
             const procSelect = document.getElementById('item-proc');
             procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
-                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.id}">${p.sigtap} - ${p.nome}</option>`).join('');
+                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.sigtap}">${p.sigtap} - ${p.nome}</option>`).join('');
 
             // Populate Competencia Select (Form)
             const compSelect = document.getElementById('item-competencia');
@@ -2035,6 +2077,123 @@
             document.getElementById('search-procedimentos')?.addEventListener('input', window.renderProcedimentos);
             document.getElementById('search-po')?.addEventListener('input', window.renderPO);
         });
+
+        // ── AUDITORIA SIGTAP (temporário) ──────────────────────────────────────
+        const norm10 = s => (s || '').replace(/\D/g, '').padStart(10, '0').slice(-10);
+
+        window.openAuditModal = async () => {
+            const container = document.getElementById('audit-results');
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm">Carregando...</div>`;
+            document.getElementById('modal-audit-sigtap').classList.remove('hidden');
+
+            // ── Seção 1: Procedimentos ──
+            const sigtapCount = {};
+            localProcedimentos.forEach(p => {
+                const s = p.sigtap || '';
+                sigtapCount[s] = (sigtapCount[s] || 0) + 1;
+            });
+            const procIssues = [];
+            localProcedimentos.forEach(p => {
+                const problems = [];
+                const sigtap = (p.sigtap || '').trim();
+                const id = (p.id || '').trim();
+                if (id !== sigtap) problems.push(`ID do documento <code>${id}</code> ≠ campo sigtap <code>${sigtap}</code>`);
+                if (sigtap.replace(/\D/g, '').length !== 10) problems.push(`SIGTAP com ${sigtap.length} caracteres (esperado: 10)`);
+                if (sigtapCount[sigtap] > 1) problems.push(`SIGTAP duplicado (${sigtapCount[sigtap]}x no catálogo)`);
+                if (problems.length) procIssues.push({ proc: p, problems, canFix: id !== sigtap });
+            });
+
+            // ── Seção 2: Pactuações ──
+            const allPacts = await Repository.getPactuacoes();
+            const pactIssues = [];
+            allPacts.forEach(p => {
+                const sigtap = (p.sigtap || '').trim();
+                if (sigtap.replace(/\D/g, '').length === 10) return; // OK
+                // Tenta identificar o procedimento correto pelo ID do documento
+                const matchByDocId = localProcedimentos.find(pr => pr.id === sigtap);
+                pactIssues.push({
+                    pact: p,
+                    sigtap,
+                    correctSigtap: matchByDocId ? matchByDocId.sigtap : null,
+                    procNome: matchByDocId ? matchByDocId.nome : '(procedimento não identificado)'
+                });
+            });
+
+            // ── Renderiza ──
+            let html = '';
+
+            // Procedimentos
+            html += `<h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Catálogo de Procedimentos (${procIssues.length} problema${procIssues.length !== 1 ? 's' : ''})</h4>`;
+            if (procIssues.length === 0) {
+                html += `<div class="text-sm text-emerald-600 font-bold py-2 mb-4">Nenhum problema encontrado.</div>`;
+            } else {
+                html += procIssues.map(({ proc, problems, canFix }) => `
+                    <div class="border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 rounded-xl p-4 flex items-start gap-4 mb-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm">${proc.nome || '(sem nome)'}</div>
+                            <div class="text-[11px] font-mono text-slate-500 mt-0.5">ID: ${proc.id} | SIGTAP: ${proc.sigtap}</div>
+                            <ul class="mt-1 space-y-0.5">${problems.map(pr => `<li class="text-xs text-red-600">• ${pr}</li>`).join('')}</ul>
+                            ${canFix ? `<button onclick="window.fixProcedimentoSigtap('${proc.id}')" class="mt-2 text-xs px-3 py-1 bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200 transition-colors">Corrigir (ID = SIGTAP)</button>` : ''}
+                        </div>
+                        <button onclick="window.deleteAuditProcedimento('${proc.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-100 p-2 rounded-lg transition-colors flex-shrink-0" title="Excluir">
+                            <span class="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                    </div>`).join('');
+            }
+
+            // Pactuações
+            html += `<h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mt-4 mb-2">Pactuações com SIGTAP inválido (${pactIssues.length} problema${pactIssues.length !== 1 ? 's' : ''})</h4>`;
+            if (pactIssues.length === 0) {
+                html += `<div class="text-sm text-emerald-600 font-bold py-2">Nenhum problema encontrado.</div>`;
+            } else {
+                html += pactIssues.map(({ pact, sigtap, correctSigtap, procNome }) => `
+                    <div class="border border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800 rounded-xl p-4 flex items-start gap-4 mb-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm">${procNome}</div>
+                            <div class="text-[11px] font-mono text-slate-500 mt-0.5">ID pactuação: ${pact.id}</div>
+                            <div class="text-[11px] font-mono text-slate-500">SIGTAP armazenado: <span class="text-red-500">${sigtap}</span> (${sigtap.length} chars) ${correctSigtap ? `→ correto: <span class="text-emerald-600">${correctSigtap}</span>` : ''}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Instituto: ${pact.instId} | Comp.: ${pact.competencia} | ofertaMinima: ${pact.ofertaMinima}</div>
+                            ${correctSigtap ? `<button onclick="window.fixPactuacaoSigtap('${pact.id}','${correctSigtap}')" class="mt-2 text-xs px-3 py-1 bg-emerald-100 text-emerald-700 font-bold rounded-lg hover:bg-emerald-200 transition-colors">Corrigir SIGTAP → ${correctSigtap}</button>` : ''}
+                        </div>
+                        <button onclick="window.deleteAuditPactuacao('${pact.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-100 p-2 rounded-lg transition-colors flex-shrink-0" title="Excluir">
+                            <span class="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                    </div>`).join('');
+            }
+
+            container.innerHTML = html;
+        };
+
+        window.deleteAuditProcedimento = async (id) => {
+            if (!confirm(`Excluir o procedimento com ID "${id}"?\nIsso não pode ser desfeito.`)) return;
+            await Repository.deleteProcedimento(id);
+            await window.loadProcedimentos();
+            window.openAuditModal();
+        };
+
+        window.fixProcedimentoSigtap = async (id) => {
+            const proc = localProcedimentos.find(p => p.id === id);
+            if (!proc) return;
+            const correctSigtap = norm10(proc.sigtap);
+            if (!confirm(`Corrigir:\n• Excluir documento com ID "${id}"\n• Recriar com ID = "${correctSigtap}"\n\nContinuar?`)) return;
+            await Repository.deleteProcedimento(id);
+            await Repository.saveProcedimento({ ...proc, id: correctSigtap, sigtap: correctSigtap });
+            await window.loadProcedimentos();
+            window.openAuditModal();
+        };
+
+        window.fixPactuacaoSigtap = async (pactId, correctSigtap) => {
+            if (!confirm(`Corrigir a pactuação ${pactId}:\n• Alterar sigtap para "${correctSigtap}"\n\nContinuar?`)) return;
+            await Repository.savePactuacao({ id: pactId, sigtap: correctSigtap });
+            window.openAuditModal();
+        };
+
+        window.deleteAuditPactuacao = async (id) => {
+            if (!confirm(`Excluir a pactuação "${id}"?\nIsso remove o lançamento permanentemente.`)) return;
+            await Repository.deletePactuacao(id);
+            window.openAuditModal();
+        };
+        // ───────────────────────────────────────────────────────────────────────
     </script>
     <script type="module" src="src/js/auth-guard.js"></script>
 </body>

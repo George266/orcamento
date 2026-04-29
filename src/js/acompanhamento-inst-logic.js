@@ -784,12 +784,8 @@ function renderTable() {
         if (!group.isGrupo) {
             group.maxMeta = maxMetaVal;
             group.totalMeta = maxMetaVal;
-        } else {
-            // Para grupos/redes: usa o ofertado do próprio instituto como meta individual
-            const instTarget = group.items.reduce((sum, p) => sum + (parseInt(p.ofertado || 0)), 0);
-            group.maxMeta = instTarget;
-            group.totalMeta = instTarget;
         }
+        // Para grupos/redes: maxMeta e totalMeta já foram definidos a partir de grupo.ofertaMinima na inicialização
         group.sem1 = sumSem1;
         group.sem2 = sumSem2;
         group.sem3 = sumSem3;
@@ -1254,7 +1250,7 @@ window.openGlobalBreakdown = (sigtap) => {
         const modalFooter = document.getElementById('modal-footer');
         if (modalFooter) modalFooter.classList.add('hidden');
 
-        const tbody = document.getElementById('modal-table-body');
+        const redeBody = document.getElementById('modal-rede-body');
 
         // Remove old global section if present
         const oldGlobal = document.getElementById('dynamic-global-section');
@@ -1278,52 +1274,43 @@ window.openGlobalBreakdown = (sigtap) => {
                 `;
             }).join('');
 
-            // Inject simpler view
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="p-0 border-none">
-                        <div class="p-6 flex flex-col items-center">
-                            
-                            <div class="w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center shadow-sm mb-6">
-                                <div class="bg-white dark:bg-emerald-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-800 shadow-sm">
-                                    <span class="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>
-                                </div>
-                                
-                                <h4 class="text-xl font-bold text-emerald-900 dark:text-white mb-2">Meta Global Atingida!</h4>
-                                <p class="text-sm text-emerald-700 dark:text-emerald-300 max-w-sm mx-auto">
-                                    A soma das ofertas de todos os institutos superou a meta estabelecida para a rede.
-                                </p>
-                            
-                                <div class="flex items-center justify-center gap-8 mt-6">
-                                    <div class="flex flex-col items-center">
-                                        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Meta Rede</span>
-                                        <span class="text-2xl font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">${group.global.totalMeta}</span>
-                                    </div>
-                                    <div class="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
-                                    <div class="flex flex-col items-center">
-                                        <span class="text-[10px] uppercase tracking-wider text-emerald-600 font-bold mb-1">Oferta Rede</span>
-                                        <span class="text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-white dark:bg-emerald-950 px-4 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800 shadow-sm">${group.global.totalRealizado}</span>
-                                    </div>
-                                </div>
+            redeBody.innerHTML = `
+                <div class="p-6 flex flex-col items-center">
+                    <div class="w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center shadow-sm mb-6">
+                        <div class="bg-white dark:bg-emerald-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-800 shadow-sm">
+                            <span class="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>
+                        </div>
+                        <h4 class="text-xl font-bold text-emerald-900 dark:text-white mb-2">Meta Global Atingida!</h4>
+                        <p class="text-sm text-emerald-700 dark:text-emerald-300 max-w-sm mx-auto">
+                            A soma das ofertas de todos os institutos superou a meta estabelecida para a rede.
+                        </p>
+                        <div class="flex items-center justify-center gap-8 mt-6">
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Meta Rede</span>
+                                <span class="text-2xl font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">${group.global.totalMeta}</span>
                             </div>
-
-                            <div class="w-full">
-                                <h5 class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-3 px-1 ml-1">
-                                    <span class="material-symbols-outlined text-[16px]">domain</span>
-                                    Detalhamento por Instituto
-                                </h5>
-                                <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                                    <div class="divide-y divide-slate-100 dark:divide-slate-700 p-2">
-                                        ${breakdownHtml}
-                                    </div>
-                                </div>
+                            <div class="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] uppercase tracking-wider text-emerald-600 font-bold mb-1">Oferta Rede</span>
+                                <span class="text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-white dark:bg-emerald-950 px-4 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800 shadow-sm">${group.global.totalRealizado}</span>
                             </div>
                         </div>
-                    </td>
-                </tr>
+                    </div>
+                    <div class="w-full">
+                        <h5 class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-3 px-1 ml-1">
+                            <span class="material-symbols-outlined text-[16px]">domain</span>
+                            Detalhamento por Instituto
+                        </h5>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                            <div class="divide-y divide-slate-100 dark:divide-slate-700 p-2">
+                                ${breakdownHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
         } else {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">Nenhum dado de rede disponível.</td></tr>`;
+            redeBody.innerHTML = `<div class="p-4 text-center text-slate-500">Nenhum dado de rede disponível.</div>`;
         }
 
         modal.classList.remove('hidden');
