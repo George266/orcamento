@@ -635,7 +635,13 @@ async function renderTable() {
         const realizadaOffer = parseInt(p.producao?.realizada || 0);
         const staticOfertado = parseInt(p.ofertado || 0);
         const thisInstOffer = Math.max(realizadaOffer, semOffer, staticOfertado);
-        groups[key].instMaxOffer[p.instId] = Math.max(groups[key].instMaxOffer[p.instId] || 0, thisInstOffer);
+        if (grupo) {
+            // Grupos unificados: cada sigtap é independente, soma as contribuições
+            groups[key].instMaxOffer[p.instId] = (groups[key].instMaxOffer[p.instId] || 0) + thisInstOffer;
+        } else {
+            // Procedimentos individuais: max para evitar dupla contagem por incentivo
+            groups[key].instMaxOffer[p.instId] = Math.max(groups[key].instMaxOffer[p.instId] || 0, thisInstOffer);
+        }
     });
 
     // Finalize totalOffer from per-institute max offers

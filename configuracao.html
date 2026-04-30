@@ -1898,6 +1898,21 @@
                     return 0;
                 });
 
+                // Consolidate items sharing the same group/inst/competencia into a single display row
+                const displayItems = [];
+                const processedGroupKeys = new Set();
+                progItens.forEach(item => {
+                    if (item.grupoOfertaId) {
+                        const key = `${item.grupoOfertaId}|${item.instId}|${item.competencia}`;
+                        if (!processedGroupKeys.has(key)) {
+                            processedGroupKeys.add(key);
+                            displayItems.push({ _grouped: true, grupoOfertaId: item.grupoOfertaId, instId: item.instId, competencia: item.competencia, _items: progItens.filter(i => i.grupoOfertaId === item.grupoOfertaId && i.instId === item.instId && i.competencia === item.competencia) });
+                        }
+                    } else {
+                        displayItems.push(item);
+                    }
+                });
+
                 return `
                     <div class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden mb-4">
                         <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors" onclick="window.toggleProgram('${p.id}')">
@@ -1940,7 +1955,24 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${progItens.length > 0 ? progItens.map(item => {
+                                    ${displayItems.length > 0 ? displayItems.map(item => {
+                    if (item._grouped) {
+                        const inst = localInstitutos.find(i => i.id == item.instId);
+                        const grupo = localGruposOferta.find(g => g.id === item.grupoOfertaId);
+                        const procNames = item._items.map(i => { const pr = localProcedimentos.find(pr => pr.id == i.sigtap); return pr?.nome || '???'; }).join('<br>');
+                        const editBtns = item._items.map(i => { const pr = localProcedimentos.find(pr => pr.id == i.sigtap); return `<button onclick="window.openItensModal('${p.id}', '${i.id}')" class="text-slate-400 hover:text-primary transition-colors" title="${pr?.nome || i.sigtap}"><span class="material-symbols-outlined text-[18px]">edit</span></button>`; }).join('');
+                        return `
+                                            <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50/50">
+                                                <td class="px-6 py-4 text-xs font-bold">${inst?.sigla || inst?.nome || '???'}</td>
+                                                <td class="px-6 py-4 text-xs text-slate-600 leading-relaxed">${procNames}</td>
+                                                <td class="px-6 py-4 text-center text-[10px]">${item.competencia || ''}</td>
+                                                <td class="px-6 py-4 text-center text-[10px]"><span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">${grupo?.nome || '???'}</span></td>
+                                                <td class="px-6 py-4 text-right"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold">${parseInt(grupo?.ofertaMinima || 0).toLocaleString('pt-BR')}</span></td>
+                                                <td class="px-6 py-4 text-right font-mono text-xs text-primary">${item._items.map(i => `R$ ${parseFloat(i.vlrIncentivo || 0).toFixed(2)}`).join('<br>')}</td>
+                                                <td class="px-6 py-4 text-center flex gap-1 justify-center">${editBtns}</td>
+                                            </tr>
+                                        `;
+                    }
                     const inst = localInstitutos.find(i => i.id == item.instId);
                     const proc = localProcedimentos.find(pr => pr.id == item.sigtap);
                     const grupo = item.grupoOfertaId ? localGruposOferta.find(g => g.id === item.grupoOfertaId) : null;

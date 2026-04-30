@@ -796,9 +796,15 @@ function renderTable() {
         const semanasTotal = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
 
         if (group.isGrupo && group.grupoId) {
-            // Usa produção do próprio instituto (semanas ou producao.realizada)
-            const itemsRealized = group.items.reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
-            group.totalRealizado = Math.max(semanasTotal, itemsRealized);
+            // Para oferta unificada: soma produção de TODOS os institutos da rede (o status é da rede, não do instituto)
+            const redeRealizado = allPactuacoes
+                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
+                .reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
+            const redeSemanas = allPactuacoes
+                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
+                .reduce((sum, p) => sum + (parseInt(p.producao?.sem1 || 0) + parseInt(p.producao?.sem2 || 0) +
+                    parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0)), 0);
+            group.totalRealizado = Math.max(redeRealizado, redeSemanas);
         } else {
             // Para procedimentos individuais: usa as semanas locais
             const globalRealized = allPactuacoes
