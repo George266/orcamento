@@ -698,14 +698,16 @@ async function renderTable() {
             // Capture Unit Value (use max found or first non-zero)
             if (itemValInc > 0) usageByProg[pId].unitVal = itemValInc;
 
-            // Track production per institute to avoid double-counting
-            // when the same institute appears in multiple incentives
+            // Track production per institute+sigtap to avoid double-counting
+            // when the same procedure+institute appears in multiple incentives,
+            // but allow different procedures from the same institute to be summed.
             const prod = parseInt(item.producao?.aprovada || 0);
             const instId = item.instId;
-            if (!(instId in usageByProg[pId].instProds)) {
-                usageByProg[pId].instProds[instId] = prod;
+            const instSigtapKey = `${instId}-${item.sigtap}`;
+            if (!(instSigtapKey in usageByProg[pId].instProds)) {
+                usageByProg[pId].instProds[instSigtapKey] = prod;
             } else {
-                usageByProg[pId].instProds[instId] = Math.max(usageByProg[pId].instProds[instId], prod);
+                usageByProg[pId].instProds[instSigtapKey] = Math.max(usageByProg[pId].instProds[instSigtapKey], prod);
             }
         });
 

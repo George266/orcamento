@@ -2047,7 +2047,8 @@
             // Populate Grupo Select (Form)
             const grupoSel = document.getElementById('item-grupo');
             if (localGruposOferta.length === 0) localGruposOferta = await Repository.getGruposOferta();
-            const gruposDoProgr = localGruposOferta.filter(g => g.progId === progId);
+            const gruposDoProgr = localGruposOferta.filter(g =>
+                (g.progIds?.length ? g.progIds.includes(progId) : g.progId === progId));
             grupoSel.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
                 gruposDoProgr.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
             document.getElementById('item-qtd-container').style.display = '';
