@@ -404,6 +404,7 @@
                                 <th class="px-6 py-3 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider">Nome do Grupo</th>
                                 <th class="px-6 py-3 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider">Programa</th>
                                 <th class="px-6 py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">Procedimentos</th>
+                                <th class="px-6 py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">Vigência</th>
                                 <th class="px-6 py-3 text-right text-[10px] font-black text-slate-500 uppercase tracking-wider">Meta Unificada</th>
                                 <th class="px-6 py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">Ações</th>
                             </tr>
@@ -742,6 +743,18 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Meta Unificada</label>
                         <input type="number" id="grupo-meta" placeholder="Ex: 1000"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Início</label>
+                        <input type="month" id="grupo-vigencia-inicio"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Fim</label>
+                        <input type="month" id="grupo-vigencia-fim"
                             class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                     </div>
                 </div>
@@ -1216,11 +1229,15 @@
                     titleEl.textContent = 'Editar Grupo de Oferta';
                     document.getElementById('grupo-nome').value = g.nome;
                     document.getElementById('grupo-meta').value = g.ofertaMinima || '';
+                    document.getElementById('grupo-vigencia-inicio').value = g.vigenciaInicio || '';
+                    document.getElementById('grupo-vigencia-fim').value = g.vigenciaFim || '';
                     window._grupoSelectedProgs = g.progIds || (g.progId ? [g.progId] : []);
                 } else {
                     titleEl.textContent = 'Novo Grupo de Oferta';
                     document.getElementById('grupo-nome').value = '';
                     document.getElementById('grupo-meta').value = '';
+                    document.getElementById('grupo-vigencia-inicio').value = '';
+                    document.getElementById('grupo-vigencia-fim').value = '';
                     window._grupoSelectedProgs = [];
                 }
                 window.renderGrupoProgChips();
@@ -1280,7 +1297,7 @@
             const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
             const now = new Date();
             const compOptions = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
-            for (let i = -3; i <= 12; i++) {
+            for (let i = -now.getMonth(); i <= 12; i++) {
                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                 const label = `${shortMonths[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
                 compOptions.push(`<option value="${label}">${label}</option>`);
@@ -1666,9 +1683,14 @@
             const tbody = document.getElementById('table-grupos');
             if (!tbody) return;
             if (localGruposOferta.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400 text-sm">Nenhum grupo cadastrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 text-sm">Nenhum grupo cadastrado.</td></tr>`;
                 return;
             }
+            const fmtMes = (ym) => {
+                if (!ym) return null;
+                const [y, m] = ym.split('-');
+                return `${m}/${y}`;
+            };
             tbody.innerHTML = localGruposOferta.map(g => {
                 const progIds = g.progIds?.length ? g.progIds : (g.progId ? [g.progId] : []);
                 const progs = progIds.map(id => localProgramas.find(p => p.id === id)).filter(Boolean);
@@ -1684,6 +1706,11 @@
                         : `<div class="flex flex-wrap gap-1">${progs.map(p =>
                             `<span class="inline-block px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold rounded-full border border-blue-100 dark:border-blue-800">${p.nome}</span>`
                           ).join('')}</div>`;
+                const ini = fmtMes(g.vigenciaInicio);
+                const fim = fmtMes(g.vigenciaFim);
+                const vigCell = ini || fim
+                    ? `<span class="text-xs text-slate-600 dark:text-slate-300 font-mono">${ini || '—'} – ${fim || '—'}</span>`
+                    : `<span class="text-slate-400 italic text-xs">—</span>`;
                 return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${g.nome}</td>
@@ -1691,10 +1718,12 @@
                     <td class="px-6 py-4 text-center">
                         <span class="text-xs text-slate-500" title="${procNames.join(', ')}">${procs.length} procedimento${procs.length !== 1 ? 's' : ''}</span>
                     </td>
+                    <td class="px-6 py-4 text-center">${vigCell}</td>
                     <td class="px-6 py-4 text-right font-mono text-sm">${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')}</td>
                     <td class="px-6 py-4 text-center flex justify-center gap-2">
-                        <button onclick="window.openModal('modal-grupo', '${g.id}', 'grupo')" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[20px]">edit</span></button>
-                        <button onclick="window.deleteGrupoOferta('${g.id}')" class="text-slate-400 hover:text-red-500"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                        <button onclick="window.openModal('modal-grupo', '${g.id}', 'grupo')" title="Editar" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+                        <button onclick="window.duplicarGrupoOferta('${g.id}')" title="Duplicar para nova vigência" class="text-slate-400 hover:text-emerald-500"><span class="material-symbols-outlined text-[20px]">content_copy</span></button>
+                        <button onclick="window.deleteGrupoOferta('${g.id}')" title="Excluir" class="text-slate-400 hover:text-red-500"><span class="material-symbols-outlined text-[20px]">delete</span></button>
                     </td>
                 </tr>`;
             }).join('');
@@ -1778,12 +1807,43 @@
             const procedimentos = window._grupoSelectedProcs || [];
             if (procedimentos.length === 0) { alert('Selecione pelo menos um procedimento.'); return; }
             const progIds = window._grupoSelectedProgs || [];
+            const vigIni = document.getElementById('grupo-vigencia-inicio').value || null;
+            const vigFim = document.getElementById('grupo-vigencia-fim').value || null;
+
+            if (vigIni || vigFim) {
+                const aIni = vigIni || '0000-01';
+                const aFim = vigFim || '9999-12';
+                const conflitos = [];
+                for (const other of localGruposOferta) {
+                    if (other.id === currentEditId) continue;
+                    if (!other.vigenciaInicio && !other.vigenciaFim) continue;
+                    const bIni = other.vigenciaInicio || '0000-01';
+                    const bFim = other.vigenciaFim || '9999-12';
+                    if (aIni <= bFim && bIni <= aFim) {
+                        const shared = procedimentos.filter(s => (other.procedimentos || []).includes(s));
+                        if (shared.length > 0) {
+                            const nomes = shared.map(s => {
+                                const p = localProcedimentos.find(x => x.sigtap === s);
+                                return p ? p.nome : s;
+                            });
+                            conflitos.push(`• "${other.nome}": ${nomes.join(', ')}`);
+                        }
+                    }
+                }
+                if (conflitos.length > 0) {
+                    const msg = `Os procedimentos abaixo já estão em outros grupos com vigência sobreposta:\n\n${conflitos.join('\n')}\n\nDeseja salvar mesmo assim?`;
+                    if (!confirm(msg)) return;
+                }
+            }
+
             const grupo = {
                 nome,
                 progId: progIds[0] || '',
                 progIds,
                 ofertaMinima: parseInt(document.getElementById('grupo-meta').value) || 0,
                 procedimentos,
+                vigenciaInicio: vigIni,
+                vigenciaFim: vigFim,
             };
             if (currentEditId) grupo.id = currentEditId;
             await Repository.saveGrupoOferta(grupo);
@@ -1797,6 +1857,23 @@
             await Repository.deleteGrupoOferta(id);
             localGruposOferta = await Repository.getGruposOferta();
             window.renderGruposOferta();
+        };
+
+        window.duplicarGrupoOferta = (id) => {
+            const g = localGruposOferta.find(x => x.id === id);
+            if (!g) return;
+            currentEditId = null;
+            document.getElementById('modal-grupo').classList.remove('hidden');
+            document.getElementById('modal-grupo-title').textContent = 'Novo Grupo de Oferta (cópia)';
+            document.getElementById('grupo-nome').value = g.nome + ' (cópia)';
+            document.getElementById('grupo-meta').value = g.ofertaMinima || '';
+            document.getElementById('grupo-vigencia-inicio').value = '';
+            document.getElementById('grupo-vigencia-fim').value = '';
+            document.getElementById('grupo-proc-search').value = '';
+            window._grupoSelectedProgs = [...(g.progIds || (g.progId ? [g.progId] : []))];
+            window._grupoSelectedProcs = [...(g.procedimentos || [])];
+            window.renderGrupoProgChips();
+            window.renderGrupoProcList('');
         };
 
         window.loadPO = async () => {
@@ -2035,7 +2112,7 @@
             const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
             const now = new Date();
             const compOptions = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
-            for (let i = -3; i <= 12; i++) {
+            for (let i = -now.getMonth(); i <= 12; i++) {
                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                 const label = `${shortMonths[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
                 compOptions.push(`<option value="${label}">${label}</option>`);
