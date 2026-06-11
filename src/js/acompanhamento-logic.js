@@ -781,9 +781,6 @@ async function renderTable() {
             usageByProg[pId].meta = Math.max(usageByProg[pId].meta, itemMeta);
             usageByProg[pId].offer += itemOffer;
 
-            // Capture Unit Value (use max found or first non-zero)
-            if (itemValInc > 0) usageByProg[pId].unitVal = itemValInc;
-
             // Track production per institute+sigtap to avoid double-counting
             // when the same procedure+institute appears in multiple incentives,
             // but allow different procedures from the same institute to be summed.
@@ -791,9 +788,12 @@ async function renderTable() {
             const instId = item.instId;
             const instSigtapKey = `${instId}-${item.sigtap}`;
             if (!(instSigtapKey in usageByProg[pId].instProds)) {
-                usageByProg[pId].instProds[instSigtapKey] = prod;
+                usageByProg[pId].instProds[instSigtapKey] = { prod, unitVal: itemValInc };
             } else {
-                usageByProg[pId].instProds[instSigtapKey] = Math.max(usageByProg[pId].instProds[instSigtapKey], prod);
+                const existing = usageByProg[pId].instProds[instSigtapKey];
+                if (prod > existing.prod) {
+                    usageByProg[pId].instProds[instSigtapKey] = { prod, unitVal: itemValInc };
+                }
             }
         });
 
@@ -805,10 +805,9 @@ async function renderTable() {
             const prog = usageByProg[pId];
             const isMet = prog.meta > 0 ? (prog.offer >= prog.meta) : true;
 
-            // Sum production per institute (deduplicated) to avoid double-counting
-            // when the same procedure appears in multiple incentives
-            const progProd = Object.values(prog.instProds).reduce((sum, v) => sum + v, 0);
-            const potential = progProd * prog.unitVal;
+            // Each inst-sigtap entry keeps its own unitVal to correctly handle
+            // grouped procedures with different incentive values
+            const potential = Object.values(prog.instProds).reduce((sum, v) => sum + (v.prod * v.unitVal), 0);
 
             // Store status for global stats
             programStatusMap[`${g.sigtap}-${pId}`] = isMet;
@@ -1135,8 +1134,10 @@ window.openBreakdownModal = (key) => {
             rows.push(`
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50${!isFirst ? ' border-t border-slate-100 dark:border-slate-800' : ''}">
                     ${instCellHtml}
-                    <td class="py-2 px-1.5 text-xs text-slate-500">
-                        ${group.isGrupo ? `<div class="font-medium text-slate-700 dark:text-slate-300">${itemProcName}</div>` : ''}
+                    <td class="py-3 px-2 text-xs text-slate-500">
+                        ${group.isGrupo
+                            ? `<div class="font-medium text-slate-700 dark:text-slate-300"><span class="font-mono text-slate-400 mr-1">${item.sigtap}</span>${itemProcName}</div>`
+                            : `<div class="font-mono text-[11px] text-slate-400">${item.sigtap}</div>`}
                         <div class="${group.isGrupo ? 'text-[11px] text-slate-400 mt-0.5' : ''}">${progName}</div>
                     </td>
                     <td class="py-2 px-1.5 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>

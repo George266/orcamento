@@ -806,11 +806,15 @@ function renderTable() {
                     parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0)), 0);
             group.totalRealizado = Math.max(redeRealizado, redeSemanas);
         } else {
-            // Para procedimentos individuais: usa as semanas locais
-            const globalRealized = allPactuacoes
-                .filter(p => p.competencia === compValue && p.sigtap === group.sigtap)
-                .reduce((max, p) => Math.max(max, parseInt(p.producao?.realizada || 0)), 0);
-            group.totalRealizado = Math.max(semanasTotal, globalRealized);
+            // Para procedimentos individuais: prioriza soma das semanas do próprio instituto.
+            // Só usa producao.realizada como fallback quando nenhuma semana foi preenchida.
+            if (semanasTotal > 0) {
+                group.totalRealizado = semanasTotal;
+            } else {
+                const localRealized = group.items
+                    .reduce((max, p) => Math.max(max, parseInt(p.producao?.realizada || 0)), 0);
+                group.totalRealizado = localRealized;
+            }
         }
     });
 
@@ -1106,6 +1110,8 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
             await Repository.savePactuacao({ id: pact.id, producao: pact.producao });
             const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
             if (localIdx !== -1) localPactuacoes[localIdx].producao = { ...pact.producao };
+            const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
+            if (allIdx !== -1) allPactuacoes[allIdx].producao = { ...pact.producao };
             renderTableKeepFocus();
         } catch (error) {
             console.error("Error updating week for grupo item:", error);
@@ -1131,6 +1137,12 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
                     if (!localPactuacoes[localIdx].producao) localPactuacoes[localIdx].producao = {};
                     localPactuacoes[localIdx].producao[weekField] = val;
                     localPactuacoes[localIdx].producao.realizada = pact.producao.realizada;
+                }
+                const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
+                if (allIdx !== -1) {
+                    if (!allPactuacoes[allIdx].producao) allPactuacoes[allIdx].producao = {};
+                    allPactuacoes[allIdx].producao[weekField] = val;
+                    allPactuacoes[allIdx].producao.realizada = pact.producao.realizada;
                 }
             });
             renderTableKeepFocus();

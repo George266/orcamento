@@ -114,6 +114,34 @@ export async function initDashboard() {
         });
 
         updateDashboard(selectedPeriods, pactuacoes);
+    } else if (monthSelector) {
+        let competencias = [...new Set(pactuacoes.map(p => p.competencia))];
+
+        const currentComp = DateUtils.getCurrentMonthLabel('short');
+        if (!competencias.includes(currentComp)) competencias.push(currentComp);
+
+        const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+        const parseComp = (c) => {
+            if (!c) return 0;
+            const [m, y] = c.split('/');
+            if (!m || !y) return 0;
+            return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+        };
+        competencias.sort((a, b) => parseComp(b) - parseComp(a));
+
+        const longMonths = { 'jan': 'Janeiro', 'fev': 'Fevereiro', 'mar': 'Março', 'abr': 'Abril', 'mai': 'Maio', 'jun': 'Junho', 'jul': 'Julho', 'ago': 'Agosto', 'set': 'Setembro', 'out': 'Outubro', 'nov': 'Novembro', 'dez': 'Dezembro' };
+
+        monthSelector.innerHTML = competencias.map((c, idx) => {
+            const [m, y] = c.split('/');
+            const display = `${longMonths[m] || m} / 20${y}`;
+            return `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${display}</option>`;
+        }).join('');
+
+        monthSelector.addEventListener('change', () => {
+            updateDashboard([monthSelector.value], pactuacoes);
+        });
+
+        updateDashboard([competencias[0]], pactuacoes);
     } else {
         updateDashboard([], pactuacoes);
     }
