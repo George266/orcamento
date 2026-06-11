@@ -17,6 +17,11 @@ let localProcs = [];
 let localUsers = []; // Cache functionality
 let selectedPeriods = [];
 let currentCommData = null; // Store data for the active modal
+let procTrendMode = 'consolidado';
+let procTrendData = null;
+let procChartParams = null;
+let hiddenTrendSigtaps = new Set();
+let trendSearchQuery = '';
 
 export async function initDashboard() {
     const pactuacoes = await Repository.getPactuacoes();
@@ -616,7 +621,364 @@ function renderCharts(currentData, allPactuacoes) {
             }).join('');
         }
     }
+
+    // 5. Production Trend by Procedure
+    procTrendData = buildProcTrendData(allPactuacoes, currentData, localProcs);
+    renderProcTrendChart(procTrendMode);
 }
+
+function buildProcTrendData(allData, filteredData, procs) {
+    const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+    const parseComp = (c) => {
+        if (!c) return 0;
+        const [m, y] = c.split('/');
+        if (!m || !y) return 0;
+        return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+    };
+
+    const allComps = [...new Set(allData.map(p => p.competencia))]
+        .sort((a, b) => parseComp(a) - parseComp(b));
+    const monthLabels = allComps.slice(-12);
+
+    const sigtaps = [...new Set(filteredData.map(p => p.sigtap))];
+
+    const procedures = sigtaps.map(sigtap => {
+        const proc = procs.find(pr => pr.sigtap === sigtap);
+        const name = proc?.nome || `Proc ${sigtap}`;
+
+        // Total in filtered period (for ranking modes)
+        const seenF = new Set();
+        let filteredTotal = 0;
+        filteredData.filter(p => p.sigtap === sigtap).forEach(p => {
+            const key = `${p.instId}-${p.sigtap}`;
+            if (!seenF.has(key)) { seenF.add(key); filteredTotal += parseInt(p.producao?.aprovada || 0); }
+        });
+
+        // Monthly trend across all available data
+        const monthly = monthLabels.map(comp => {
+            const seen = new Set();
+            let total = 0;
+            allData.filter(p => p.sigtap === sigtap && p.competencia === comp).forEach(p => {
+                const key = `${p.instId}-${p.sigtap}`;
+                if (!seen.has(key)) { seen.add(key); total += parseInt(p.producao?.aprovada || 0); }
+            });
+            return total;
+        });
+
+        const nonZero = monthly.filter(v => v > 0);
+        const mean = nonZero.length > 0 ? nonZero.reduce((s, v) => s + v, 0) / nonZero.length : 0;
+        const stddev = nonZero.length > 1
+            ? Math.sqrt(nonZero.reduce((s, v) => s + (v - mean) ** 2, 0) / nonZero.length)
+            : 0;
+
+        const recent3 = monthly.slice(-3);
+        const earlier = monthly.slice(0, -3);
+        const recentAvg = recent3.reduce((s, v) => s + v, 0) / 3;
+        const earlierAvg = earlier.length > 0 ? earlier.reduce((s, v) => s + v, 0) / earlier.length : 0;
+        const growthPct = earlierAvg > 0 ? ((recentAvg - earlierAvg) / earlierAvg) * 100 : 0;
+
+        return { sigtap, name, filteredTotal, monthly, stddev, growthPct };
+    });
+
+    return { monthLabels, procedures };
+}
+
+function updateTrendModeButtons(active) {
+    document.querySelectorAll('.proc-trend-mode-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-mode') === active;
+        btn.className = `proc-trend-mode-btn px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+            isActive
+                ? 'bg-primary text-white'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+        }`;
+    });
+}
+
+function renderProcTrendChart(mode) {
+    const container = document.getElementById('chart-proc-trend-container');
+    if (!container || !procTrendData) return;
+
+    const { monthLabels, procedures } = procTrendData;
+    const withData = procedures.filter(p => p.monthly.some(v => v > 0));
+
+    if (withData.length === 0) {
+        container.innerHTML = `<div class="flex items-center justify-center h-[200px] text-slate-400 text-sm italic">Sem dados de produção disponíveis</div>`;
+        updateTrendModeButtons(mode);
+        return;
+    }
+
+    // If search query active, override mode selection
+    let selected;
+    const q = trendSearchQuery.trim().toLowerCase();
+    if (q) {
+        selected = withData
+            .filter(p => p.name.toLowerCase().includes(q) || p.sigtap.toLowerCase().includes(q))
+            .slice(0, 5);
+        if (selected.length === 0) {
+            selected = [];
+        }
+    } else {
+        switch (mode) {
+            case 'consolidado': {
+                const aggMonthly = monthLabels.map((_, mi) =>
+                    withData.reduce((sum, p) => sum + (p.monthly[mi] || 0), 0)
+                );
+                selected = [{ sigtap: '__consolidado__', name: 'Total Consolidado', filteredTotal: aggMonthly.reduce((s, v) => s + v, 0), monthly: aggMonthly, stddev: 0, growthPct: 0 }];
+                break;
+            }
+            case 'bottom5':
+                selected = [...withData].filter(p => p.filteredTotal > 0)
+                    .sort((a, b) => a.filteredTotal - b.filteredTotal).slice(0, 5);
+                break;
+            case 'variacao':
+                selected = [...withData].sort((a, b) => b.stddev - a.stddev).slice(0, 5);
+                break;
+            case 'crescimento':
+                selected = [...withData].sort((a, b) => b.growthPct - a.growthPct).slice(0, 5);
+                break;
+            case 'queda':
+                selected = [...withData].sort((a, b) => a.growthPct - b.growthPct).slice(0, 5);
+                break;
+            default:
+                selected = [...withData].sort((a, b) => b.filteredTotal - a.filteredTotal).slice(0, 5);
+        }
+    }
+
+    const colors = ['#136dec', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
+    const n = monthLabels.length;
+    const maxVal = Math.max(...selected.flatMap(p => p.monthly), 1);
+
+    const W = 480, H = 210, padL = 58, padR = 52, padT = 15, padB = 32;
+    const cW = W - padL - padR;
+    const cH = H - padT - padB;
+    const axisLabelX = 11;
+    const axisLabelY = +(padT + cH / 2).toFixed(1);
+
+    // Smooth bezier path from array of {x,y} points
+    const pts2path = (pts) => {
+        if (!pts.length) return '';
+        let d = `M ${pts[0].x},${pts[0].y}`;
+        for (let i = 1; i < pts.length; i++) {
+            const p = pts[i - 1], c = pts[i];
+            const dx = (c.x - p.x) / 3;
+            d += ` C ${+(p.x + dx).toFixed(1)},${p.y} ${+(c.x - dx).toFixed(1)},${c.y} ${c.x},${c.y}`;
+        }
+        return d;
+    };
+
+    const steps = 4;
+    const gridHtml = Array.from({ length: steps + 1 }, (_, i) => {
+        const val = (maxVal / steps) * i;
+        const y = +(padT + cH - (val / maxVal) * cH).toFixed(1);
+        const label = val >= 10000 ? `${(val / 1000).toFixed(0)}k` : val >= 1000 ? `${(val / 1000).toFixed(1)}k` : Math.round(val).toString();
+        return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e2e8f0" stroke-width="0.8" stroke-dasharray="4,3"/>
+                <text x="${padL - 6}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#94a3b8" font-family="sans-serif">${label}</text>`;
+    }).join('');
+
+    const gradientDefs = selected.map((proc, pi) => {
+        const color = colors[pi % colors.length];
+        return `<linearGradient id="ag${pi}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="0.0"/>
+        </linearGradient>`;
+    }).join('');
+
+    const linesHtml = selected.map((proc, pi) => {
+        const color = colors[pi % colors.length];
+        const hidden = hiddenTrendSigtaps.has(proc.sigtap);
+        const pts = proc.monthly.map((val, i) => ({
+            x: +(padL + (i / Math.max(n - 1, 1)) * cW).toFixed(1),
+            y: +(padT + cH - (val / maxVal) * cH).toFixed(1),
+            val, lbl: monthLabels[i],
+        }));
+
+        const linePath = pts2path(pts);
+        const baseY = padT + cH;
+        const areaPath = linePath + ` L ${pts[pts.length - 1].x},${baseY} L ${pts[0].x},${baseY} Z`;
+
+        const dots = hidden ? '' : pts.map(p =>
+            `<circle cx="${p.x}" cy="${p.y}" r="2.8" fill="white" stroke="${color}" stroke-width="1.8"><title>${p.lbl} | ${proc.name}: ${formatNumber(p.val)}</title></circle>`
+        ).join('');
+
+        const lastPt = pts[pts.length - 1];
+        const lastVal = proc.monthly[proc.monthly.length - 1];
+        const lastLabel = lastVal >= 10000 ? `${(lastVal / 1000).toFixed(0)}k`
+            : lastVal >= 1000 ? `${(lastVal / 1000).toFixed(1)}k`
+            : formatNumber(lastVal);
+        const pillY = +(lastPt.y - 7.5).toFixed(1);
+        const pill = hidden ? '' : `
+            <line x1="${lastPt.x}" y1="${lastPt.y}" x2="${+(lastPt.x + 6).toFixed(1)}" y2="${lastPt.y}" stroke="${color}" stroke-width="1" stroke-dasharray="2,1" opacity="0.5"/>
+            <rect x="${+(lastPt.x + 8).toFixed(1)}" y="${pillY}" width="36" height="15" rx="3" fill="${color}" opacity="0.92"/>
+            <text x="${+(lastPt.x + 26).toFixed(1)}" y="${+(lastPt.y + 4).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="white" font-family="monospace" font-weight="600">${lastLabel}</text>`;
+
+        return `
+            <path d="${areaPath}" fill="url(#ag${pi})" opacity="${hidden ? '0' : '1'}"/>
+            <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="${hidden ? '0.08' : '0.92'}"/>
+            ${dots}
+            ${pill}`;
+    }).join('');
+
+    const xStep = Math.ceil(n / 6);
+    const xLabels = monthLabels.map((comp, i) => {
+        if (n > 6 && i % xStep !== 0 && i !== n - 1) return '';
+        const x = +(padL + (i / Math.max(n - 1, 1)) * cW).toFixed(1);
+        const [m, y] = comp.split('/');
+        return `<text x="${x}" y="${H - 17}" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">${m}</text>
+                <text x="${x}" y="${H - 7}" text-anchor="middle" font-size="7" fill="#cbd5e1" font-family="sans-serif">${y}</text>`;
+    }).join('');
+
+    const svgHtml = `
+        <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;cursor:crosshair" xmlns="http://www.w3.org/2000/svg">
+            <defs>${gradientDefs}</defs>
+            <text x="${axisLabelX}" y="${axisLabelY}" transform="rotate(-90,${axisLabelX},${axisLabelY})"
+                  text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">Produção (un.)</text>
+            ${gridHtml}
+            <line x1="${padL}" y1="${padT + cH}" x2="${W - padR}" y2="${padT + cH}" stroke="#e2e8f0" stroke-width="1"/>
+            ${linesHtml}
+            ${xLabels}
+            <g id="proc-crosshair" style="display:none;pointer-events:none">
+                <line id="proc-ch-line" x1="0" y1="${padT}" x2="0" y2="${padT + cH}" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+                <g id="proc-ch-dots"></g>
+                <rect id="proc-ch-bg" rx="4" fill="#1e293b" opacity="0.93" width="0" height="0"/>
+                <g id="proc-ch-text"></g>
+            </g>
+            <rect id="proc-ch-overlay" x="${padL}" y="${padT}" width="${cW}" height="${cH}" fill="transparent"/>
+        </svg>`;
+
+    const emptySearch = q && selected.length === 0;
+    const legendItemsHtml = emptySearch
+        ? `<div class="flex items-center justify-center flex-1 text-[11px] text-slate-400 italic px-2">Nenhum procedimento encontrado</div>`
+        : selected.map((proc, pi) => {
+            const color = colors[pi % colors.length];
+            const hidden = hiddenTrendSigtaps.has(proc.sigtap);
+            return `
+                <button onclick="window.toggleTrendProc('${proc.sigtap}')"
+                    class="flex items-start gap-2.5 w-full text-left px-2 py-1.5 rounded-lg transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 ${hidden ? 'opacity-35' : ''}">
+                    <div class="mt-[6px] w-5 h-[2.5px] rounded shrink-0" style="background:${color}"></div>
+                    <div class="min-w-0">
+                        <div class="text-xs text-slate-700 dark:text-slate-300 leading-snug">${proc.name}</div>
+                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">${proc.sigtap}</div>
+                    </div>
+                </button>`;
+        }).join('');
+
+    const hasHidden = hiddenTrendSigtaps.size > 0;
+
+    container.innerHTML = `
+        <div class="flex gap-2 items-stretch">
+            <div class="flex-1 min-w-0">${svgHtml}</div>
+            <div class="w-52 shrink-0 pl-3 border-l border-slate-100 dark:border-slate-700 flex flex-col gap-1">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                    <div class="relative flex-1">
+                        <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[14px] pointer-events-none">search</span>
+                        <input id="trend-search-input" type="text" value="${trendSearchQuery.replace(/"/g, '&quot;')}"
+                            placeholder="Buscar proc…"
+                            oninput="window.updateTrendSearch(this.value)"
+                            class="w-full text-[11px] pl-6 pr-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-500 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-primary focus:bg-white dark:focus:bg-slate-800 placeholder:text-slate-400 dark:placeholder:text-slate-400" />
+                    </div>
+                    ${hasHidden ? `<button onclick="window.resetTrendSelection()" class="text-[10px] text-primary font-semibold hover:underline shrink-0">Todos</button>` : ''}
+                </div>
+                <div class="flex flex-col justify-start gap-0.5">${legendItemsHtml}</div>
+            </div>
+        </div>`;
+
+    procChartParams = { padL, padR, padT, padB, W, H, cW, cH, maxVal, monthLabels, selected, colors };
+    attachCrosshairEvents(container.querySelector('svg'));
+
+    // Restore focus after re-render so typing is uninterrupted
+    if (trendSearchQuery) {
+        const input = container.querySelector('#trend-search-input');
+        if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    }
+
+    updateTrendModeButtons(mode);
+}
+
+function attachCrosshairEvents(svgEl) {
+    if (!svgEl || !procChartParams) return;
+    const { padL, padT, padB, W, H, cW, cH, maxVal, monthLabels, selected, colors } = procChartParams;
+    const n = monthLabels.length;
+
+    const overlay = svgEl.querySelector('#proc-ch-overlay');
+    const crosshair = svgEl.querySelector('#proc-crosshair');
+    if (!overlay || !crosshair) return;
+
+    overlay.addEventListener('mousemove', (e) => {
+        const rect = svgEl.getBoundingClientRect();
+        const svgX = (e.clientX - rect.left) * (W / rect.width);
+        const idx = Math.max(0, Math.min(n - 1, Math.round((svgX - padL) / cW * (n - 1))));
+        const xPos = +(padL + (idx / Math.max(n - 1, 1)) * cW).toFixed(1);
+
+        const chLine = svgEl.querySelector('#proc-ch-line');
+        chLine.setAttribute('x1', xPos);
+        chLine.setAttribute('x2', xPos);
+
+        const activeProcs = selected.filter(p => !hiddenTrendSigtaps.has(p.sigtap));
+        const label = monthLabels[idx];
+
+        let dotsHtml = '';
+        activeProcs.forEach((proc, pi) => {
+            const val = proc.monthly[idx] || 0;
+            const y = +(padT + cH - (val / maxVal) * cH).toFixed(1);
+            const color = colors[pi % colors.length];
+            dotsHtml += `<circle cx="${xPos}" cy="${y}" r="4" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+        });
+        svgEl.querySelector('#proc-ch-dots').innerHTML = dotsHtml;
+
+        const tooltipW = 118;
+        const tooltipLineH = 14;
+        const tooltipH = 12 + tooltipLineH + activeProcs.length * tooltipLineH + 6;
+        const tooltipX = xPos < W / 2 ? xPos + 10 : xPos - tooltipW - 8;
+        const tooltipY = padT + 2;
+
+        const bg = svgEl.querySelector('#proc-ch-bg');
+        bg.setAttribute('x', tooltipX);
+        bg.setAttribute('y', tooltipY);
+        bg.setAttribute('width', tooltipW);
+        bg.setAttribute('height', tooltipH);
+
+        let textHtml = `<text x="${tooltipX + 6}" y="${tooltipY + 11}" font-size="8.5" fill="#94a3b8" font-family="sans-serif" font-weight="600">${label}</text>`;
+        activeProcs.forEach((proc, pi) => {
+            const val = proc.monthly[idx] || 0;
+            const color = colors[pi % colors.length];
+            const shortName = proc.name.length > 15 ? proc.name.slice(0, 13) + '…' : proc.name;
+            const lineY = tooltipY + 11 + tooltipLineH * (pi + 1);
+            textHtml += `<text x="${tooltipX + 6}" y="${lineY}" font-size="8" font-family="sans-serif"><tspan fill="${color}">${shortName}: </tspan><tspan fill="white" font-weight="700">${formatNumber(val)}</tspan></text>`;
+        });
+        svgEl.querySelector('#proc-ch-text').innerHTML = textHtml;
+
+        crosshair.style.display = '';
+    });
+
+    overlay.addEventListener('mouseleave', () => { crosshair.style.display = 'none'; });
+}
+
+window.updateProcTrendMode = (mode) => {
+    procTrendMode = mode;
+    hiddenTrendSigtaps.clear();
+    trendSearchQuery = '';
+    renderProcTrendChart(mode);
+};
+
+window.updateTrendSearch = (value) => {
+    trendSearchQuery = value;
+    hiddenTrendSigtaps.clear();
+    renderProcTrendChart(procTrendMode);
+};
+
+window.toggleTrendProc = (sigtap) => {
+    if (hiddenTrendSigtaps.has(sigtap)) {
+        hiddenTrendSigtaps.delete(sigtap);
+    } else {
+        hiddenTrendSigtaps.add(sigtap);
+    }
+    renderProcTrendChart(procTrendMode);
+};
+
+window.resetTrendSelection = () => {
+    hiddenTrendSigtaps.clear();
+    renderProcTrendChart(procTrendMode);
+};
 
 window.openDetalhamento = (sigtap) => {
     const proc = localProcs.find(p => p.sigtap === sigtap);

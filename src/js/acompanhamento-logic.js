@@ -499,6 +499,92 @@ function populateFilters() {
     }
 }
 
+function buildSparkline(sigtaps, fInst, fProg, groupKey) {
+    const monthMap = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+    const parseComp = (c) => {
+        if (!c) return 0;
+        const [m, y] = c.split('/');
+        if (!m || !y) return 0;
+        return new Date(2000 + parseInt(y), monthMap[m.toLowerCase()] || 0, 1);
+    };
+
+    const sigtapSet = new Set(Array.isArray(sigtaps) ? sigtaps : [sigtaps]);
+
+    const allComps = [...new Set(allPactuacoes.map(p => p.competencia))]
+        .sort((a, b) => parseComp(a) - parseComp(b));
+    const last6 = allComps.slice(-6);
+
+    if (last6.length < 2) return '<span class="text-slate-300 text-xs">—</span>';
+
+    const data = last6.map(comp => {
+        let items = allPactuacoes.filter(p => p.competencia === comp && sigtapSet.has(p.sigtap));
+        if (fInst) items = items.filter(p => p.instId === fInst);
+        if (fProg) items = items.filter(p => p.progId === fProg);
+
+        const seen = new Set();
+        let total = 0;
+        items.forEach(p => {
+            const key = `${p.instId}-${p.sigtap}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                total += parseInt(p.producao?.aprovada || 0);
+            }
+        });
+        return { comp, total };
+    });
+
+    const allZero = data.every(d => d.total === 0);
+    if (allZero) return '<span class="text-slate-300 text-[11px] italic">sem dados</span>';
+
+    const maxVal = Math.max(...data.map(d => d.total), 1);
+
+    const half = Math.floor(data.length / 2);
+    const avg1 = data.slice(0, half).reduce((s, d) => s + d.total, 0) / Math.max(half, 1);
+    const avg2 = data.slice(half).reduce((s, d) => s + d.total, 0) / Math.max(data.length - half, 1);
+    const color = avg2 > avg1 * 1.05 ? '#10b981' : avg2 < avg1 * 0.95 ? '#f59e0b' : '#136dec';
+
+    const W = 108, H = 44, pad = 4, labelH = 12;
+    const cW = W - pad * 2, cH = H - pad - labelH - 2;
+    const n = data.length;
+
+    const pts = data.map((d, i) => ({
+        x: +(pad + (i / (n - 1)) * cW).toFixed(1),
+        y: +(pad + cH - (d.total / maxVal) * cH).toFixed(1),
+        val: d.total,
+        label: d.comp,
+        month: d.comp.split('/')[0],
+    }));
+
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+    const areaPath = `M${pts[0].x},${pad + cH} ` +
+        pts.map(p => `L${p.x},${p.y}`).join(' ') +
+        ` L${pts[n - 1].x},${pad + cH} Z`;
+
+    const gradId = 'sg_' + String(groupKey).replace(/[^a-zA-Z0-9]/g, '_');
+
+    // Show all labels if ≤6 points, otherwise only first and last
+    const labelY = pad + cH + labelH;
+    const labelsHtml = pts.map((p, i) => {
+        const show = n <= 6 || i === 0 || i === n - 1;
+        if (!show) return '';
+        return `<text x="${p.x}" y="${labelY}" text-anchor="middle" font-size="7" fill="#94a3b8" font-family="sans-serif">${p.month}</text>`;
+    }).join('');
+
+    return `
+        <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <defs>
+                <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="${color}" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="${color}" stop-opacity="0.01"/>
+                </linearGradient>
+            </defs>
+            <path d="${areaPath}" fill="url(#${gradId})"/>
+            <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            ${pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="white" stroke="${color}" stroke-width="1.5"><title>${p.label}: ${formatNumber(p.val)}</title></circle>`).join('')}
+            ${labelsHtml}
+        </svg>`;
+}
+
 async function renderTable() {
     const tbody = document.getElementById('monitoring-table-body');
     if (!tbody) return;
@@ -527,7 +613,7 @@ async function renderTable() {
     currentJustificativas.forEach(j => justMap.set(`${j.instId}_${j.sigtap}`, j));
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" class="px-6 py-12 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`; // Colspan increased
+        tbody.innerHTML = `<tr><td colspan="14" class="px-6 py-12 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`; // Colspan increased
         updateStats(0, 0, 0);
         renderPagination(0, 0, 0); // Clear pagination
         return;
@@ -841,22 +927,29 @@ async function renderTable() {
             `;
         }
 
+        const grupoObjSpark = g.isGrupo ? localGruposOferta.find(gr => gr.id === g.grupoId) : null;
+        const sparklineSigtaps = g.isGrupo ? (grupoObjSpark?.procedimentos || [g.sigtap]) : [g.sigtap];
+        const sparklineHtml = buildSparkline(sparklineSigtaps, fInst, fProg, g.key);
+
         return `
             <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
                 <!-- Procedure -->
                 <td class="px-6 py-4">${procCellHtml}</td>
-                
+
                 <!-- Meta (Total) -->
                 <td class="px-6 py-4 text-right font-mono text-sm font-bold">${formatNumber(g.totalMeta)}</td>
-                
+
                 <!-- Ofertado (Total) -->
                 <td class="px-6 py-4 text-right font-mono text-sm font-bold text-blue-700 dark:text-blue-400">${formatNumber(g.totalOffer)}</td>
-                
+
                 <!-- Status Meta (Button) -->
                 <td class="px-6 py-4 text-center">${metaStatusHtml}</td>
 
                 <!-- Produced (Total) -->
                 <td class="px-6 py-4 text-right font-mono text-sm font-bold text-slate-700 dark:text-slate-300">${formatNumber(g.totalProd)}</td>
+
+                <!-- Sparkline -->
+                <td class="px-6 py-4 text-center">${sparklineHtml}</td>
 
                 <!-- Values -->
                 <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(g.vSigtap)}</td>
@@ -999,33 +1092,60 @@ window.openBreakdownModal = (key) => {
                 }
 
                 const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
-                instCellHtml = `<td${rowspanAttr} class="py-3 px-2 font-medium text-slate-700 dark:text-slate-300 align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
+                instCellHtml = `<td${rowspanAttr} class="py-2 px-1.5 font-medium text-slate-700 dark:text-slate-300 align-middle${rowspan > 1 ? ' border-r border-slate-200 dark:border-slate-700' : ''}">
                     <div class="flex items-center">${instNameDisplay}</div>
                 </td>`;
             }
 
             // Each row gets its own Produzido input (different SIGTAPs = independent production)
-            const prodCellHtml = `<td class="py-3 px-2 text-right align-middle">
+            const prodCellHtml = `<td class="py-2 px-1.5 text-right align-middle">
                 <input
                     type="number"
                     value="${prod}"
                     onchange="window.saveBreakdownItem('${item.id}', this.value, '${key}')"
-                    class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
+                    class="w-20 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700 font-bold"
+                />
+            </td>`;
+
+            const retornoSMSAVal = item.retornoSMSA !== undefined && item.retornoSMSA !== null ? item.retornoSMSA : '';
+            const incentivoPagoVal = item.incentivoPago !== undefined && item.incentivoPago !== null ? item.incentivoPago : '';
+
+            const retornoSMSACellHtml = `<td class="py-2 px-1.5 text-right align-middle">
+                <input
+                    type="number"
+                    step="0.01"
+                    value="${retornoSMSAVal}"
+                    onchange="window.saveBreakdownField('${item.id}', 'retornoSMSA', this.value, '${key}')"
+                    class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700"
+                    placeholder="0,00"
+                />
+            </td>`;
+
+            const incentivoPagoCellHtml = `<td class="py-2 px-1.5 text-right align-middle">
+                <input
+                    type="number"
+                    step="0.01"
+                    value="${incentivoPagoVal}"
+                    onchange="window.saveBreakdownField('${item.id}', 'incentivoPago', this.value, '${key}')"
+                    class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700"
+                    placeholder="0,00"
                 />
             </td>`;
 
             rows.push(`
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50${!isFirst ? ' border-t border-slate-100 dark:border-slate-800' : ''}">
                     ${instCellHtml}
-                    <td class="py-3 px-2 text-xs text-slate-500">
+                    <td class="py-2 px-1.5 text-xs text-slate-500">
                         ${group.isGrupo ? `<div class="font-medium text-slate-700 dark:text-slate-300">${itemProcName}</div>` : ''}
                         <div class="${group.isGrupo ? 'text-[11px] text-slate-400 mt-0.5' : ''}">${progName}</div>
                     </td>
-                    <td class="py-3 px-2 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
-                    <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
-                    <td class="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-xs text-slate-500">${formatCurrency(item.vlrIncentivo || 0)}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
                     ${prodCellHtml}
-                    <td class="py-3 px-2 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
+                    ${retornoSMSACellHtml}
+                    ${incentivoPagoCellHtml}
                 </tr>
             `);
         });
@@ -1127,6 +1247,25 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
 
     } catch (err) {
         console.error('Error saving production:', err);
+        alert('Erro ao salvar valor.');
+    }
+};
+
+window.saveBreakdownField = async (pactId, field, value, groupKey) => {
+    const val = parseFloat(value);
+    const numVal = isNaN(val) ? null : val;
+
+    const group = window.rowGroups[groupKey];
+    if (!group) return;
+
+    const item = group.items.find(i => i.id === pactId);
+    if (!item) return;
+
+    try {
+        item[field] = numVal;
+        await Repository.savePactuacao({ id: item.id, [field]: numVal });
+    } catch (err) {
+        console.error(`Erro ao salvar ${field}:`, err);
         alert('Erro ao salvar valor.');
     }
 };
