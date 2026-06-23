@@ -1120,15 +1120,8 @@ window.openBreakdownModal = (key) => {
                 />
             </td>`;
 
-            const incentivoPagoCellHtml = `<td class="py-2 px-1.5 text-right align-middle">
-                <input
-                    type="number"
-                    step="0.01"
-                    value="${incentivoPagoVal}"
-                    onchange="window.saveBreakdownField('${item.id}', 'incentivoPago', this.value, '${key}')"
-                    class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700"
-                    placeholder="0,00"
-                />
+            const incentivoPagoCellHtml = `<td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span data-incentivo-pago="${item.id}">${formatCurrency(incentivoPagoVal !== '' ? parseFloat(incentivoPagoVal) : 0)}</span>
             </td>`;
 
             rows.push(`
@@ -1265,6 +1258,20 @@ window.saveBreakdownField = async (pactId, field, value, groupKey) => {
     try {
         item[field] = numVal;
         await Repository.savePactuacao({ id: item.id, [field]: numVal });
+
+        if (field === 'retornoSMSA') {
+            const prod = item.producao?.aprovada || 0;
+            const totalIncentivo = (item.vlrIncentivo || 0) * prod;
+            const incentivoPago = numVal !== null ? Math.round(Math.max(0, totalIncentivo - numVal) * 100) / 100 : null;
+
+            item.incentivoPago = incentivoPago;
+            await Repository.savePactuacao({ id: item.id, incentivoPago });
+
+            const incentivoPagoEl = document.querySelector(`span[data-incentivo-pago="${pactId}"]`);
+            if (incentivoPagoEl) {
+                incentivoPagoEl.textContent = formatCurrency(incentivoPago !== null ? incentivoPago : 0);
+            }
+        }
     } catch (err) {
         console.error(`Erro ao salvar ${field}:`, err);
         alert('Erro ao salvar valor.');

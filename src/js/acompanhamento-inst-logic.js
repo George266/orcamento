@@ -820,6 +820,17 @@ function renderTable() {
 
     const cleanSigtapFn = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
 
+    // Remove standalone entries for SIGTAPs already covered by a unified group
+    const sigtapsInGrupos = new Set();
+    Object.values(groups).forEach(g => {
+        if (g.isGrupo) g.items.forEach(item => sigtapsInGrupos.add(cleanSigtapFn(item.sigtap)));
+    });
+    Object.keys(groups).forEach(key => {
+        if (!groups[key].isGrupo && sigtapsInGrupos.has(cleanSigtapFn(groups[key].sigtap))) {
+            delete groups[key];
+        }
+    });
+
     // 3. Search Filter (on Groups)
     let displayItems = Object.values(groups);
     if (searchValue) {
@@ -871,6 +882,8 @@ function renderTable() {
             const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : 'bg-slate-50 text-slate-500';
 
             const isMetaMet = target > 0 && group.totalRealizado >= target;
+            const globalStat = group.global;
+            const isGlobalMetaMet = !isMetaMet && globalStat && globalStat.totalMeta > 0 && globalStat.totalRealizado >= globalStat.totalMeta;
 
             const progNames = Array.from(group.programs).filter(Boolean);
             const uniqueProgs = [...new Set(progNames)];
@@ -882,6 +895,14 @@ function renderTable() {
                     <button onclick="window.openGlobalBreakdown('${group.sigtap}')" class="w-full py-1.5 px-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors flex items-center justify-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">check_circle</span>
                         Meta Atingida
+                    </button>
+                    <div class="text-[10px] text-center text-slate-400 mt-1">Clique para ver detalhes</div>
+                `;
+            } else if (isGlobalMetaMet) {
+                statusContent = `
+                    <button onclick="window.openGlobalBreakdown('${group.sigtap}')" class="w-full py-1.5 px-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold text-xs border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Meta Global Atingida
                     </button>
                     <div class="text-[10px] text-center text-slate-400 mt-1">Clique para ver detalhes</div>
                 `;
