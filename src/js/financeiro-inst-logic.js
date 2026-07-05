@@ -1,4 +1,6 @@
 import { Repository } from './repository.js';
+import { DateUtils } from './utils/date-utils.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, calcIncentivo } from './business-rules.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -13,6 +15,7 @@ function formatNumber(value) {
 let localPactuacoes = [];
 let localProcs = [];
 let localProgs = [];
+let localGruposOferta = [];
 let currentSort = { column: 'total', direction: 'desc' };
 
 async function initFinanceiroInst() {
@@ -134,13 +137,15 @@ async function initFinanceiroInst() {
 
         localProcs = await Repository.getProcedimentos();
         localProgs = await Repository.getProgramas();
+        localGruposOferta = await Repository.getGruposOferta();
 
         // Populate Competence Filter
         const compFilter = document.getElementById('filter-competencia-fin');
         if (localPactuacoes.length > 0) {
-            const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort().reverse();
+            const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a));
             compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
-            if (comps.length > 0) compFilter.value = comps[0];
+            const padraoFin = DateUtils.competenciaPadrao(comps);
+            if (padraoFin) compFilter.value = padraoFin;
         }
 
         if (compFilter) {
@@ -243,24 +248,8 @@ function renderTable() {
         });
     }
 
-    // 1. Calculate Global Status (Pre-process ALL data to check network goals)
-    const globalStatus = {};
-    allPactuacoes.forEach(p => {
-        if (!globalStatus[p.sigtap]) {
-            globalStatus[p.sigtap] = { meta: 0, offer: 0 };
-        }
-
-        // Meta: Take the Maximum Meta found (Shared Goal Logic)
-        const currentMeta = parseInt(p.ofertaMinima || 0);
-        if (currentMeta > globalStatus[p.sigtap].meta) {
-            globalStatus[p.sigtap].meta = currentMeta;
-        }
-
-        const prod = p.producao || {};
-        const weekSum = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
-        const offer = weekSum > 0 ? weekSum : (parseInt(prod.realizada) || 0);
-        globalStatus[p.sigtap].offer += offer;
-    });
+    // O incentivo é condicionado à meta DO PRÓPRIO INSTITUTO (igual ao acompanhamento/lançamento),
+    // calculada por linha em getMeta — não à meta da rede.
 
     // 2. Aggregate Data (Group by SIGTAP)
     const aggregated = {};
@@ -275,48 +264,46 @@ function renderTable() {
                 // Aggregated stats
                 ofertado: 0,
                 realizado: 0,
+                aprovada: 0,
+                meta: 0,
                 totalBase: 0,
                 totalInc: 0,
                 totalRow: 0,
-                // Unit prices (take first non-zero found)
-                vBaseUnit: parseFloat(p.vlrSigtapBase || 0),
-                vIncUnit: parseFloat(p.vlrIncentivo || 0)
+                // Valor unitário (maior encontrado)
+                vBaseUnit: 0,
+                vIncUnit: 0
             };
         }
 
         const group = aggregated[p.sigtap];
         group.items.push(p);
 
-        // --- Calculate "Ofertado" (Sum of Weeks, fallback to realizada) ---
-        const prod = p.producao || {};
-        const weekSumOff = (parseInt(prod.sem1) || 0) + (parseInt(prod.sem2) || 0) + (parseInt(prod.sem3) || 0) + (parseInt(prod.sem4) || 0) + (parseInt(prod.sem5) || 0);
-        const ofertado = weekSumOff > 0 ? weekSumOff : (parseInt(prod.realizada) || 0);
-        group.ofertado += ofertado;
+        // Oferta = ofertado (instituto); Produzido = producao.realizada; Aprovado = producao.aprovada.
+        // Dedup por procedimento (considerar a maior) entre os incentivos do mesmo instituto.
+        group.ofertado = Math.max(group.ofertado, getOferta(p));
+        group.realizado = Math.max(group.realizado, getProduzido(p));
+        group.aprovada = Math.max(group.aprovada, getRetornoSMSA(p));
+        group.meta = Math.max(group.meta, getMeta(p, localGruposOferta));
 
-        // --- Calculate "Realizado" (Budget Input) ---
-        const realizado = parseInt(prod.realizada || 0);
-        group.realizado += realizado;
-
-        // Update unit prices if current zero and new one has value
-        if (group.vBaseUnit === 0) group.vBaseUnit = parseFloat(p.vlrSigtapBase || 0);
-        if (group.vIncUnit === 0) group.vIncUnit = parseFloat(p.vlrIncentivo || 0);
+        // Valor unitário: maior encontrado (não o "primeiro não-zero")
+        group.vBaseUnit = Math.max(group.vBaseUnit, parseFloat(p.vlrSigtapBase || 0));
+        group.vIncUnit = Math.max(group.vIncUnit, parseFloat(p.vlrIncentivo || 0));
     });
 
     // 3. Prepare Display Data
     let displayData = Object.values(aggregated).map(d => {
         const proc = localProcs.find(pr => pr.sigtap === d.sigtap);
 
-        // Check Global Status
-        const gStats = globalStatus[d.sigtap] || { meta: 0, offer: 0 };
-        const isMetaMet = gStats.meta > 0 && gStats.offer >= gStats.meta;
+        // Meta atingida = oferta do PRÓPRIO INSTITUTO >= meta (igual ao acompanhamento/lançamento)
+        const isMetaMet = d.meta > 0 && d.ofertado >= d.meta;
 
-        // Financial Calculations
-        const rowBase = d.realizado * d.vBaseUnit; // Base always on Realized
-        const rowInc = isMetaMet ? (d.realizado * d.vIncUnit) : 0; // Incentive only if Met
-
-        d.totalBase = rowBase;
-        d.totalInc = rowInc;
-        d.totalRow = rowBase + rowInc;
+        // Faturamento SIGTAP e Incentivo — Previsto (sobre o Produzido) e Pago (sobre o Aprovado/SMSA)
+        d.totalBase = d.realizado * d.vBaseUnit;           // Faturado SIGTAP Previsto
+        d.totalBasePago = d.aprovada * d.vBaseUnit;        // Faturado SIGTAP Pago
+        d.totalInc = isMetaMet ? (d.realizado * d.vIncUnit) : 0;     // Incentivo Previsto
+        d.totalIncPago = isMetaMet ? (d.aprovada * d.vIncUnit) : 0;  // Incentivo Pago
+        d.totalRow = d.totalBase + d.totalInc;
+        d.totalRowPago = d.totalBasePago + d.totalIncPago;
         d.isMetaMet = isMetaMet;
 
         return {
@@ -338,6 +325,7 @@ function renderTable() {
                 case 'vlrIncUnit': valA = a.vIncUnit; valB = b.vIncUnit; break;
                 case 'fatSigtap': valA = a.totalBase; valB = b.totalBase; break;
                 case 'fatInc': valA = a.totalInc; valB = b.totalInc; break;
+                case 'fatIncPago': valA = a.totalIncPago; valB = b.totalIncPago; break;
                 case 'total': valA = a.totalRow; valB = b.totalRow; break;
                 default: valA = a.totalRow; valB = b.totalRow;
             }
@@ -347,52 +335,51 @@ function renderTable() {
         });
     }
 
-    let totalSigtap = 0;
-    let totalIncentivo = 0;
-    let totalGeral = 0;
+    let totalSigtap = 0;       // Faturado SIGTAP Previsto
+    let totalSigtapPago = 0;   // Faturado SIGTAP Pago
+    let totalIncentivo = 0;    // Incentivo Previsto
+    let totalIncPago = 0;      // Incentivo Pago
 
     if (displayData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
     } else {
         tbody.innerHTML = displayData.map(d => {
             totalSigtap += d.totalBase;
+            totalSigtapPago += d.totalBasePago;
             totalIncentivo += d.totalInc;
-            totalGeral += d.totalRow;
-
-            // Status Badge
-            const gStats = globalStatus[d.sigtap] || { meta: 0, offer: 0 };
-
-            const statusHtml = d.isMetaMet
-                ? `<div class="flex items-center justify-center"><span class="material-symbols-outlined text-emerald-500 font-bold" title="Meta da Rede Atingida (${formatNumber(gStats.meta)})">check_circle</span></div>`
-                : `<div class="flex items-center justify-center"><span class="material-symbols-outlined text-amber-500 font-bold" title="Abaixo da Meta da Rede (Meta: ${formatNumber(gStats.meta)} | Oferta: ${formatNumber(gStats.offer)})">warning</span></div>`;
+            totalIncPago += d.totalIncPago;
 
             return `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr class="even:bg-slate-50/70 dark:even:bg-slate-800/20 hover:bg-blue-50/60 dark:hover:bg-slate-800/50 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
                         <div class="flex flex-col">
-                            <span class="font-bold truncate max-w-[200px]" title="${d.procName}">${d.procName}</span>
+                            <span class="font-bold truncate max-w-[220px]" title="${d.procName}">${d.procName}</span>
                             <span class="text-[10px] text-slate-500 font-mono">${d.sigtap}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-slate-800 dark:text-slate-200">${formatNumber(d.ofertado)}</td>
-                    <td class="px-6 py-4 text-center">${statusHtml}</td>
-                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-blue-600 dark:text-blue-400">${formatNumber(d.realizado)}</td>
-                    <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(d.vBaseUnit)}</td>
-                    <td class="px-6 py-4 text-right font-mono text-xs text-slate-500">${formatCurrency(d.vIncUnit)}</td>
-                    <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">${formatCurrency(d.totalBase)}</td>
-                    <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">
-                        ${d.totalInc > 0 ? formatCurrency(d.totalInc) : `R$ 0,00 <span class="text-red-500 text-[10px] block">(${formatCurrency(d.realizado * d.vIncUnit)})</span>`}
+                    <td class="px-6 py-4 text-center font-mono text-sm font-bold text-blue-700 dark:text-blue-400">${formatNumber(d.ofertado)}</td>
+                    <td class="px-6 py-4 text-center font-mono text-sm leading-tight">
+                        <div class="font-bold text-slate-800 dark:text-slate-200">${formatNumber(d.realizado)}</div>
+                        <div class="text-[10px] text-slate-400">aprov: ${formatNumber(d.aprovada)}</div>
                     </td>
-                    <td class="px-6 py-4 text-right font-mono text-sm font-black text-primary">${formatCurrency(d.totalRow)}</td>
+                    <td class="px-6 py-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 leading-tight">
+                        <div class="text-[11px] text-slate-400">Prev: ${formatCurrency(d.totalBase)}</div>
+                        <div class="font-bold">Pago: ${formatCurrency(d.totalBasePago)}</div>
+                    </td>
+                    <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">${formatCurrency(d.totalInc)}</td>
+                    <td class="px-6 py-4 text-right font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">${formatCurrency(d.totalIncPago)}</td>
                 </tr>
             `;
         }).join('');
     }
 
     // Update Footer Totals
-    document.getElementById('foot-sigtap').textContent = formatCurrency(totalSigtap);
-    document.getElementById('foot-incentivo').textContent = formatCurrency(totalIncentivo);
-    document.getElementById('foot-total').textContent = formatCurrency(totalGeral);
+    const elFootSigtap = document.getElementById('foot-sigtap');
+    if (elFootSigtap) elFootSigtap.innerHTML = `<span class="text-[11px] text-slate-400 font-normal block">Prev: ${formatCurrency(totalSigtap)}</span>Pago: ${formatCurrency(totalSigtapPago)}`;
+    const elFootIncPrev = document.getElementById('foot-inc-prev');
+    if (elFootIncPrev) elFootIncPrev.textContent = formatCurrency(totalIncentivo);
+    const elFootIncPago = document.getElementById('foot-inc-pago');
+    if (elFootIncPago) elFootIncPago.textContent = formatCurrency(totalIncPago);
 }
 
 function setupProfileMenu() {

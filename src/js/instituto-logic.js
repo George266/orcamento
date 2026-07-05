@@ -2,6 +2,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
+import { getOferta, getProduzido, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -12,6 +13,7 @@ function formatNumber(value) {
 }
 
 let currentPactuacoes = [];
+let localGruposOferta = [];
 let localProcs = [];
 let currentPeriod = null;
 let userInstId = null;
@@ -148,6 +150,7 @@ async function initInstituteDashboard() {
 
         // Fetch Data
         const allPactuacoes = await Repository.getPactuacoes();
+        localGruposOferta = await Repository.getGruposOferta();
 
         // Initial Filter based on stored/determined userInstId
         if (userInstId === 'all') {
@@ -190,7 +193,9 @@ async function initInstituteDashboard() {
                 renderDashboard();
             });
 
-            currentPeriod = monthSelector.value;
+            // Mês atual se tiver dados; senão o mais recente com dados
+            currentPeriod = DateUtils.competenciaPadrao(competencias);
+            monthSelector.value = currentPeriod;
         }
 
         // Render initially
@@ -237,8 +242,8 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
         const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
 
         // Max Meta Concept
-        const maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
-        const totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
+        const maxMeta = groupItems.reduce((max, i) => Math.max(max, getMeta(i, localGruposOferta)), 0);
+        const totalRealized = groupItems.reduce((max, i) => Math.max(max, getOferta(i)), 0);
 
         if (maxMeta > 0 && totalRealized === 0) {
             pendingItems.push({
@@ -318,7 +323,7 @@ function showDeadlineAlert(compLabel, items, allInstitutes, config) {
 
 async function renderDashboard() {
     // 1. Determine Current and Previous Periods
-    const uniqueCompetencias = [...new Set(currentPactuacoes.map(p => p.competencia))].sort().reverse(); // e.g. ['ago-2025', 'jul-2025']
+    const uniqueCompetencias = [...new Set(currentPactuacoes.map(p => p.competencia))].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a)); // ordena cronologicamente, mais recente primeiro
     const currentIndex = uniqueCompetencias.indexOf(currentPeriod);
     const prevPeriod = currentIndex !== -1 && currentIndex + 1 < uniqueCompetencias.length ? uniqueCompetencias[currentIndex + 1] : null;
 
@@ -326,16 +331,24 @@ async function renderDashboard() {
     const getStats = (period) => {
         if (!period) return { pact: 0, real: 0, fin: 0, items: 0 };
         const data = currentPactuacoes.filter(p => p.competencia === period);
-        let pact = 0, real = 0, fin = 0, items = data.length;
+        // Deduplica por sigtap+instituto (considerar a maior); atingimento = OFERTA ÷ META
+        const byKey = {};
         data.forEach(p => {
-            const vBase = parseFloat(p.vlrSigtapBase || 0);
-            const vInc = parseFloat(p.vlrIncentivo || 0);
-            const r = parseInt(p.producao?.realizada || 0);
-            pact += parseInt(p.ofertaMinima || 0);
-            real += r;
-            fin += (vBase + vInc) * r;
+            const k = `${p.sigtap}-${p.instId}`;
+            if (!byKey[k]) byKey[k] = { meta: 0, oferta: 0, prod: 0, vBase: 0, vInc: 0 };
+            byKey[k].meta = Math.max(byKey[k].meta, getMeta(p, localGruposOferta));
+            byKey[k].oferta = Math.max(byKey[k].oferta, getOferta(p));
+            byKey[k].prod = Math.max(byKey[k].prod, getProduzido(p));
+            byKey[k].vBase = Math.max(byKey[k].vBase, parseFloat(p.vlrSigtapBase || 0));
+            byKey[k].vInc = Math.max(byKey[k].vInc, parseFloat(p.vlrIncentivo || 0));
         });
-        return { pact, real, fin, items };
+        let pact = 0, real = 0, fin = 0;
+        Object.values(byKey).forEach(v => {
+            pact += v.meta;
+            real += v.oferta;
+            fin += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: v.oferta, meta: v.meta });
+        });
+        return { pact, real, fin, items: data.length };
     };
 
     const curStats = getStats(currentPeriod);
@@ -348,12 +361,12 @@ async function renderDashboard() {
     // Using filtered (Current Period)
     const filtered = currentPactuacoes.filter(p => p.competencia === currentPeriod);
     filtered.forEach(p => {
-        const pact = parseInt(p.ofertaMinima || 0);
-        const real = parseInt(p.producao?.realizada || 0);
-        const atingimento = pact > 0 ? (real / pact) * 100 : 100;
+        const pact = getMeta(p, localGruposOferta);
+        const oferta = getOferta(p);
+        const atingimento = pact > 0 ? (oferta / pact) * 100 : 100;
 
         if (pact > 0) {
-            if (real === 0) {
+            if (oferta === 0) {
                 notStartedItems++;
             } else if (atingimento < 100) {
                 inProgressItems++;
@@ -429,8 +442,8 @@ async function renderDashboard() {
                 const prog = localProgramas.find(pg => pg.id === p.progId);
                 const progName = prog ? prog.nome : (p.progId || 'Incentivo Padrão');
 
-                const pact = parseInt(p.ofertaMinima || 0);
-                const real = parseInt(p.producao?.realizada || 0);
+                const pact = getMeta(p, localGruposOferta);
+                const real = getOferta(p);
                 const status = pact > 0 ? (real / pact) * 100 : 0;
 
                 return `
@@ -508,12 +521,10 @@ function renderWeeklyChart() {
     let totalRealizadoPeriodo = 0;
 
     filtered.forEach(p => {
-        const pact = parseInt(p.ofertaMinima || 0);
+        const pact = getMeta(p, localGruposOferta);
 
-        // Estimated weekly target (Monthly / 4.5 weeks approx or just spread evenly)
-        // Using 4 as divisor for visual reference, or 5 if using 5 weeks. 
-        // Let's use 4.2 to be safe or simply dividing by 4 is standard logic for weekly goals.
-        const weeklyTarget = pact > 0 ? pact / 4 : 0;
+        // Meta semanal de referência: meta mensal dividida pelo número de semanas exibidas
+        const weeklyTarget = pact > 0 ? pact / weeks.length : 0;
 
         weeks.forEach(w => {
             const val = parseInt(p.producao?.[w.id] || 0);
@@ -521,7 +532,7 @@ function renderWeeklyChart() {
             w.target += weeklyTarget;
         });
 
-        totalRealizadoPeriodo += parseInt(p.producao?.realizada || 0);
+        totalRealizadoPeriodo += getOferta(p);
     });
 
     const totalEl = document.getElementById('chart-total-exams');

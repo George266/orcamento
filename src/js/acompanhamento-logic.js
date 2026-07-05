@@ -1,6 +1,7 @@
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { DateUtils } from './utils/date-utils.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -130,8 +131,9 @@ export async function initAcompanhamento() {
         const periodSelect = document.getElementById('filter-period');
         if (periodSelect) {
             // Re-select the latest competence on clear
-            const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort().reverse();
-            if (competencias.length > 0) periodSelect.value = competencias[0];
+            const competencias = [...new Set(allPactuacoes.map(p => p.competencia))].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a));
+            const padraoClear = DateUtils.competenciaPadrao(competencias);
+            if (padraoClear) periodSelect.value = padraoClear;
         }
         renderTable();
     });
@@ -468,6 +470,9 @@ function populateFilters() {
             competencias = [...new Set(allPactuacoes.map(p => p.competencia))];
         }
 
+        // Competência padrão a partir dos meses COM dados (antes de injetar o mês atual)
+        const compPadrao = DateUtils.competenciaPadrao(competencias);
+
         // Always include current month
         const currentComp = DateUtils.getCurrentMonthLabel('short');
         if (!competencias.includes(currentComp)) {
@@ -488,10 +493,8 @@ function populateFilters() {
         if (competencias.length > 0) {
             periodSelect.innerHTML = competencias.map(c => `<option value="${c}">${c}</option>`).join('');
 
-            // Default to current month
-            periodSelect.value = currentComp;
-
-            // Fallback if currentComp somehow failed selection (shouldn't happen if in list)
+            // Mês atual se tiver dados; senão o mais recente com dados
+            periodSelect.value = compPadrao;
             if (!periodSelect.value) periodSelect.value = competencias[0];
         } else {
             periodSelect.innerHTML = `<option value="">Nenhuma Competência</option>`;
@@ -662,7 +665,9 @@ async function renderTable() {
                 totalMeta: grupo ? parseInt(grupo.ofertaMinima || 0) : 0,
                 totalOffer: 0,
                 totalProd: 0,
+                totalProdAprovada: 0,
                 totalFatSigtap: 0,
+                totalFatSigtapPago: 0,
                 potentialFatInc: 0,
                 programs: new Set(),
                 competencia: p.competencia,
@@ -710,17 +715,13 @@ async function renderTable() {
         // Production: deduplicate by institute (first occurrence only)
         if (!groups[key].seenProdInstIds.has(p.instId)) {
             groups[key].seenProdInstIds.add(p.instId);
-            const prod = parseInt(p.producao?.aprovada || 0);
-            groups[key].totalProd += prod;
+            groups[key].totalProd += getProduzido(p);           // Previsto: Produzido (realizada)
+            groups[key].totalProdAprovada += getRetornoSMSA(p); // Pago: Aprovado/SMSA (aprovada)
         }
 
         // Offer: track max per institute (handles multiple incentive entries for same procedure)
         // Uses weekly sums as primary source, falls back to realizada or static ofertado
-        const semOffer = (parseInt(p.producao?.sem1 || 0) + parseInt(p.producao?.sem2 || 0) +
-            parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0));
-        const realizadaOffer = parseInt(p.producao?.realizada || 0);
-        const staticOfertado = parseInt(p.ofertado || 0);
-        const thisInstOffer = Math.max(realizadaOffer, semOffer, staticOfertado);
+        const thisInstOffer = getOferta(p); // OFERTA do instituto = campo ofertado
         if (grupo) {
             // Grupos unificados: cada sigtap é independente, soma as contribuições
             groups[key].instMaxOffer[p.instId] = (groups[key].instMaxOffer[p.instId] || 0) + thisInstOffer;
@@ -754,7 +755,8 @@ async function renderTable() {
     groupList.forEach(g => {
         // Partition items by program to check meta
         // 1. Finalize SIGTAP Financial based on best unit value found
-        g.totalFatSigtap = g.totalProd * g.vSigtap;
+        g.totalFatSigtap = g.totalProd * g.vSigtap;             // Faturado SIGTAP Previsto (produzido)
+        g.totalFatSigtapPago = g.totalProdAprovada * g.vSigtap; // Faturado SIGTAP Pago (aprovado)
 
         // 2. Calculate Total Production for the Procedure (Group)
         let totalGroupProd = g.totalProd;
@@ -765,13 +767,9 @@ async function renderTable() {
             const pId = item.progId || 'default';
             if (!usageByProg[pId]) usageByProg[pId] = { meta: 0, offer: 0, unitVal: 0, instProds: {} };
 
-            const itemMeta = parseInt(item.ofertaMinima || 0);
+            const itemMeta = getMeta(item, localGruposOferta); // resolve a meta do grupo quando houver
 
-            const itemSemOffer = (parseInt(item.producao?.sem1 || 0) + parseInt(item.producao?.sem2 || 0) +
-                parseInt(item.producao?.sem3 || 0) + parseInt(item.producao?.sem4 || 0) + parseInt(item.producao?.sem5 || 0));
-            const itemRealizada = parseInt(item.producao?.realizada || 0);
-            const itemStaticOffer = parseInt(item.ofertado || 0);
-            const itemOffer = Math.max(itemRealizada, itemSemOffer, itemStaticOffer);
+            const itemOffer = getOferta(item); // OFERTA do instituto
 
             // Fallback for incentive unit value only when field is truly absent (null/undefined/empty)
             const rawVlrInc = item.vlrIncentivo;
@@ -784,21 +782,23 @@ async function renderTable() {
             // Track production per institute+sigtap to avoid double-counting
             // when the same procedure+institute appears in multiple incentives,
             // but allow different procedures from the same institute to be summed.
-            const prod = parseInt(item.producao?.aprovada || 0);
+            const prod = getRetornoSMSA(item);   // Pago: quantidade aprovada (SMSA)
+            const prodPrev = getProduzido(item); // Previsto: produzido (realizada)
             const instId = item.instId;
             const instSigtapKey = `${instId}-${item.sigtap}`;
             if (!(instSigtapKey in usageByProg[pId].instProds)) {
-                usageByProg[pId].instProds[instSigtapKey] = { prod, unitVal: itemValInc };
+                usageByProg[pId].instProds[instSigtapKey] = { prod, prodPrev, unitVal: itemValInc };
             } else {
                 const existing = usageByProg[pId].instProds[instSigtapKey];
-                if (prod > existing.prod) {
-                    usageByProg[pId].instProds[instSigtapKey] = { prod, unitVal: itemValInc };
+                if (prod > existing.prod || prodPrev > existing.prodPrev) {
+                    usageByProg[pId].instProds[instSigtapKey] = { prod, prodPrev, unitVal: itemValInc };
                 }
             }
         });
 
-        // Calculate Realized vs Missed for the Group
-        g.realizedInc = 0;
+        // Calcula incentivo Pago (sobre aprovado) e Previsto (sobre produzido) da rede
+        g.realizedInc = 0;          // Incentivo Pago (definitivo, sobre aprovado/SMSA)
+        g.realizedIncPrevisto = 0;  // Incentivo Previsto (sobre produzido)
         g.missedInc = 0;
 
         Object.keys(usageByProg).forEach(pId => {
@@ -807,15 +807,17 @@ async function renderTable() {
 
             // Each inst-sigtap entry keeps its own unitVal to correctly handle
             // grouped procedures with different incentive values
-            const potential = Object.values(prog.instProds).reduce((sum, v) => sum + (v.prod * v.unitVal), 0);
+            const potentialPago = Object.values(prog.instProds).reduce((sum, v) => sum + (v.prod * v.unitVal), 0);
+            const potentialPrevisto = Object.values(prog.instProds).reduce((sum, v) => sum + ((v.prodPrev || 0) * v.unitVal), 0);
 
             // Store status for global stats
             programStatusMap[`${g.sigtap}-${pId}`] = isMet;
 
             if (isMet) {
-                g.realizedInc += potential;
+                g.realizedInc += potentialPago;
+                g.realizedIncPrevisto += potentialPrevisto;
             } else {
-                g.missedInc += potential;
+                g.missedInc += potentialPago;
             }
         });
     });
@@ -873,9 +875,7 @@ async function renderTable() {
             // Check if ANY item in this group has (Justification AND Offer < Meta)
             const hasRelevantJustification = g.items.some(item => {
                 const just = g.justifications ? g.justifications.find(j => j.instId === item.instId) : null;
-                const finalOffer = parseInt(item.producao?.realizada || 0);
-                const meta = parseInt(item.ofertaMinima || 0);
-                return just && finalOffer < meta;
+                return just && getOferta(item) < getMeta(item, localGruposOferta);
             });
 
             // Clickable to open modal
@@ -892,16 +892,15 @@ async function renderTable() {
             `;
         }
 
-        // Financials (Using calculated sums)
-        const fatSigtap = g.totalFatSigtap;
+        // Financeiro — Previsto (sobre o Produzido) e Pago (sobre o Aprovado/SMSA)
+        const fatSigtapPrev = g.totalFatSigtap;      // Faturado SIGTAP previsto
+        const fatSigtapPago = g.totalFatSigtapPago;  // Faturado SIGTAP pago
+        const fatIncPrev = g.realizedIncPrevisto;    // Incentivo previsto
+        const fatInc = g.realizedInc;                // Incentivo pago (definitivo)
+        const missedInc = g.missedInc;               // Incentivo perdido (meta não atingida)
 
-        // Incentive is now strictly the Realized amount
-        const fatInc = g.realizedInc;
-
-        // Missed Incentive (Potential)
-        const missedInc = g.missedInc;
-
-        const totalRow = fatSigtap + fatInc;
+        const totalPrev = fatSigtapPrev + fatIncPrev;
+        const totalPago = fatSigtapPago + fatInc;
 
         let procCellHtml;
         if (g.isGrupo) {
@@ -958,21 +957,29 @@ async function renderTable() {
                     </button>
                 </td>
                 
-                <!-- Financials -->
-                <td class="px-6 py-4 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency(fatSigtap)}</td>
+                <!-- Faturado SIGTAP (Previsto / Pago) -->
+                <td class="px-6 py-4 text-right font-mono text-xs">
+                    <div class="text-[10px] text-slate-400" title="Previsto — sobre o Produzido">Prev: ${formatCurrency(fatSigtapPrev)}</div>
+                    <div class="font-bold text-slate-700 dark:text-slate-300" title="Pago — sobre o Aprovado (SMSA)">Pago: ${formatCurrency(fatSigtapPago)}</div>
+                </td>
 
+                <!-- Faturado Incentivo (Previsto / Pago) -->
                 <td class="px-6 py-4 text-right">
-                    <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-end w-full group/inc" title="Clique para ver detalhes do incentivo">
-                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">
-                             ${formatCurrency(fatInc)}
-                             ${missedInc > 0 ? `<span class="text-[10px] text-red-500 font-bold ml-1">(${formatCurrency(missedInc)})</span>` : ''}
+                    <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-end w-full group/inc font-mono" title="Clique para ver detalhes do incentivo">
+                        <span class="text-[10px] text-slate-400" title="Previsto — sobre o Produzido">Prev: ${formatCurrency(fatIncPrev)}</span>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-300" title="Pago — sobre o Aprovado (SMSA)">
+                             Pago: ${formatCurrency(fatInc)}
+                             ${missedInc > 0 ? `<span class="text-[10px] text-red-500 font-bold ml-1">(perd. ${formatCurrency(missedInc)})</span>` : ''}
                         </span>
-                        <span class="text-[10px] text-slate-400 font-medium group-hover/inc:text-primary transition-colors leading-none mt-0.5">clique para ver detalhes</span>
+                        <span class="text-[10px] text-slate-400 font-medium group-hover/inc:text-primary transition-colors leading-none mt-0.5">clique para detalhes</span>
                     </button>
                 </td>
-                
-                <!-- Total -->
-                <td class="px-6 py-4 text-right font-mono text-sm font-black text-primary">${formatCurrency(totalRow)}</td>
+
+                <!-- Total (Previsto / Pago) -->
+                <td class="px-6 py-4 text-right font-mono text-xs">
+                    <div class="text-[10px] text-slate-400">Prev: ${formatCurrency(totalPrev)}</div>
+                    <div class="text-sm font-black text-primary">Pago: ${formatCurrency(totalPago)}</div>
+                </td>
             </tr>
         `;
     }).join('');
@@ -1043,7 +1050,7 @@ window.openBreakdownModal = (key) => {
             const inst = localInsts.find(i => i.id === item.instId);
             const instName = inst?.sigla || inst?.nome || 'Desconhecido';
 
-            let meta = parseInt(item.ofertaMinima || 0);
+            let meta = getMeta(item, localGruposOferta); // resolve meta do grupo
 
             const semOfferModal = (parseInt(item.producao?.sem1 || 0) + parseInt(item.producao?.sem2 || 0) +
                 parseInt(item.producao?.sem3 || 0) + parseInt(item.producao?.sem4 || 0) + parseInt(item.producao?.sem5 || 0));
@@ -1051,9 +1058,9 @@ window.openBreakdownModal = (key) => {
             if (isNaN(offer)) offer = 0;
             let staticOffer = parseInt(item.ofertado);
             if (isNaN(staticOffer)) staticOffer = 0;
-            const finalOffer = Math.max(offer, semOfferModal, staticOffer);
+            const finalOffer = getOferta(item); // OFERTA do instituto = ofertado (só leitura)
 
-            let prod = parseInt(item.producao?.aprovada);
+            let prod = getProduzido(item);       // "Produzido" = producao.realizada
             if (isNaN(prod)) prod = 0;
 
             const prog = localProgramas.find(pg => pg.id === item.progId);
@@ -1074,10 +1081,7 @@ window.openBreakdownModal = (key) => {
 
                 // Check if any item for this institute is below its meta (only when global meta not met)
                 const anyBelowMeta = !isGlobalMetaMet && instItems.some(i => {
-                    const iSem = (parseInt(i.producao?.sem1 || 0) + parseInt(i.producao?.sem2 || 0) +
-                        parseInt(i.producao?.sem3 || 0) + parseInt(i.producao?.sem4 || 0) + parseInt(i.producao?.sem5 || 0));
-                    const iOffer = Math.max(parseInt(i.producao?.realizada || 0), iSem, parseInt(i.ofertado || 0));
-                    return iOffer < parseInt(i.ofertaMinima || 0);
+                    return getOferta(i) < getMeta(i, localGruposOferta);
                 });
 
                 if (anyBelowMeta) {
@@ -1106,17 +1110,18 @@ window.openBreakdownModal = (key) => {
                 />
             </td>`;
 
-            const retornoSMSAVal = item.retornoSMSA !== undefined && item.retornoSMSA !== null ? item.retornoSMSA : '';
+            const retornoSMSAVal = (item.producao?.aprovada !== undefined && item.producao?.aprovada !== null) ? item.producao.aprovada : '';
             const incentivoPagoVal = item.incentivoPago !== undefined && item.incentivoPago !== null ? item.incentivoPago : '';
 
             const retornoSMSACellHtml = `<td class="py-2 px-1.5 text-right align-middle">
                 <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     value="${retornoSMSAVal}"
-                    onchange="window.saveBreakdownField('${item.id}', 'retornoSMSA', this.value, '${key}')"
+                    onchange="window.saveBreakdownField('${item.id}', 'aprovada', this.value, '${key}')"
                     class="w-24 text-right text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 focus:ring-primary focus:border-primary bg-white dark:bg-slate-700"
-                    placeholder="0,00"
+                    placeholder="0"
                 />
             </td>`;
 
@@ -1137,7 +1142,7 @@ window.openBreakdownModal = (key) => {
                     <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
                     <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
                     ${prodCellHtml}
-                    <td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300">${formatCurrency((item.vlrIncentivo || 0) * prod)}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300" title="Previsto (sobre o Produzido)">${formatCurrency(calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: prod, oferta: finalOffer, meta }))}</td>
                     ${retornoSMSACellHtml}
                     ${incentivoPagoCellHtml}
                 </tr>
@@ -1215,12 +1220,12 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
     try {
         const updatePromises = itemsToUpdate.map(item => {
             if (!item.producao) item.producao = {};
-            item.producao.aprovada = val;
-            return Repository.savePactuacao({ id: item.id, producao: { ...item.producao, aprovada: val } });
+            item.producao.realizada = val; // "Produzido" = producao.realizada (fechamento do mês)
+            return Repository.savePactuacao({ id: item.id, producao: { realizada: val } });
         });
 
         await Promise.all(updatePromises);
-        console.log(`Synced production ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId}, SIGTAP: ${targetSigtap})`);
+        console.log(`Synced produzido ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId}, SIGTAP: ${targetSigtap})`);
 
         // Recalc Group Totals (deduplicate by instId+sigtap to avoid double-counting multiple programs for same procedure)
         const seenRecalcKeys = new Set();
@@ -1228,7 +1233,7 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
             const k = `${i.instId}_${String(i.sigtap || '').replace(/\D/g, '')}`;
             if (seenRecalcKeys.has(k)) return sum;
             seenRecalcKeys.add(k);
-            return sum + (parseInt(i.producao?.aprovada) || 0);
+            return sum + (parseInt(i.producao?.realizada) || 0);
         }, 0);
         group.totalFatSigtap = group.totalProd * group.vSigtap;
 
@@ -1246,9 +1251,6 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
 };
 
 window.saveBreakdownField = async (pactId, field, value, groupKey) => {
-    const val = parseFloat(value);
-    const numVal = isNaN(val) ? null : val;
-
     const group = window.rowGroups[groupKey];
     if (!group) return;
 
@@ -1256,21 +1258,27 @@ window.saveBreakdownField = async (pactId, field, value, groupKey) => {
     if (!item) return;
 
     try {
-        item[field] = numVal;
-        await Repository.savePactuacao({ id: item.id, [field]: numVal });
+        if (field === 'aprovada') {
+            // "Retorno SMSA" = quantidade aprovada pela secretaria (producao.aprovada).
+            // O Incentivo Pago (definitivo) é calculado sobre essa quantidade.
+            const qtd = parseInt(value) || 0;
+            if (!item.producao) item.producao = {};
+            item.producao.aprovada = qtd;
+            await Repository.savePactuacao({ id: item.id, producao: { aprovada: qtd } });
 
-        if (field === 'retornoSMSA') {
-            const prod = item.producao?.aprovada || 0;
-            const totalIncentivo = (item.vlrIncentivo || 0) * prod;
-            const incentivoPago = numVal !== null ? Math.round(Math.max(0, totalIncentivo - numVal) * 100) / 100 : null;
-
+            const meta = getMeta(item, localGruposOferta);
+            const oferta = getOferta(item);
+            const incentivoPago = calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: qtd, oferta, meta });
             item.incentivoPago = incentivoPago;
             await Repository.savePactuacao({ id: item.id, incentivoPago });
 
             const incentivoPagoEl = document.querySelector(`span[data-incentivo-pago="${pactId}"]`);
-            if (incentivoPagoEl) {
-                incentivoPagoEl.textContent = formatCurrency(incentivoPago !== null ? incentivoPago : 0);
-            }
+            if (incentivoPagoEl) incentivoPagoEl.textContent = formatCurrency(incentivoPago);
+        } else {
+            const val = parseFloat(value);
+            const numVal = isNaN(val) ? null : val;
+            item[field] = numVal;
+            await Repository.savePactuacao({ id: item.id, [field]: numVal });
         }
     } catch (err) {
         console.error(`Erro ao salvar ${field}:`, err);

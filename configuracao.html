@@ -83,80 +83,20 @@
                     href="alertas.html">Alertas</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
                     href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="lancamento_producao.html">Lançar Produção</a>
                 <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
                     href="configuracao.html">Parâmetros do Incentivo</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
                     href="usuarios.html">Gestão de Usuários</a>
             </nav>
             <div class="flex items-center gap-4">
-                <div class="relative">
-                    <button id="profile-menu-btn" class="flex items-center gap-3 text-right group">
-                        <div class="hidden sm:flex flex-col items-end mr-1">
-                            <span id="user-name-header"
-                                class="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Administrador</span>
-                            <span id="user-inst-header"
-                                class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Orçamento
-                                e Gestão
-                                de Recursos</span>
-                        </div>
-                        <div
-                            class="size-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                            <span class="material-symbols-outlined">person</span>
-                        </div>
-                    </button>
-
-                    <!-- Dropdown Menu -->
-                    <div id="profile-dropdown"
-                        class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-50">
-                        <a href="perfil.html"
-                            class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                            <span class="material-symbols-outlined text-[18px]">person</span>
-                            Meu Perfil
-                        </a>
-                        <hr class="my-1 border-slate-100 dark:border-slate-700">
-                        <button id="logout-btn"
-                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-                            <span class="material-symbols-outlined text-[18px]">logout</span>
-                            Sair do Sistema
-                        </button>
-                    </div>
-                </div>
+                <button onclick="window.handleLogout && window.handleLogout()"
+                    class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
                 <script type="module" src="/src/js/auth-guard.js"></script>
-                <script type="module">
-                    import { auth } from './src/js/firebase-config.js';
-                    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-                    import { Repository } from './src/js/repository.js';
-
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            const profile = await Repository.getUserByEmail(user.email);
-                            if (profile) {
-                                document.getElementById('user-name-header').textContent = profile.name || user.email;
-                                if (profile.instId) {
-                                    const inst = await Repository.getInstitutoById(profile.instId);
-                                    document.getElementById('user-inst-header').textContent = inst?.sigla || inst?.nome || 'Instituto';
-                                }
-                            }
-                        }
-                    });
-
-                    // Dropdown toggle
-                    const btn = document.getElementById('profile-menu-btn');
-                    const dropdown = document.getElementById('profile-dropdown');
-                    const logoutBtn = document.getElementById('logout-btn');
-
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        dropdown.classList.toggle('hidden');
-                    });
-
-                    document.addEventListener('click', () => dropdown.classList.add('hidden'));
-
-                    logoutBtn.addEventListener('click', async () => {
-                        const { logout } = await import('./src/js/auth-guard.js');
-                        await logout();
-                    });
-                </script>
             </div>
         </div>
     </header>
@@ -1107,9 +1047,9 @@
                 [
                     'Linha de Cuidado', 'HOSPITAL EXEMPLO', 'ONCOLOGIA', 'Fulano', '0412010101',
                     'CONSULTA MEDICA', '100', '100', 'jan', 'jan/26',
-                    '10.00', '5.00', '',
+                    '10,00', '5,00', '',
                     '20', '20', '20', '20', '20',
-                    '100', 'ATIVO', '0', '1500.00'
+                    '100', 'ATIVO', '0', '1.500,00'
                 ]
             ];
             const ws = XLSX.utils.aoa_to_sheet(ws_data);

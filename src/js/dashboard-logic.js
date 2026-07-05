@@ -1,5 +1,6 @@
 import { Repository } from './repository.js';
 import { DateUtils } from './utils/date-utils.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -35,7 +36,9 @@ export async function initDashboard() {
             competencias = [...new Set(pactuacoes.map(p => p.competencia))];
         }
 
-        // Always include current month
+        // Competência padrão calculada a partir dos meses QUE TÊM dados
+        const compPadrao = DateUtils.competenciaPadrao(competencias);
+        // Garante o mês atual como opção selecionável (mesmo sem dados)
         const currentComp = DateUtils.getCurrentMonthLabel('short');
         if (!competencias.includes(currentComp)) {
             competencias.push(currentComp);
@@ -76,10 +79,10 @@ export async function initDashboard() {
             }
         };
 
-        // Default: current month selected
-        const defaultCb = checkboxesContainer.querySelector(`input[value="${currentComp}"]`);
+        // Default: mês atual se tiver dados; senão o mais recente com dados
+        const defaultCb = checkboxesContainer.querySelector(`input[value="${compPadrao}"]`);
         if (defaultCb) defaultCb.checked = true;
-        selectedPeriods = [currentComp];
+        selectedPeriods = compPadrao ? [compPadrao] : [];
         updateLabel();
 
         btn.addEventListener('click', (e) => {
@@ -116,6 +119,7 @@ export async function initDashboard() {
         updateDashboard(selectedPeriods, pactuacoes);
     } else if (monthSelector) {
         let competencias = [...new Set(pactuacoes.map(p => p.competencia))];
+        const compPadrao = DateUtils.competenciaPadrao(competencias);
 
         const currentComp = DateUtils.getCurrentMonthLabel('short');
         if (!competencias.includes(currentComp)) competencias.push(currentComp);
@@ -131,17 +135,17 @@ export async function initDashboard() {
 
         const longMonths = { 'jan': 'Janeiro', 'fev': 'Fevereiro', 'mar': 'Março', 'abr': 'Abril', 'mai': 'Maio', 'jun': 'Junho', 'jul': 'Julho', 'ago': 'Agosto', 'set': 'Setembro', 'out': 'Outubro', 'nov': 'Novembro', 'dez': 'Dezembro' };
 
-        monthSelector.innerHTML = competencias.map((c, idx) => {
+        monthSelector.innerHTML = competencias.map((c) => {
             const [m, y] = c.split('/');
             const display = `${longMonths[m] || m} / 20${y}`;
-            return `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${display}</option>`;
+            return `<option value="${c}" ${c === compPadrao ? 'selected' : ''}>${display}</option>`;
         }).join('');
 
         monthSelector.addEventListener('change', () => {
             updateDashboard([monthSelector.value], pactuacoes);
         });
 
-        updateDashboard([competencias[0]], pactuacoes);
+        updateDashboard([compPadrao || competencias[0]], pactuacoes);
     } else {
         updateDashboard([], pactuacoes);
     }
@@ -158,40 +162,57 @@ export async function initDashboard() {
     }
 }
 
+let dashboardRenderToken = 0;
+let localGruposOferta = [];
+
 async function updateDashboard(periods = [], allPactuacoes = null) {
-    currentPactuacoes = allPactuacoes || await Repository.getPactuacoes();
-    localInsts = await Repository.getInstitutos();
-    localUsers = await Repository.getUsers();
-    localProcs = await Repository.getProcedimentos();
-    window.localProgramas = await Repository.getProgramas(); // Make available for charts
+    const myToken = ++dashboardRenderToken;
+    const pacts = allPactuacoes || await Repository.getPactuacoes();
+    const insts = await Repository.getInstitutos();
+    const users = await Repository.getUsers();
+    const procs = await Repository.getProcedimentos();
+    const progs = await Repository.getProgramas();
+    const grupos = await Repository.getGruposOferta();
+    // Se um clique mais recente disparou outra atualização enquanto os fetches corriam,
+    // aborta esta para não sobrescrever o dashboard com dados obsoletos.
+    if (myToken !== dashboardRenderToken) return;
+    currentPactuacoes = pacts;
+    localInsts = insts;
+    localUsers = users;
+    localProcs = procs;
+    localGruposOferta = grupos;
+    window.localProgramas = progs; // Make available for charts
 
     const filtered = periods.length > 0
         ? currentPactuacoes.filter(p => periods.includes(p.competencia))
         : currentPactuacoes;
 
-    // Calculate Totals
-    let totalPactuado = 0;
-    let totalRealizado = 0;
-    let totalFinanceiro = 0;
+    // Totais — deduplica por (instituto+sigtap) com Math.max (regra "considerar a maior"
+    // dentro do instituto) e soma entre institutos. Oferta = ofertado; Produzido = producao.realizada.
+    let totalPactuado = 0;        // meta
+    let totalFinanceiroPrev = 0;  // financeiro Previsto (sobre o Produzido)
+    let totalFinanceiroPago = 0;  // financeiro Pago (sobre o Aprovado/SMSA)
 
-    const seenKpiKeys = new Set();
+    const kpiMap = {};
     filtered.forEach(p => {
-        const pact = parseInt(p.ofertaMinima || 0);
-        const real = parseInt(p.producao?.realizada || 0);
-        const vBase = parseFloat(p.vlrSigtapBase || 0);
-        const vInc = parseFloat(p.vlrIncentivo || 0);
-
-        totalPactuado += pact;
-
-        // Production and SIGTAP base value counted only once per procedure+institute
-        const kpiKey = `${p.sigtap}-${p.instId}`;
-        if (!seenKpiKeys.has(kpiKey)) {
-            seenKpiKeys.add(kpiKey);
-            totalRealizado += real;
-            totalFinanceiro += vBase * real;
-        }
-        totalFinanceiro += vInc * real;
+        const k = `${p.sigtap}-${p.instId}`;
+        if (!kpiMap[k]) kpiMap[k] = { meta: 0, oferta: 0, prod: 0, aprov: 0, vBase: 0, vInc: 0 };
+        kpiMap[k].meta = Math.max(kpiMap[k].meta, getMeta(p, localGruposOferta));
+        kpiMap[k].oferta = Math.max(kpiMap[k].oferta, getOferta(p));
+        kpiMap[k].prod = Math.max(kpiMap[k].prod, getProduzido(p));
+        kpiMap[k].aprov = Math.max(kpiMap[k].aprov, getRetornoSMSA(p));
+        kpiMap[k].vBase = Math.max(kpiMap[k].vBase, parseFloat(p.vlrSigtapBase || 0));
+        kpiMap[k].vInc = Math.max(kpiMap[k].vInc, parseFloat(p.vlrIncentivo || 0));
     });
+    let totalOfertado = 0;   // oferta (instituto)
+    Object.values(kpiMap).forEach(v => {
+        totalPactuado += v.meta;
+        totalOfertado += v.oferta;
+        // Previsto = sobre o Produzido; Pago = sobre o Aprovado/SMSA
+        totalFinanceiroPrev += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: v.oferta, meta: v.meta });
+        totalFinanceiroPago += v.vBase * v.aprov + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.aprov, oferta: v.oferta, meta: v.meta });
+    });
+    const totalRealizado = totalOfertado; // "Ofertado" no dashboard = oferta do instituto
 
     // Update Indicators
     const elPactuado = document.getElementById('kpi-pactuado');
@@ -208,14 +229,14 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     if (elAtingimentoBar) elAtingimentoBar.style.width = Math.min(atingimento, 100) + '%';
 
     const elFinanceiro = document.getElementById('kpi-financeiro');
-    if (elFinanceiro) elFinanceiro.textContent = formatCurrency(totalFinanceiro);
+    if (elFinanceiro) elFinanceiro.textContent = formatCurrency(totalFinanceiroPrev);
 
     const elFinanceiroDetail = document.getElementById('kpi-financeiro-detail');
-    if (elFinanceiroDetail) elFinanceiroDetail.textContent = `Total (SIGTAP + Incentivos) p/ Produção`;
+    if (elFinanceiroDetail) elFinanceiroDetail.innerHTML = `Previsto (produzido) · <span class="font-bold text-slate-600 dark:text-slate-300">Pago (SMSA): ${formatCurrency(totalFinanceiroPago)}</span>`;
 
     // Grouping for Table (by Procedimento)
     const groupsMap = {};
-    const seenTableKeys = new Set();
+    const seenTableKeys = {}; // sigtap -> { instId -> {meta, oferta} } (dedup por instituto)
     filtered.forEach(p => {
         const key = p.sigtap;
         if (!groupsMap[key]) {
@@ -228,13 +249,14 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                 progIds: new Set()
             };
         }
-        groupsMap[key].pactuado += parseInt(p.ofertaMinima || 0);
-        // Production counted only once per procedure+institute combination
-        const tableKey = `${p.sigtap}-${p.instId}`;
-        if (!seenTableKeys.has(tableKey)) {
-            seenTableKeys.add(tableKey);
-            groupsMap[key].ofertado += parseInt(p.producao?.realizada || 0);
-        }
+        // Dedup por instituto (considerar a maior meta/oferta); soma entre institutos
+        if (!seenTableKeys[key]) seenTableKeys[key] = {};
+        const inst = seenTableKeys[key][p.instId] || { meta: 0, oferta: 0 };
+        const meta = getMeta(p, localGruposOferta);
+        const oferta = getOferta(p);
+        if (meta > inst.meta) { groupsMap[key].pactuado += (meta - inst.meta); inst.meta = meta; }
+        if (oferta > inst.oferta) { groupsMap[key].ofertado += (oferta - inst.oferta); inst.oferta = oferta; }
+        seenTableKeys[key][p.instId] = inst;
         if (p.progId) groupsMap[key].progIds.add(p.progId);
     });
 
@@ -257,7 +279,7 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                 <tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
                         <div class="flex items-center gap-3">
-                            <div class="size-2 rounded-full ${item.status >= 90 ? 'bg-green-500' : item.status >= 70 ? 'bg-yellow-500' : 'bg-red-500'}"></div>
+                            <div class="size-2 rounded-full ${item.status >= 100 ? 'bg-green-500' : item.status >= 70 ? 'bg-yellow-500' : 'bg-red-500'}"></div>
                             <span class="truncate max-w-[300px]" title="${item.nome}">${item.nome}</span>
                         </div>
                     </td>
@@ -267,7 +289,7 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                     <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(item.pactuado)}</td>
                     <td class="px-6 py-4 text-right font-mono text-xs font-bold">${formatNumber(item.ofertado)}</td>
                     <td class="px-6 py-4 text-center">
-                        <span class="text-[10px] font-black px-2 py-0.5 rounded border ${item.status >= 90 ? 'bg-green-100 text-green-800 border-green-200' : item.status >= 70 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}">
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded border ${item.status >= 100 ? 'bg-green-100 text-green-800 border-green-200' : item.status >= 70 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}">
                             ${item.status}%
                         </span>
                     </td>
@@ -285,7 +307,8 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     const alertsContainer = document.getElementById('alerts-container');
     if (alertsContainer) {
         const critical = filtered.filter(p => {
-            const status = p.ofertaMinima > 0 ? (p.producao?.realizada / p.ofertaMinima) * 100 : 100;
+            const meta = getMeta(p, localGruposOferta);
+            const status = meta > 0 ? atingimentoPct(getOferta(p), meta) : 100;
             return status < 70;
         });
 
@@ -295,7 +318,7 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
             alertsContainer.innerHTML = critical.map(p => {
                 const inst = localInsts.find(i => i.id === p.instId);
                 const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-                const status = Math.round((p.producao?.realizada / p.ofertaMinima) * 100);
+                const status = atingimentoPct(getOferta(p), getMeta(p, localGruposOferta));
                 return `
                     <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-l-4 ${status < 50 ? 'border-red-500' : 'border-orange-500'} shadow-sm">
                         <div class="flex items-start justify-between gap-3">
@@ -524,12 +547,12 @@ function renderCharts(currentData, allPactuacoes) {
         const seenGoalKeys = new Set();
         currentData.forEach(p => {
             if (!instStats[p.instId]) instStats[p.instId] = { id: p.instId, pact: 0, real: 0 };
-            instStats[p.instId].pact += parseInt(p.ofertaMinima || 0);
-            // Production counted only once per procedure+institute
+            // Atingimento = OFERTA ÷ META, deduplicando por instituto+sigtap
             const goalKey = `${p.instId}-${p.sigtap}`;
             if (!seenGoalKeys.has(goalKey)) {
                 seenGoalKeys.add(goalKey);
-                instStats[p.instId].real += parseInt(p.producao?.realizada || 0);
+                instStats[p.instId].pact += getMeta(p, localGruposOferta);
+                instStats[p.instId].real += getOferta(p);
             }
         });
 
@@ -612,12 +635,16 @@ function renderCharts(currentData, allPactuacoes) {
         const progStats = {};
         currentData.forEach(p => {
             const pid = p.progId || 'Sem Programa';
-            if (!progStats[pid]) progStats[pid] = { id: pid, total: 0 };
+            if (!progStats[pid]) progStats[pid] = { id: pid, total: 0, totalPago: 0 };
             const vBase = parseFloat(p.vlrSigtapBase || 0);
             const vInc = parseFloat(p.vlrIncentivo || 0);
-            // Revenue usually implies full value? Or just Incentive value?
-            // "Faturamento por Incentivo" -> "Revenue by Incentive Program". Usually total revenue associated with that program.
-            progStats[pid].total += (vBase + vInc) * parseInt(p.producao?.realizada || 0);
+            const prod = getProduzido(p);
+            const aprov = getRetornoSMSA(p);
+            const oferta = getOferta(p);
+            const meta = getMeta(p, localGruposOferta);
+            // Previsto (sobre o produzido) e Pago (sobre o aprovado/SMSA); incentivo só se meta atingida
+            progStats[pid].total += vBase * prod + calcIncentivo({ vlrIncentivo: vInc, quantidade: prod, oferta, meta });
+            progStats[pid].totalPago += vBase * aprov + calcIncentivo({ vlrIncentivo: vInc, quantidade: aprov, oferta, meta });
         });
 
         const sortedProgs = Object.values(progStats).sort((a, b) => b.total - a.total);
@@ -640,8 +667,9 @@ function renderCharts(currentData, allPactuacoes) {
                              <div class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></div>
                              <span class="truncate text-slate-700 dark:text-slate-300" title="${name}">${name}</span>
                         </div>
-                        <div class="text-right flex flex-col items-end">
-                             <span class="font-bold text-slate-900 dark:text-white">${formatCurrency(item.total)}</span>
+                        <div class="text-right flex flex-col items-end leading-tight">
+                             <span class="text-[11px] text-slate-500 dark:text-slate-400">Prev: ${formatCurrency(item.total)}</span>
+                             <span class="text-sm font-bold text-slate-900 dark:text-white">Pago: ${formatCurrency(item.totalPago)}</span>
                              <span class="text-[10px] text-slate-400">${pct.toFixed(1)}%</span>
                         </div>
                     </div>
@@ -1020,11 +1048,10 @@ window.openDetalhamento = (sigtap) => {
         const inst = localInsts.find(i => i.id === p.instId);
 
         // Safe Parsing
-        const rawPact = p.ofertaMinima;
         const rawOff = p.ofertado;
         const rawReal = p.producao?.realizada;
 
-        const pact = !isNaN(parseInt(rawPact)) ? parseInt(rawPact) : 0;
+        const pact = getMeta(p, localGruposOferta); // meta (resolve grupo)
         const ofertado = !isNaN(parseInt(rawOff)) ? parseInt(rawOff) : 0;
         const realizado = !isNaN(parseInt(rawReal)) ? parseInt(rawReal) : 0;
 
@@ -1090,11 +1117,13 @@ function renderContactButtons(pact, inst, proc) {
 
 // --- COMMUNICATION MODAL LOGIC ---
 window.openCommModal = (type, pactId, instId) => {
-    const pact = currentPactuacoes.find(p => (p.id || p.sigtap) == pactId);
     const inst = localInsts.find(i => i.id == instId);
-    const proc = localProcs.find(pr => pr.sigtap === pact.sigtap);
+    if (!inst) return;
 
-    if (!pact || !inst) return;
+    // pactId identifica a pactuação na cobrança por procedimento; no monitor de prazo
+    // a cobrança é por instituto e vem sem pactId — nesse caso a mensagem é genérica.
+    const pact = currentPactuacoes.find(p => (p.id || p.sigtap) == pactId);
+    const proc = pact ? localProcs.find(pr => pr.sigtap === pact.sigtap) : null;
 
     // Filter recipients
     const recipients = localUsers.filter(u => {
@@ -1119,8 +1148,16 @@ window.openCommModal = (type, pactId, instId) => {
     recipientContainer.innerHTML = '';
 
     // Populate Data
-    const subjectText = `Alerta de Produção: ${proc?.nome || pact.sigtap}`;
-    const bodyText = `Olá,\n\nIdentificamos que o procedimento ${proc?.nome || pact.sigtap} está com produção abaixo do esperado (${Math.round((pact.producao?.realizada / pact.ofertaMinima) * 100)}%) no mês de ${pact.competencia}.\n\nFavor verificar.\n\nAtenciosamente,\nEquipe Orçamento`;
+    let subjectText, bodyText;
+    if (pact) {
+        const metaPct = getMeta(pact, localGruposOferta);
+        const pct = metaPct > 0 ? atingimentoPct(getOferta(pact), metaPct) : 0;
+        subjectText = `Alerta de Produção: ${proc?.nome || pact.sigtap}`;
+        bodyText = `Olá,\n\nIdentificamos que o procedimento ${proc?.nome || pact.sigtap} está com produção abaixo do esperado (${pct}%) no mês de ${pact.competencia}.\n\nFavor verificar.\n\nAtenciosamente,\nEquipe Orçamento`;
+    } else {
+        subjectText = `Alerta de Prazo: lançamento pendente`;
+        bodyText = `Olá,\n\nIdentificamos que o instituto ${inst.nome || inst.sigla || ''} possui procedimentos com lançamento/produção pendente dentro do prazo.\n\nFavor verificar e regularizar.\n\nAtenciosamente,\nEquipe Orçamento`;
+    }
 
     subjectInput.value = subjectText;
     messageInput.value = bodyText;
@@ -1188,7 +1225,7 @@ window.sendToIndividual = (phone) => {
 
 // --- GLOBAL COMPLIANCE CHECK ---
 function checkGlobalCompliance(allPactuacoes, institutes, config) {
-    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
+    const targetComp = DateUtils.getPreviousMonthLabel('short'); // "mmm/yy" — mesmo formato gravado nas pactuações
 
     // Check Ignore
     const ignoreKey = `monitor_ignored_${targetComp}`;
@@ -1215,11 +1252,11 @@ function checkGlobalCompliance(allPactuacoes, institutes, config) {
             };
         }
 
-        const meta = parseInt(p.ofertaMinima || 0);
+        const meta = getMeta(p, localGruposOferta);
         if (meta > 0) {
             complianceMap[p.instId].totalCount++;
-            const real = parseInt(p.producao?.realizada || 0);
-            if (!real || real === 0) {
+            const oferta = getOferta(p); // compliance = o instituto lançou a oferta?
+            if (!oferta || oferta === 0) {
                 complianceMap[p.instId].pendingCount++;
             }
         }
@@ -1276,7 +1313,7 @@ function showMonitorModal(targetCompISO, list, institutes, config) {
                     </span>
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <button onclick="window.openCommModal('email', '${item.instId}', '${item.instId}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs">
+                    <button onclick="window.openCommModal('email', '', '${item.instId}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs">
                         Cobrar
                     </button>
                 </td>
@@ -1293,7 +1330,7 @@ window.notifyAllPending = () => {
 }
 
 window.ignoreMonitorAlert = (type) => {
-    const targetComp = DateUtils.getPreviousMonthLabel('iso'); // "YYYY-MM"
+    const targetComp = DateUtils.getPreviousMonthLabel('short'); // "mmm/yy" — mesmo formato gravado nas pactuações
     const ignoreKey = `monitor_ignored_${targetComp}`;
     localStorage.setItem(ignoreKey, 'true');
 

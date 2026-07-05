@@ -37,6 +37,16 @@ const normalizeId = (text) => {
         .replace(/^_|_$/g, '');    // remove leading/trailing underscores
 };
 
+// Converte valores monetários vindos da planilha. Aceita célula numérica (usa direto)
+// ou string em formato pt-BR ("1.234,56" → ponto = milhar, vírgula = decimal).
+const parseMoney = (v) => {
+    if (v === null || v === undefined || v === '') return 0;
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    const s = v.toString().replace(/[R$\s ]/g, "").replace(/\./g, "").replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+};
+
 /**
  * Repository to handle all Firestore operations.
  */
@@ -218,7 +228,16 @@ export const Repository = {
     },
 
     async savePactuacao(pact) {
-        const id = pact.id || Date.now().toString();
+        let id = pact.id;
+        if (!id) {
+            // Sem id explícito: reconstrói o MESMO id composto usado na importação
+            // (progId_instId_sigtap_competencia) para não criar documento duplicado.
+            if (pact.progId && pact.instId && pact.sigtap && pact.competencia) {
+                id = normalizeId(`${pact.progId}_${pact.instId}_${pact.sigtap}_${pact.competencia}`);
+            } else {
+                id = Date.now().toString();
+            }
+        }
         const ref = doc(db, COLL_PACTUACOES, id);
         await setDoc(ref, { ...pact, id }, { merge: true });
         return id;
@@ -484,9 +503,9 @@ export const Repository = {
                 ofertaMinima: getCol(row, 'SIGRAH', 'Meta', 'Mínima', 'Pactuado', 'Pacto') || 0,
                 totalOferta: getCol(row, 'Total Oferta', 'Total Geral') || 0,
                 // Values
-                vlrSigtapBase: parseFloat(getCol(row, 'Valor Sigtap', 'Valor Unitário', 'Vlr Unit', 'Preço', 'Sigtap', 'Base').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
-                vlrIncentivo: parseFloat(getCol(row, 'Incentivo', 'Inc', 'Bonus', 'Vlr Inc').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
-                vlrTotalLinha: parseFloat(getCol(row, 'TOTAL', 'Financeiro', 'Vlr Total').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.') || 0),
+                vlrSigtapBase: parseMoney(getCol(row, 'Valor Sigtap', 'Valor Unitário', 'Vlr Unit', 'Preço', 'Sigtap', 'Base')),
+                vlrIncentivo: parseMoney(getCol(row, 'Incentivo', 'Inc', 'Bonus', 'Vlr Inc')),
+                vlrTotalLinha: parseMoney(getCol(row, 'TOTAL', 'Financeiro', 'Vlr Total')),
                 // Weekly Production - Fallback logic for various formats
                 producao: {
                     sem1: getCol(row, '1º') || 0,
@@ -499,10 +518,9 @@ export const Repository = {
                 importedAt: new Date()
             };
 
-            // DEBUG LOG REMOVED
-
-
-            batch.set(doc(db, COLL_PACTUACOES, pactId), pactData);
+            // merge: numa reimportação, preserva campos que não vêm da planilha
+            // (producao.aprovada, incentivoPago, retornoSMSA, grupoOfertaId) em vez de apagá-los.
+            batch.set(doc(db, COLL_PACTUACOES, pactId), pactData, { merge: true });
 
         }, 30, 100);
 

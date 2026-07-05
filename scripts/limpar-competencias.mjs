@@ -42,7 +42,10 @@ function parseCompetencia(comp) {
     if (parts.length !== 2) return null;
     const monthIndex = SHORT_MONTHS.indexOf(parts[0]);
     if (monthIndex === -1) return null;
-    const year = 2000 + parseInt(parts[1]);
+    const rawYear = parseInt(parts[1]);
+    if (isNaN(rawYear)) return null;
+    // aceita ano com 2 dígitos ("25" → 2025) ou 4 dígitos ("2025" → 2025)
+    const year = parts[1].length <= 2 ? 2000 + rawYear : rawYear;
     return new Date(year, monthIndex, 1);
 }
 

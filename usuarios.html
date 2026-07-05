@@ -63,78 +63,20 @@
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
                     href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
                 <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
+                    href="lancamento_producao.html">Lançar Produção</a>
+                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
                     href="configuracao.html">Parâmetros do Incentivo</a>
                 <a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="usuarios.html">Gestão de
                     Usuários</a>
             </nav>
             <div class="flex items-center gap-4">
-                <div class="relative">
-                    <button id="profile-menu-btn" class="flex items-center gap-3 text-right group">
-                        <div class="hidden sm:flex flex-col items-end mr-1">
-                            <span id="user-name-header"
-                                class="text-sm font-semibold text-slate-900 group-hover:text-primary transition-colors">Administrador</span>
-                            <span id="user-inst-header"
-                                class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Orçamento e Gestão
-                                de Recursos</span>
-                        </div>
-                        <div
-                            class="size-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                            <span class="material-symbols-outlined">person</span>
-                        </div>
-                    </button>
-
-                    <!-- Dropdown Menu -->
-                    <div id="profile-dropdown"
-                        class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50">
-                        <a href="perfil.html"
-                            class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                            <span class="material-symbols-outlined text-[18px]">person</span>
-                            Meu Perfil
-                        </a>
-                        <hr class="my-1 border-slate-100">
-                        <button id="logout-btn"
-                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                            <span class="material-symbols-outlined text-[18px]">logout</span>
-                            Sair do Sistema
-                        </button>
-                    </div>
-                </div>
+                <button onclick="window.handleLogout && window.handleLogout()"
+                    class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
                 <script type="module" src="/src/js/auth-guard.js"></script>
-                <script type="module">
-                    import { auth } from './src/js/firebase-config.js';
-                    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-                    import { Repository } from './src/js/repository.js';
-
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            const profile = await Repository.getUserByEmail(user.email);
-                            if (profile) {
-                                document.getElementById('user-name-header').textContent = profile.name || user.email;
-                                if (profile.instId) {
-                                    const inst = await Repository.getInstitutoById(profile.instId);
-                                    document.getElementById('user-inst-header').textContent = inst?.sigla || inst?.nome || 'Instituto';
-                                }
-                            }
-                        }
-                    });
-
-                    // Dropdown toggle
-                    const btn = document.getElementById('profile-menu-btn');
-                    const dropdown = document.getElementById('profile-dropdown');
-                    const logoutBtn = document.getElementById('logout-btn');
-
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        dropdown.classList.toggle('hidden');
-                    });
-
-                    document.addEventListener('click', () => dropdown.classList.add('hidden'));
-
-                    logoutBtn.addEventListener('click', async () => {
-                        const { logout } = await import('./src/js/auth-guard.js');
-                        await logout();
-                    });
-                </script>
+                <script type="module" src="/src/js/perfil-logic.js"></script>
             </div>
         </div>
     </header>
@@ -165,6 +107,11 @@
                 class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
                 Analytics & Monitoramento
                 <span class="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-black">NOVO</span>
+            </button>
+            <button onclick="switchTab('tab-profile')" id="btn-tab-profile"
+                class="px-6 py-3 font-bold text-sm transition-all border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">person</span>
+                Meu Perfil
             </button>
         </div>
 
@@ -302,6 +249,162 @@
                         <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
                             <p class="text-[10px] text-blue-700 font-medium">Todos os procedimentos importados possuem
                                 valores vinculados no catálogo SIGTAP.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: MEU PERFIL -->
+        <div id="tab-profile" class="tab-content hidden animate-fade-in">
+            <div class="max-w-4xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Sidebar: Summary Information -->
+                    <div class="md:col-span-1 space-y-6">
+                        <div
+                            class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 text-center">
+                            <div
+                                class="size-24 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                                <span class="material-symbols-outlined text-[48px]">person</span>
+                            </div>
+                            <h3 id="profile-name-lg" class="text-xl font-bold text-slate-900 dark:text-white">---</h3>
+                            <p id="profile-role-badge"
+                                class="inline-block mt-2 px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase rounded-full tracking-widest">
+                                ---</p>
+
+                            <hr class="my-6 border-slate-100 dark:border-slate-700">
+
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3 text-left">
+                                    <div
+                                        class="size-8 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400 text-[18px]">
+                                        <span class="material-symbols-outlined text-[18px]">mail</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] text-slate-500 uppercase font-bold">E-mail</span>
+                                        <span id="profile-email"
+                                            class="text-xs font-semibold truncate max-w-[150px]">---</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 text-left">
+                                    <div
+                                        class="size-8 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400">
+                                        <span class="material-symbols-outlined text-[18px]">account_balance</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] text-slate-500 uppercase font-bold">Vínculo</span>
+                                        <span id="profile-inst-name" class="text-xs font-semibold">---</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content: Detailed Information & Security -->
+                    <div class="md:col-span-2 space-y-8">
+                        <!-- Details Card -->
+                        <div
+                            class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                            <div
+                                class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-900 dark:text-white">Informações Pessoais</h3>
+                                <div class="flex items-center gap-2">
+                                    <button id="edit-profile-btn"
+                                        class="flex items-center gap-1 text-[10px] font-black uppercase text-primary hover:opacity-80 transition-opacity">
+                                        <span class="material-symbols-outlined text-[14px]">edit</span>
+                                        Editar
+                                    </button>
+                                    <button id="save-profile-btn"
+                                        class="hidden flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 hover:opacity-80 transition-opacity">
+                                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Salvar
+                                    </button>
+                                    <button id="cancel-edit-btn"
+                                        class="hidden flex items-center gap-1 text-[10px] font-black uppercase text-slate-400 hover:opacity-80 transition-opacity">
+                                        <span class="material-symbols-outlined text-[14px]">cancel</span>
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <div id="profile-display-view" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome
+                                            Completo</label>
+                                        <p id="detail-name"
+                                            class="text-sm font-semibold text-slate-700 dark:text-slate-200">---</p>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Endereço
+                                            de E-mail</label>
+                                        <p id="detail-email"
+                                            class="text-sm font-semibold text-slate-700 dark:text-slate-200">---</p>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo
+                                            de Perfil</label>
+                                        <p id="detail-role"
+                                            class="text-sm font-semibold text-slate-700 dark:text-slate-200">---</p>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unidade
+                                            Vinculada</label>
+                                        <p id="detail-inst"
+                                            class="text-sm font-semibold text-slate-700 dark:text-slate-200">---</p>
+                                    </div>
+                                </div>
+
+                                <form id="profile-edit-view" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div class="sm:col-span-2">
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nome
+                                            Completo</label>
+                                        <input type="text" id="input-name"
+                                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold focus:ring-primary">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label
+                                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">E-mail
+                                            (Login)</label>
+                                        <input type="email" id="input-email"
+                                            class="w-full bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-500 cursor-not-allowed"
+                                            readonly title="O e-mail de login deve ser alterado pelo administrador">
+                                        <p class="text-[9px] text-slate-400 mt-1 italic">* Para alterar o e-mail de
+                                            login, contate o administrador do sistema.</p>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Security Card -->
+                        <div
+                            class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+                                <h3 class="font-bold text-slate-900 dark:text-white">Segurança</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="flex items-start gap-4">
+                                    <div
+                                        class="size-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 flex items-center justify-center shrink-0">
+                                        <span class="material-symbols-outlined">lock_reset</span>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-1">Alterar Senha
+                                        </h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Enviaremos um link de
+                                            redefinição para o seu e-mail cadastrado. Por segurança, o sistema utiliza o
+                                            protocolo oficial do Firebase.</p>
+                                        <button id="reset-pwd-btn"
+                                            class="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:opacity-90 transition-opacity">
+                                            Solicitar e-mail de redefinição
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

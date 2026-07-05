@@ -3,6 +3,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
+import { getOferta, getMeta, atingimentoPct, statusMeta } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -29,7 +30,9 @@ function populateCompetenceFilter(selectElement, pactuacoes, preserveValue = fal
         competencias = [...new Set(pactuacoes.map(p => p.competencia))];
     }
 
-    // Always include current month
+    // Competência padrão a partir dos meses COM dados
+    const compPadrao = DateUtils.competenciaPadrao(competencias);
+    // Garante o mês atual como opção selecionável (mesmo sem dados)
     const currentComp = DateUtils.getCurrentMonthLabel('short');
     if (!competencias.includes(currentComp)) {
         competencias.push(currentComp);
@@ -52,8 +55,8 @@ function populateCompetenceFilter(selectElement, pactuacoes, preserveValue = fal
         if (preserveValue && previousVal && competencias.includes(previousVal)) {
             selectElement.value = previousVal;
         } else {
-            selectElement.value = currentComp;
-            if (selectElement.value !== currentComp) selectElement.value = competencias[0];
+            selectElement.value = compPadrao;
+            if (!selectElement.value) selectElement.value = competencias[0];
         }
     } else {
         selectElement.innerHTML = '<option value="">Sem dados</option>';
@@ -353,14 +356,15 @@ async function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitu
         let maxMeta, totalRealized;
 
         if (grupo) {
-            // Unified group: sum production of ALL sigtaps in the group for this institute
+            // Meta do grupo (o código antigo somava 'ofertado' como se fosse meta — bug);
+            // a "oferta" do grupo é a soma da oferta dos sigtaps do grupo para este instituto.
+            maxMeta = getMeta(p, localGruposOferta);
             const grupoItems = relevant.filter(i => i.instId === p.instId && i.grupoOfertaId === grupo.id);
-            maxMeta = grupoItems.reduce((sum, i) => sum + (parseInt(i.ofertado || 0)), 0);
-            totalRealized = grupoItems.reduce((sum, i) => sum + parseInt(i.producao?.realizada || 0), 0);
+            totalRealized = grupoItems.reduce((sum, i) => sum + getOferta(i), 0);
         } else {
             const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
-            maxMeta = groupItems.reduce((max, i) => Math.max(max, parseInt(i.ofertaMinima || 0)), 0);
-            totalRealized = groupItems.reduce((max, i) => Math.max(max, parseInt(i.producao?.realizada || 0)), 0);
+            maxMeta = groupItems.reduce((max, i) => Math.max(max, getMeta(i, localGruposOferta)), 0);
+            totalRealized = groupItems.reduce((max, i) => Math.max(max, getOferta(i)), 0);
         }
 
         let isPending = false;
@@ -586,8 +590,8 @@ function updateRowUI(pactId, pact) {
     const row = document.querySelector(`tr[data-id="${pactId}"]`);
     if (!row) return;
 
-    const offer = parseInt(pact.ofertaMinima || 0);
-    const real = pact.producao.realizada;
+    const offer = getMeta(pact, localGruposOferta); // meta
+    const real = getOferta(pact);                   // oferta do instituto
     const status = offer > 0 ? (real / offer) * 100 : 0;
 
     // Update Status Badge
@@ -662,7 +666,7 @@ function renderTable() {
         if (!globalInstMap[p.sigtap]) globalInstMap[p.sigtap] = {};
         const instEntry = globalInstMap[p.sigtap][p.instId];
         const meta = parseInt(p.ofertaMinima || 0);
-        const real = parseInt(p.producao?.realizada || 0);
+        const real = getOferta(p); // "realizado" da rede = OFERTA do instituto (atingimento é por oferta)
         if (!instEntry) {
             globalInstMap[p.sigtap][p.instId] = { meta, realizado: real };
         } else {
@@ -797,23 +801,23 @@ function renderTable() {
 
         if (group.isGrupo && group.grupoId) {
             // Para oferta unificada: soma produção de TODOS os institutos da rede (o status é da rede, não do instituto)
-            const redeRealizado = allPactuacoes
+            const redeOferta = allPactuacoes
                 .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
-                .reduce((sum, p) => sum + parseInt(p.producao?.realizada || 0), 0);
+                .reduce((sum, p) => sum + getOferta(p), 0);
             const redeSemanas = allPactuacoes
                 .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
                 .reduce((sum, p) => sum + (parseInt(p.producao?.sem1 || 0) + parseInt(p.producao?.sem2 || 0) +
                     parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0)), 0);
-            group.totalRealizado = Math.max(redeRealizado, redeSemanas);
+            group.totalRealizado = Math.max(redeOferta, redeSemanas);
         } else {
             // Para procedimentos individuais: prioriza soma das semanas do próprio instituto.
             // Só usa producao.realizada como fallback quando nenhuma semana foi preenchida.
             if (semanasTotal > 0) {
                 group.totalRealizado = semanasTotal;
             } else {
-                const localRealized = group.items
-                    .reduce((max, p) => Math.max(max, parseInt(p.producao?.realizada || 0)), 0);
-                group.totalRealizado = localRealized;
+                const localOferta = group.items
+                    .reduce((max, p) => Math.max(max, getOferta(p)), 0);
+                group.totalRealizado = localOferta;
             }
         }
     });
@@ -872,11 +876,10 @@ function renderTable() {
     } else {
         tbody.innerHTML = displayItems.map(group => {
             const target = group.maxMeta;
-            const progress = target > 0 ? (group.totalRealizado / target) * 100 : 0;
+            const progress = atingimentoPct(group.totalRealizado, target);
 
-            let statusColor = 'bg-primary';
-            if (progress >= 100) statusColor = 'bg-green-500';
-            else if (progress < 50) statusColor = 'bg-yellow-500';
+            const _st = statusMeta(progress);
+            const statusColor = _st === 'ok' ? 'bg-green-500' : (_st === 'alerta' ? 'bg-yellow-500' : 'bg-red-500');
 
             const inputState = canEdit ? '' : 'disabled';
             const activeClass = canEdit ? 'bg-white focus:ring-primary focus:border-primary' : 'bg-slate-50 text-slate-500';
@@ -1090,17 +1093,19 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
             ofertaMinima: 0,
             vlrSigtapBase: template.vlrSigtapBase || 0,
             vlrIncentivo: template.vlrIncentivo || 0,
-            producao: { sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0, realizada: 0 },
+            producao: { sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0 },
+            ofertado: 0,
         };
         newPact.producao[weekField] = val;
-        newPact.producao.realizada = val;
+        // A soma das semanas é a OFERTA do instituto (campo ofertado)
+        newPact.ofertado = [1,2,3,4,5].reduce((s, w) => s + (parseInt(newPact.producao[`sem${w}`]) || 0), 0);
         try {
             const newId = await Repository.savePactuacao(newPact);
             newPact.id = newId;
             group.items.push(newPact);
             localPactuacoes.push(newPact);
             // Recalc group totals
-            group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.producao?.realizada) || 0), 0);
+            group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.ofertado) || 0), 0);
             [1,2,3,4,5].forEach(w => {
                 group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
             });
@@ -1118,17 +1123,18 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
         if (!pact) return;
         if (!pact.producao) pact.producao = {};
         pact.producao[weekField] = val;
-        pact.producao.realizada = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
+        // Soma das semanas = OFERTA do instituto
+        pact.ofertado = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
 
         // Recalc group total from ALL items
-        group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.producao?.realizada) || 0), 0);
+        group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.ofertado) || 0), 0);
         // Also update group semX totals
         [1,2,3,4,5].forEach(w => {
             group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
         });
 
         try {
-            await Repository.savePactuacao({ id: pact.id, producao: pact.producao });
+            await Repository.savePactuacao({ id: pact.id, ofertado: pact.ofertado, producao: { [weekField]: val } });
             const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
             if (localIdx !== -1) localPactuacoes[localIdx].producao = { ...pact.producao };
             const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
@@ -1146,8 +1152,9 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
         const updatePromises = group.items.map(async (pact) => {
             if (!pact.producao) pact.producao = {};
             pact.producao[weekField] = val;
-            pact.producao.realizada = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
-            return Repository.savePactuacao({ id: pact.id, producao: pact.producao });
+            // Soma das semanas = OFERTA do instituto (replicada entre os incentivos do mesmo procedimento)
+            pact.ofertado = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
+            return Repository.savePactuacao({ id: pact.id, ofertado: pact.ofertado, producao: { [weekField]: val } });
         });
 
         try {
@@ -1157,13 +1164,13 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
                 if (localIdx !== -1) {
                     if (!localPactuacoes[localIdx].producao) localPactuacoes[localIdx].producao = {};
                     localPactuacoes[localIdx].producao[weekField] = val;
-                    localPactuacoes[localIdx].producao.realizada = pact.producao.realizada;
+                    localPactuacoes[localIdx].ofertado = pact.ofertado;
                 }
                 const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
                 if (allIdx !== -1) {
                     if (!allPactuacoes[allIdx].producao) allPactuacoes[allIdx].producao = {};
                     allPactuacoes[allIdx].producao[weekField] = val;
-                    allPactuacoes[allIdx].producao.realizada = pact.producao.realizada;
+                    allPactuacoes[allIdx].ofertado = pact.ofertado;
                 }
             });
             renderTableKeepFocus();
@@ -1182,14 +1189,13 @@ window.updateUnifiedOffer = async (sigtap, value) => {
         // Optimistic Update & Save Logic
         // We update EVERY item in the group to have this same realized value
         const updatePromises = group.items.map(async (pact) => {
-            if (!pact.producao) pact.producao = {};
-            pact.producao.realizada = val;
+            pact.ofertado = val;
 
             // Also update localPactuacoes state to allow re-render without refetch
             const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
-            if (localIdx !== -1) localPactuacoes[localIdx].producao.realizada = val;
+            if (localIdx !== -1) localPactuacoes[localIdx].ofertado = val;
 
-            return Repository.savePactuacao(pact);
+            return Repository.savePactuacao({ id: pact.id, ofertado: val });
         });
 
         try {
@@ -1397,7 +1403,7 @@ window.openDetailModal = (groupKey) => {
         const byInst = {};
         allForGrupo.forEach(p => {
             if (!byInst[p.instId]) byInst[p.instId] = { real: 0 };
-            byInst[p.instId].real += parseInt(p.producao?.realizada || 0);
+            byInst[p.instId].real += getOferta(p); // oferta do instituto
         });
 
         const totalReal = Object.values(byInst).reduce((s, v) => s + v.real, 0);
@@ -1481,7 +1487,7 @@ window.openDetailModal = (groupKey) => {
         allForSigtap.forEach(p => {
             if (!byInst[p.instId]) byInst[p.instId] = { meta: 0, real: 0 };
             byInst[p.instId].meta = Math.max(byInst[p.instId].meta, parseInt(p.ofertaMinima || 0));
-            byInst[p.instId].real += parseInt(p.producao?.realizada || 0);
+            byInst[p.instId].real += getOferta(p); // oferta do instituto
         });
 
         const instEntries = Object.entries(byInst).sort(([aId], [bId]) => {
@@ -1590,20 +1596,19 @@ window.updateProducao = async function (input) {
 
     // Optimistic UI update could happen here
     // Find item
+    const ofertaVal = parseInt(newVal) || 0;
     const idx = localPactuacoes.findIndex(p => p.id === pId);
     if (idx !== -1) {
-        if (!localPactuacoes[idx].producao) localPactuacoes[idx].producao = {};
-        localPactuacoes[idx].producao.realizada = newVal;
+        localPactuacoes[idx].ofertado = ofertaVal;
     }
     // Update in ALL list too
     const allIdx = allPactuacoes.findIndex(p => p.id === pId);
     if (allIdx !== -1) {
-        if (!allPactuacoes[allIdx].producao) allPactuacoes[allIdx].producao = {};
-        allPactuacoes[allIdx].producao.realizada = newVal;
+        allPactuacoes[allIdx].ofertado = ofertaVal;
     }
 
     try {
-        await Repository.updateProducao(pId, newVal);
+        await Repository.savePactuacao({ id: pId, ofertado: ofertaVal });
         input.classList.add('border-green-500');
         setTimeout(() => input.classList.remove('border-green-500'), 1000);
     } catch (e) {

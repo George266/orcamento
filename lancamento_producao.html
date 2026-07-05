@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Lançamento de Produção - Gestão SUS</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "primary-dark": "#0b4cb4",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                        "text-main": "#0d131b",
+                        "text-secondary": "#4c6c9a",
+                        "border-light": "#e7ecf3",
+                        "border-dark": "#334155",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"],
+                        "body": ["Public Sans", "sans-serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-text-main dark:text-slate-200 font-display antialiased transition-colors duration-200">
+    <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+        <!-- Top Navigation -->
+        <header
+            class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
+            <div class="px-4 md:px-8 flex items-center justify-between h-16">
+                <a href="dashboard_orcamento.html"
+                    class="flex items-center gap-4 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+                    <div class="size-10 flex items-center justify-center overflow-hidden">
+                        <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Módulo Orçamento</p>
+                    </div>
+                </a>
+                <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                        href="dashboard_orcamento.html">Visão Geral</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                        href="alertas.html">Alertas</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                        href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                    <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
+                        href="lancamento_producao.html">Lançar Produção</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                        href="configuracao.html">Parâmetros do Incentivo</a>
+                    <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium"
+                        href="usuarios.html">Gestão de Usuários</a>
+                </nav>
+                <button onclick="window.handleLogout && window.handleLogout()"
+                    class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 px-4 md:px-8 py-6 max-w-[1600px] w-full mx-auto">
+            <!-- Título + Filtros -->
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Lançamento de Produção</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Lance o <b>Produzido</b> (fechamento) e o <b>Retorno SMSA</b> (aprovado pela secretaria) direto na linha — sem abrir modais.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Competência</label>
+                    <select id="filter-comp"
+                        class="rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-sm bg-white dark:bg-slate-800 dark:text-white font-bold shadow-sm">
+                    </select>
+                </div>
+            </div>
+
+            <!-- Filtros secundários -->
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <div class="relative flex-1 min-w-[220px] max-w-sm">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+                    <input id="search-input" type="text" placeholder="Buscar procedimento, SIGTAP ou instituto..."
+                        class="w-full pl-9 rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-sm bg-white dark:bg-slate-800 dark:text-white shadow-sm" />
+                </div>
+                <select id="filter-inst"
+                    class="rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-sm bg-white dark:bg-slate-800 dark:text-white shadow-sm">
+                    <option value="">Todos os institutos</option>
+                </select>
+                <span id="row-count" class="text-xs text-slate-400 ml-auto"></span>
+            </div>
+
+            <!-- Tabela -->
+            <div class="bg-white dark:bg-[#101822] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto">
+                <table class="w-full text-sm min-w-[1000px]">
+                    <thead class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Instituto</th>
+                            <th class="px-4 py-3 text-left">Procedimento</th>
+                            <th class="px-4 py-3 text-right">Meta</th>
+                            <th class="px-4 py-3 text-right">Ofertado</th>
+                            <th class="px-4 py-3 text-center bg-blue-50/60 dark:bg-blue-900/10">Produzido<br><span class="text-[9px] normal-case font-normal text-slate-400">fechamento → Previsto</span></th>
+                            <th class="px-4 py-3 text-center bg-emerald-50/60 dark:bg-emerald-900/10">Retorno SMSA<br><span class="text-[9px] normal-case font-normal text-slate-400">aprovado → Pago</span></th>
+                            <th class="px-4 py-3 text-right">Inc. Previsto</th>
+                            <th class="px-4 py-3 text-right">Inc. Pago</th>
+                        </tr>
+                    </thead>
+                    <tbody id="producao-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-3">Os valores são salvos automaticamente ao sair do campo. O incentivo é calculado (não digitado): só é pago quando a meta é atingida e há oferta.</p>
+        </main>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow-lg"></div>
+
+    <script type="module" src="src/js/auth-guard.js"></script>
+    <script type="module" src="src/js/producao-logic.js"></script>
+</body>
+
+</html>

@@ -31,6 +31,7 @@ export function initAuthGuard() {
                 // Definir áreas permitidas
                 const isAdminPage = currentPage.includes('dashboard_orcamento.html') ||
                     currentPage.includes('acompanhamento_orcamento.html') ||
+                    currentPage.includes('lancamento_producao.html') ||
                     currentPage.includes('configuracao.html') ||
                     currentPage.includes('usuarios.html');
 

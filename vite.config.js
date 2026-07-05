@@ -13,6 +13,7 @@ export default defineConfig({
         dashboard_orcamento: resolve(__dirname, 'dashboard_orcamento.html'),
         lancamento: resolve(__dirname, 'lancamento.html'),
         lancamento_check: resolve(__dirname, 'lancamento_check.html'),
+        lancamento_producao: resolve(__dirname, 'lancamento_producao.html'),
         login: resolve(__dirname, 'login.html'),
         usuarios: resolve(__dirname, 'usuarios.html'),
         perfil: resolve(__dirname, 'perfil.html'),

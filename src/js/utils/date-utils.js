@@ -168,7 +168,28 @@ export const DateUtils = {
         const monthIndex = shortMonths.indexOf(parts[0]);
         if (monthIndex === -1) return new Date(0);
 
-        const year = parseInt('20' + parts[1]); // Assumes 20xx
+        // aceita ano com 2 dígitos ("26" → 2026) ou 4 dígitos ("2026")
+        const year = parts[1].length <= 2 ? parseInt('20' + parts[1]) : parseInt(parts[1]);
+        if (isNaN(year)) return new Date(0);
         return new Date(year, monthIndex, 1);
+    },
+
+    /**
+     * Competência padrão de uma lista de competências ("mmm/yy"):
+     *  - o mês atual, se houver dados nele;
+     *  - senão, a competência mais recente COM dados que seja <= mês atual;
+     *  - senão (só há dados futuros), a mais recente da lista.
+     * @param {string[]} comps
+     * @returns {string} competência escolhida ('' se lista vazia)
+     */
+    competenciaPadrao: (comps) => {
+        if (!Array.isArray(comps) || comps.length === 0) return '';
+        const atual = DateUtils.getCurrentMonthLabel('short');
+        if (comps.includes(atual)) return atual;
+        const now = new Date();
+        const refAtual = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const ordenadas = [...comps].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a));
+        const anterior = ordenadas.find(c => DateUtils.parseCompetencia(c).getTime() <= refAtual);
+        return anterior || ordenadas[0];
     }
 };
