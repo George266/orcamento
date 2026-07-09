@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Financeiro - Instituto de Saúde</title>
+    <title>Produzido / Retorno - Instituto de Saúde</title>
     <link rel="icon" type="image/png" href="/logo.png" />
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap"
@@ -22,7 +22,7 @@
                 extend: {
                     colors: {
                         "primary": "#136dec",
-                        "background-light": "#f6f7f8", // Matching dashboard
+                        "background-light": "#f6f7f8",
                         "background-dark": "#101822",
                         "surface-light": "#ffffff",
                         "surface-dark": "#151f2e",
@@ -93,18 +93,18 @@
                         class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">edit_document</span>
                     <span class="text-sm font-medium leading-normal">Lançamentos</span>
                 </a>
-                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 group"
                     href="retorno_instituto.html"
                     style="display: flex !important; flex-direction: row !important; align-items: center !important;">
-                    <span
-                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">assignment_return</span>
-                    <span class="text-sm font-medium leading-normal">Produzido / Retorno</span>
+                    <span class="material-symbols-outlined text-[24px]">assignment_return</span>
+                    <span class="text-sm font-semibold leading-normal">Produzido / Retorno</span>
                 </a>
-                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 group"
+                <a class="flex flex-row items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
                     href="financeiro_instituto.html"
                     style="display: flex !important; flex-direction: row !important; align-items: center !important;">
-                    <span class="material-symbols-outlined text-[24px]">payments</span>
-                    <span class="text-sm font-semibold leading-normal">Financeiro</span>
+                    <span
+                        class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">payments</span>
+                    <span class="text-sm font-medium leading-normal">Financeiro</span>
                 </a>
             </nav>
         </div>
@@ -180,48 +180,36 @@
                 <!-- Page Title -->
                 <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div class="flex-1">
-                        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Relatórios
-                            Financeiros</h1>
+                        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Produzido /
+                            Retorno</h1>
                         <p class="text-slate-500 dark:text-slate-400 max-w-2xl text-base">
-                            Consolidação dos valores de produção do <strong id="inst-page-name"
+                            Acompanhe a produção lançada e o retorno (SMSA) por procedimento do <strong
+                                id="inst-page-name"
                                 class="font-semibold text-slate-700 dark:text-slate-200">Carregando...</strong>.
                         </p>
                     </div>
-
                 </div>
 
                 <!-- Filter Bar -->
                 <div
                     class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-end">
 
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Buscar</label>
+                    <div class="flex-1 min-w-[280px]">
+                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Buscar
+                            Procedimento</label>
                         <div class="relative">
-                            <input type="text" id="buscainteligente-fin"
+                            <input type="text" id="buscainteligente-ret"
                                 class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm text-slate-700 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary shadow-sm"
-                                placeholder="Nome do procedimento..." />
+                                placeholder="Nome ou código SIGTAP..." />
                             <span
                                 class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                         </div>
                     </div>
 
                     <div class="w-full sm:w-[200px]">
-                        <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Filtrar
-                            Incentivo</label>
-                        <div class="relative">
-                            <select id="filter-programa-fin"
-                                class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-white appearance-none cursor-pointer focus:ring-2 focus:ring-primary shadow-sm">
-                                <option value="">Todos os Incentivos</option>
-                            </select>
-                            <span
-                                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">filter_alt</span>
-                        </div>
-                    </div>
-
-                    <div class="w-full sm:w-[200px]">
                         <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Competência</label>
                         <div class="relative">
-                            <select id="filter-competencia-fin"
+                            <select id="filter-competencia-ret"
                                 class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-white appearance-none cursor-pointer focus:ring-2 focus:ring-primary shadow-sm">
                             </select>
                             <span
@@ -233,56 +221,55 @@
                 <!-- Table -->
                 <div
                     class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-                    <div id="table-container-fin"
-                        class="overflow-x-auto custom-scrollbar cursor-grab active:cursor-grabbing">
-                        <table class="min-w-full divide-y divide-border-light dark:divide-border-dark select-none">
-                            <thead class="bg-slate-50 dark:bg-slate-800/50">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+                            <thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
                                 <tr>
+                                    <th data-sort="instituto"
+                                        class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none hover:text-slate-700"
+                                        scope="col">
+                                        <div class="flex items-center gap-1">Instituto <span
+                                                class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
+                                        </div>
+                                    </th>
+                                    <th data-sort="sigtap"
+                                        class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none hover:text-slate-700"
+                                        scope="col">
+                                        <div class="flex items-center gap-1">Cód. SIGTAP <span
+                                                class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
+                                        </div>
+                                    </th>
                                     <th data-sort="procedimento"
-                                        class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[200px] cursor-pointer group hover:text-slate-700"
+                                        class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[220px] cursor-pointer group select-none hover:text-slate-700"
                                         scope="col">
-                                        <div class="flex items-center gap-1">Procedimento <span
+                                        <div class="flex items-center gap-1">Descrição <span
                                                 class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
                                         </div>
                                     </th>
-                                    <th data-sort="qtd"
-                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group hover:text-slate-700"
+                                    <th data-sort="produzido"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none hover:text-slate-700"
                                         scope="col">
-                                        <div class="flex items-center justify-center gap-1">Qtd Ofertada <span
+                                        <div class="flex items-center justify-center gap-1">Produzido <span
                                                 class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
                                         </div>
                                     </th>
-                                    <th data-sort="realizado"
-                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group hover:text-slate-700"
+                                    <th data-sort="retorno"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none hover:text-slate-700"
                                         scope="col">
-                                        <div class="flex items-center justify-center gap-1">Realizado <span
+                                        <div class="flex items-center justify-center gap-1">Retorno SMSA <span
                                                 class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
                                         </div>
                                     </th>
-                                    <th data-sort="fatSigtap"
-                                        class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group hover:text-slate-700"
+                                    <th data-sort="diff"
+                                        class="px-6 py-4 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group select-none hover:text-slate-700"
                                         scope="col">
-                                        <div class="flex items-center justify-end gap-1">Faturado SIGTAP <span
-                                                class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
-                                        </div>
-                                    </th>
-                                    <th data-sort="fatInc"
-                                        class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group hover:text-slate-700"
-                                        scope="col">
-                                        <div class="flex items-center justify-end gap-1">Inc. Previsto <span
-                                                class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
-                                        </div>
-                                    </th>
-                                    <th data-sort="fatIncPago"
-                                        class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer group hover:text-slate-700"
-                                        scope="col">
-                                        <div class="flex items-center justify-end gap-1">Inc. Pago <span
+                                        <div class="flex items-center justify-center gap-1">Diferença <span
                                                 class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-primary">unfold_more</span>
                                         </div>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody id="table-financeiro-inst"
+                            <tbody id="table-retorno-inst"
                                 class="bg-white dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
                                 <!-- Dynamic Content -->
                             </tbody>
@@ -291,15 +278,15 @@
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white uppercase"
                                         colspan="3">Consolidado do Período</td>
-                                    <td id="foot-sigtap"
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-400 text-right font-mono leading-tight">
-                                        R$ 0,00</td>
-                                    <td id="foot-inc-prev"
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-400 text-right font-mono">
-                                        R$ 0,00</td>
-                                    <td id="foot-inc-pago"
-                                        class="px-6 py-4 whitespace-nowrap text-base font-black text-emerald-700 dark:text-emerald-400 text-right font-mono">
-                                        R$ 0,00</td>
+                                    <td id="foot-produzido"
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-400 text-center font-mono">
+                                        0</td>
+                                    <td id="foot-retorno"
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700 dark:text-blue-400 text-center font-mono">
+                                        0</td>
+                                    <td id="foot-diff"
+                                        class="px-6 py-4 whitespace-nowrap text-base font-black text-slate-500 text-center font-mono">
+                                        0</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -311,7 +298,7 @@
     </main>
 
     <script type="module" src="src/js/auth-guard.js"></script>
-    <script type="module" src="src/js/financeiro-inst-logic.js"></script>
+    <script type="module" src="src/js/retorno-inst-logic.js"></script>
 </body>
 
 </html>

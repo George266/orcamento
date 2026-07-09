@@ -2,7 +2,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
+import { getOferta, getProduzido, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -13,6 +13,7 @@ function formatNumber(value) {
 }
 
 let currentPactuacoes = [];
+let redePactuacoes = []; // rede inteira (todos os institutos) — para avaliar a meta pela rede
 let localGruposOferta = [];
 let localProcs = [];
 let currentPeriod = null;
@@ -150,6 +151,7 @@ async function initInstituteDashboard() {
 
         // Fetch Data
         const allPactuacoes = await Repository.getPactuacoes();
+        redePactuacoes = allPactuacoes; // guarda a rede inteira para o gate da meta
         localGruposOferta = await Repository.getGruposOferta();
 
         // Initial Filter based on stored/determined userInstId
@@ -331,11 +333,13 @@ async function renderDashboard() {
     const getStats = (period) => {
         if (!period) return { pact: 0, real: 0, fin: 0, items: 0 };
         const data = currentPactuacoes.filter(p => p.competencia === period);
-        // Deduplica por sigtap+instituto (considerar a maior); atingimento = OFERTA ÷ META
+        // Oferta da REDE (soma de todos os institutos) para avaliar a meta — nunca por instituto.
+        const netMap = mapaOfertaRede(redePactuacoes.filter(p => p.competencia === period));
+        // Deduplica por sigtap+instituto (considerar a maior); atingimento = OFERTA DA REDE ÷ META
         const byKey = {};
         data.forEach(p => {
             const k = `${p.sigtap}-${p.instId}`;
-            if (!byKey[k]) byKey[k] = { meta: 0, oferta: 0, prod: 0, vBase: 0, vInc: 0 };
+            if (!byKey[k]) byKey[k] = { meta: 0, oferta: 0, prod: 0, vBase: 0, vInc: 0, chave: chaveOfertaRede(p) };
             byKey[k].meta = Math.max(byKey[k].meta, getMeta(p, localGruposOferta));
             byKey[k].oferta = Math.max(byKey[k].oferta, getOferta(p));
             byKey[k].prod = Math.max(byKey[k].prod, getProduzido(p));
@@ -346,7 +350,7 @@ async function renderDashboard() {
         Object.values(byKey).forEach(v => {
             pact += v.meta;
             real += v.oferta;
-            fin += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: v.oferta, meta: v.meta });
+            fin += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: netMap[v.chave] || 0, meta: v.meta });
         });
         return { pact, real, fin, items: data.length };
     };

@@ -1,6 +1,6 @@
 import { Repository } from './repository.js';
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getRetornoSMSA, getMeta, calcIncentivo } from './business-rules.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -248,8 +248,9 @@ function renderTable() {
         });
     }
 
-    // O incentivo é condicionado à meta DO PRÓPRIO INSTITUTO (igual ao acompanhamento/lançamento),
-    // calculada por linha em getMeta — não à meta da rede.
+    // O incentivo é condicionado à meta da REDE (soma das ofertas de todos os institutos),
+    // nunca à oferta isolada deste instituto. Usa a rede inteira (allPactuacoes) da competência.
+    const netMap = mapaOfertaRede(allPactuacoes.filter(p => p.competencia === compValue));
 
     // 2. Aggregate Data (Group by SIGTAP)
     const aggregated = {};
@@ -294,8 +295,9 @@ function renderTable() {
     let displayData = Object.values(aggregated).map(d => {
         const proc = localProcs.find(pr => pr.sigtap === d.sigtap);
 
-        // Meta atingida = oferta do PRÓPRIO INSTITUTO >= meta (igual ao acompanhamento/lançamento)
-        const isMetaMet = d.meta > 0 && d.ofertado >= d.meta;
+        // Meta atingida = OFERTA DA REDE (soma dos institutos) >= meta. A meta é sempre da rede.
+        const ofertaRede = netMap[chaveOfertaRede(d.items[0])] || 0;
+        const isMetaMet = d.meta > 0 && ofertaRede >= d.meta;
 
         // Faturamento SIGTAP e Incentivo — Previsto (sobre o Produzido) e Pago (sobre o Aprovado/SMSA)
         d.totalBase = d.realizado * d.vBaseUnit;           // Faturado SIGTAP Previsto

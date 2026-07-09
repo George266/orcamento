@@ -156,7 +156,10 @@ async function initAcompanhamentoInst() {
                             const headerName = document.getElementById('inst-header-name');
                             if (headerName) headerName.textContent = 'Todos os Vinculados';
                             // Disable editing in All view
-                            if (window.currentInstPermissions) window.currentInstPermissions.canEdit = false;
+                            if (window.currentInstPermissions) {
+                                window.currentInstPermissions.canEdit = false;
+                                window.currentInstPermissions.roleCanEdit = canEdit;
+                            }
                         } else {
                             localPactuacoes = allPactuacoes.filter(p => p.instId === selectedId);
                             const selInst = myInsts.find(i => i.id === selectedId);
@@ -165,7 +168,10 @@ async function initAcompanhamentoInst() {
                             const headerName = document.getElementById('inst-header-name');
                             if (headerName) headerName.textContent = selInst ? selInst.nome : 'Instituto';
                             // Enable editing if user has role
-                            if (window.currentInstPermissions) window.currentInstPermissions.canEdit = canEdit;
+                            if (window.currentInstPermissions) {
+                                window.currentInstPermissions.canEdit = canEdit;
+                                window.currentInstPermissions.roleCanEdit = canEdit;
+                            }
                         }
 
                         // UI Update
@@ -266,11 +272,12 @@ async function initAcompanhamentoInst() {
 
 
         // Pass permissions
-        // Default to false if in multi-view (length > 1), otherwise use user role
+        // Editing is disabled only in the aggregate "Todos" view; a specific
+        // institute selection (even for multi-institute users) respects the role.
         let effectiveCanEdit = canEdit;
-        if (allowedIds.length > 1) effectiveCanEdit = false;
+        if (userInstId === 'all') effectiveCanEdit = false;
 
-        window.currentInstPermissions = { canEdit: effectiveCanEdit };
+        window.currentInstPermissions = { canEdit: effectiveCanEdit, roleCanEdit: canEdit };
 
         renderTable();
         setupSortListeners();
@@ -625,7 +632,7 @@ window.deletePact = async function (id) {
         // Re-check empty state
         const tbody = document.getElementById('table-acompanhamento-inst');
         if (localPactuacoes.length === 0 && tbody) {
-            tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="px-6 py-10 text-center text-slate-400 italic">Nenhum dado encontrado.</td></tr>`;
         }
 
     } catch (error) {
@@ -640,7 +647,25 @@ function renderTable() {
     const compValue = document.getElementById('filter-competencia')?.value;
     const progValue = document.getElementById('filter-programa')?.value;
     const searchValue = document.getElementById('buscainteligente')?.value.toLowerCase();
-    const { canEdit } = window.currentInstPermissions || { canEdit: false };
+    const { canEdit, roleCanEdit } = window.currentInstPermissions || { canEdit: false, roleCanEdit: false };
+
+    // Discreet read-only notice: distinguishes a reader profile from the aggregate view.
+    const banner = document.getElementById('readonly-banner');
+    if (banner) {
+        const bannerText = document.getElementById('readonly-banner-text');
+        if (canEdit) {
+            banner.classList.add('hidden');
+            banner.classList.remove('flex');
+        } else {
+            if (bannerText) {
+                bannerText.textContent = roleCanEdit
+                    ? 'Selecione um instituto específico para lançar a oferta.'
+                    : 'Perfil somente leitura — os campos de oferta estão desabilitados.';
+            }
+            banner.classList.remove('hidden');
+            banner.classList.add('flex');
+        }
+    }
 
     if (!compValue) return;
 
@@ -872,7 +897,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (displayItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
     } else {
         tbody.innerHTML = displayItems.map(group => {
             const target = group.maxMeta;
@@ -932,8 +957,11 @@ function renderTable() {
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-sm font-black text-slate-900 dark:text-white">${group.procName}</span>
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide whitespace-nowrap">Oferta Unificada</span>
-                                ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100">${progLabel}</span>` : ''}
                             </div>
+                        </td>
+                        <td class="px-6 py-3 whitespace-nowrap text-xs text-slate-500 font-mono">${group.sigtap}</td>
+                        <td class="px-6 py-3">
+                            ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100">${progLabel}</span>` : '<span class="text-xs text-slate-300">—</span>'}
                         </td>
                         <td class="px-6 py-3 whitespace-nowrap text-center text-sm font-black text-indigo-700">
                             ${formatNumber(target)} <span class="text-[10px] font-normal text-slate-400">total</span>
@@ -981,15 +1009,17 @@ function renderTable() {
 
                     return `
                     <tr class="border-b border-indigo-50 dark:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800/30 transition-colors">
-                        <td class="pl-10 pr-4 py-3" colspan="2">
+                        <td class="pl-10 pr-4 py-3">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined text-[14px] text-indigo-300">subdirectory_arrow_right</span>
                                 <span class="text-xs font-medium text-slate-700 dark:text-slate-300">${procName}</span>
-                                <span class="text-[10px] font-mono text-slate-400">${sigtap}</span>
                             </div>
                         </td>
+                        <td class="px-6 py-3 text-[10px] font-mono text-slate-400">${sigtap}</td>
+                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
+                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
                         <td class="px-6 py-3 text-center text-xs font-bold text-slate-500">${formatNumber(subTotal)}</td>
-                        <td class="px-4 py-3 text-center text-[10px] text-slate-400" colspan="1">—</td>
+                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
                         ${subWeekInputs}
                         <td></td>
                     </tr>`;
@@ -1026,12 +1056,14 @@ function renderTable() {
                 <td class="px-6 py-4">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title="${group.procName}">${group.procName}</span>
-                        <div class="flex items-center gap-2 mt-0.5">
-                            <span class="text-xs text-slate-500 font-mono">Cód: ${group.sigtap}</span>
-                            ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100" title="${progNames.join(', ')}">${progLabel}</span>` : ''}
-                            ${isShared ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold border border-amber-100" title="Produção compartilhada entre institutos">Oferta compartilhada</span>` : ''}
-                        </div>
+                        ${isShared ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold border border-amber-100 mt-0.5 w-fit" title="Produção compartilhada entre institutos">Oferta compartilhada</span>` : ''}
                     </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
+                    ${group.sigtap}
+                </td>
+                <td class="px-6 py-4">
+                    ${progLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold border border-blue-100" title="${progNames.join(', ')}">${progLabel}</span>` : '<span class="text-xs text-slate-300">—</span>'}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-300 font-bold">
                     ${formatNumber(target)}

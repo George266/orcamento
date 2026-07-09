@@ -141,3 +141,41 @@ export function consolidarSigtap(itens, acc) {
 
     return { ...total, porInstituto };
 }
+
+// --- OFERTA DA REDE (gate da meta) ----------------------------------------
+// A meta NUNCA é avaliada por instituto: ela é da REDE. O atingimento usa a soma
+// das ofertas de todos os institutos para o mesmo procedimento (ou grupo de oferta).
+// Estes helpers dão a "fonte única" desse cálculo para todas as telas.
+
+/** Chave de agregação da oferta da rede: grupo de oferta (se houver) ou SIGTAP normalizado. */
+export function chaveOfertaRede(p) {
+    if (p?.grupoOfertaId) return `grupo_${p.grupoOfertaId}`;
+    return `sig_${String(p?.sigtap || '').replace(/\D/g, '')}`;
+}
+
+/**
+ * Mapa { chave -> oferta somada da REDE } a partir de pactuações de UMA competência.
+ * Regra por instituto: grupo de oferta soma os SIGTAPs do grupo; procedimento individual
+ * usa a MAIOR oferta entre incentivos. Entre institutos: soma.
+ *
+ * IMPORTANTE: passe apenas pactuações da mesma competência (a oferta varia por mês).
+ *
+ * @param {Array} pactuacoes - pactuações da rede inteira, já filtradas por competência
+ * @returns {Object} mapa chave (via chaveOfertaRede) -> oferta total da rede
+ */
+export function mapaOfertaRede(pactuacoes = []) {
+    const porChaveInst = {}; // chave -> { instId -> oferta }
+    for (const p of pactuacoes) {
+        const chave = chaveOfertaRede(p);
+        if (!porChaveInst[chave]) porChaveInst[chave] = {};
+        const atual = porChaveInst[chave][p.instId] || 0;
+        porChaveInst[chave][p.instId] = p?.grupoOfertaId
+            ? atual + getOferta(p)          // grupo: soma os sigtaps do mesmo instituto
+            : Math.max(atual, getOferta(p)); // individual: maior oferta do instituto
+    }
+    const mapa = {};
+    for (const chave of Object.keys(porChaveInst)) {
+        mapa[chave] = Object.values(porChaveInst[chave]).reduce((s, v) => s + v, 0);
+    }
+    return mapa;
+}

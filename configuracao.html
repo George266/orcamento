@@ -1799,6 +1799,23 @@
             window.renderGruposOferta();
         };
 
+        window.deletePrograma = async (id) => {
+            const prog = localProgramas.find(p => p.id === id);
+            const nome = prog?.nome || id;
+            const itens = localPactuacoes.filter(it => it.progId == id);
+            let msg = `Excluir o grupo de incentivo "${nome}"?`;
+            if (itens.length > 0) {
+                msg += `\n\nATENÇÃO: este grupo possui ${itens.length} item(ns) que também serão excluídos permanentemente.`;
+            }
+            if (!confirm(msg)) return;
+            for (const item of itens) {
+                await Repository.deletePactuacao(item.id);
+            }
+            await Repository.deletePrograma(id);
+            expandedPrograms.delete(id);
+            await window.loadPO();
+        };
+
         window.duplicarGrupoOferta = (id) => {
             const g = localGruposOferta.find(x => x.id === id);
             if (!g) return;
@@ -1944,7 +1961,8 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                                <button onclick="window.openModal('modal-po', '${p.id}', 'po')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-white border border-slate-200 rounded-lg"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                                <button onclick="window.openModal('modal-po', '${p.id}', 'po')" class="p-2 text-slate-400 hover:text-primary transition-colors bg-white border border-slate-200 rounded-lg" title="Editar"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                                <button onclick="window.deletePrograma('${p.id}')" class="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg" title="Excluir grupo"><span class="material-symbols-outlined text-[18px]">delete</span></button>
                                 <button onclick="window.openItensModal('${p.id}')" class="bg-primary text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm"><span class="material-symbols-outlined text-[16px]">add_link</span> Novo Item</button>
                             </div>
                         </div>

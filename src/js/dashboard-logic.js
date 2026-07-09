@@ -1,6 +1,6 @@
 import { Repository } from './repository.js';
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -193,10 +193,13 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     let totalFinanceiroPrev = 0;  // financeiro Previsto (sobre o Produzido)
     let totalFinanceiroPago = 0;  // financeiro Pago (sobre o Aprovado/SMSA)
 
+    // Oferta da REDE por procedimento/grupo (soma entre institutos) para avaliar a meta.
+    const netMap = mapaOfertaRede(filtered);
+
     const kpiMap = {};
     filtered.forEach(p => {
         const k = `${p.sigtap}-${p.instId}`;
-        if (!kpiMap[k]) kpiMap[k] = { meta: 0, oferta: 0, prod: 0, aprov: 0, vBase: 0, vInc: 0 };
+        if (!kpiMap[k]) kpiMap[k] = { meta: 0, oferta: 0, prod: 0, aprov: 0, vBase: 0, vInc: 0, chave: chaveOfertaRede(p) };
         kpiMap[k].meta = Math.max(kpiMap[k].meta, getMeta(p, localGruposOferta));
         kpiMap[k].oferta = Math.max(kpiMap[k].oferta, getOferta(p));
         kpiMap[k].prod = Math.max(kpiMap[k].prod, getProduzido(p));
@@ -208,9 +211,10 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     Object.values(kpiMap).forEach(v => {
         totalPactuado += v.meta;
         totalOfertado += v.oferta;
-        // Previsto = sobre o Produzido; Pago = sobre o Aprovado/SMSA
-        totalFinanceiroPrev += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: v.oferta, meta: v.meta });
-        totalFinanceiroPago += v.vBase * v.aprov + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.aprov, oferta: v.oferta, meta: v.meta });
+        // Incentivo condicionado à meta da REDE; Previsto = sobre o Produzido, Pago = sobre o Aprovado/SMSA
+        const ofertaRede = netMap[v.chave] || 0;
+        totalFinanceiroPrev += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: ofertaRede, meta: v.meta });
+        totalFinanceiroPago += v.vBase * v.aprov + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.aprov, oferta: ofertaRede, meta: v.meta });
     });
     const totalRealizado = totalOfertado; // "Ofertado" no dashboard = oferta do instituto
 
@@ -632,6 +636,7 @@ function renderCharts(currentData, allPactuacoes) {
 
         // Let's implement the container logic here assuming `localProgramas` will be available or just grouping by ID for now.
 
+        const progNetMap = mapaOfertaRede(currentData);
         const progStats = {};
         currentData.forEach(p => {
             const pid = p.progId || 'Sem Programa';
@@ -640,7 +645,7 @@ function renderCharts(currentData, allPactuacoes) {
             const vInc = parseFloat(p.vlrIncentivo || 0);
             const prod = getProduzido(p);
             const aprov = getRetornoSMSA(p);
-            const oferta = getOferta(p);
+            const oferta = progNetMap[chaveOfertaRede(p)] || 0; // meta pela REDE (soma dos institutos)
             const meta = getMeta(p, localGruposOferta);
             // Previsto (sobre o produzido) e Pago (sobre o aprovado/SMSA); incentivo só se meta atingida
             progStats[pid].total += vBase * prod + calcIncentivo({ vlrIncentivo: vInc, quantidade: prod, oferta, meta });

@@ -26,6 +26,10 @@ let itemsPerPage = 30;
 let sortCol = null;
 let sortDir = 'asc';
 
+// Base ordering (dropdown "Ordenar por"): 'inst' | 'proc'
+// Aplicado quando nenhuma coluna do cabeçalho está ativa (sortCol === null).
+let orderMode = 'inst';
+
 export async function initAcompanhamento() {
     // Load initial data
     allPactuacoes = await Repository.getPactuacoes();
@@ -69,6 +73,18 @@ export async function initAcompanhamento() {
     document.getElementById('filter-inst')?.addEventListener('change', renderTable);
     document.getElementById('filter-prog')?.addEventListener('change', renderTable);
     document.getElementById('filter-period')?.addEventListener('change', renderTable);
+
+    // Ordenação base (dropdown). Ao trocar, limpa a ordenação por coluna do cabeçalho.
+    const sortSelect = document.getElementById('filter-sort');
+    if (sortSelect) {
+        sortSelect.value = orderMode;
+        sortSelect.addEventListener('change', () => {
+            orderMode = sortSelect.value || 'inst';
+            sortCol = null;
+            currentPage = 1;
+            renderTable();
+        });
+    }
 
     // Click-to-edit for Offer (only works if element exists/rendered by permissions)
     document.getElementById('monitoring-table-body')?.addEventListener('click', (e) => {
@@ -128,6 +144,10 @@ export async function initAcompanhamento() {
         document.getElementById('filter-inst').value = '';
         clearProcAutocomplete();
         document.getElementById('filter-prog').value = '';
+        orderMode = 'inst';
+        sortCol = null;
+        const sortSel = document.getElementById('filter-sort');
+        if (sortSel) sortSel.value = 'inst';
         const periodSelect = document.getElementById('filter-period');
         if (periodSelect) {
             // Re-select the latest competence on clear
@@ -825,6 +845,20 @@ async function renderTable() {
     // ------------------------------------------------------------------
     // 2. Sort
     // ------------------------------------------------------------------
+    // Chave de ordenação por Instituto: menor sigla/nome entre os institutos do grupo
+    // (na visão consolidada uma linha pode somar vários institutos).
+    const instSortKey = (g) => {
+        let key = null;
+        g.items.forEach(it => {
+            const inst = localInsts.find(i => i.id === it.instId);
+            const label = String(inst?.sigla || inst?.nome || it.instId || '').toLowerCase();
+            if (key === null || label < key) key = label;
+        });
+        return key || '';
+    };
+    // Código SIGTAP numérico para ordenação estável por procedimento.
+    const procSortKey = (g) => parseInt(cleanSigtap(g.code)) || 0;
+
     if (sortCol) {
         groupList.sort((a, b) => {
             let va, vb;
@@ -843,6 +877,16 @@ async function renderTable() {
             if (va < vb) return sortDir === 'asc' ? -1 : 1;
             if (va > vb) return sortDir === 'asc' ? 1 : -1;
             return 0;
+        });
+    } else if (orderMode === 'proc') {
+        // Por procedimento (código SIGTAP), ignorando o instituto.
+        groupList.sort((a, b) => (procSortKey(a) - procSortKey(b)) || a.procName.localeCompare(b.procName));
+    } else {
+        // Por instituto: agrupa pelo instituto e, dentro, por código do procedimento.
+        groupList.sort((a, b) => {
+            const ia = instSortKey(a), ib = instSortKey(b);
+            if (ia !== ib) return ia.localeCompare(ib);
+            return (procSortKey(a) - procSortKey(b)) || a.procName.localeCompare(b.procName);
         });
     }
 
@@ -957,27 +1001,28 @@ async function renderTable() {
                     </button>
                 </td>
                 
-                <!-- Faturado SIGTAP (Previsto / Pago) -->
+                <!-- Faturado SIGTAP (Pago) -->
                 <td class="px-6 py-4 text-right font-mono text-xs">
-                    <div class="text-[10px] text-slate-400" title="Previsto — sobre o Produzido">Prev: ${formatCurrency(fatSigtapPrev)}</div>
                     <div class="font-bold text-slate-700 dark:text-slate-300" title="Pago — sobre o Aprovado (SMSA)">Pago: ${formatCurrency(fatSigtapPago)}</div>
                 </td>
 
-                <!-- Faturado Incentivo (Previsto / Pago) -->
+                <!-- Faturado Incentivo (Pago) -->
                 <td class="px-6 py-4 text-right">
                     <button onclick="window.openBreakdownModal('${g.key}')" class="flex flex-col items-end w-full group/inc font-mono" title="Clique para ver detalhes do incentivo">
-                        <span class="text-[10px] text-slate-400" title="Previsto — sobre o Produzido">Prev: ${formatCurrency(fatIncPrev)}</span>
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-300" title="Pago — sobre o Aprovado (SMSA)">
-                             Pago: ${formatCurrency(fatInc)}
-                             ${missedInc > 0 ? `<span class="text-[10px] text-red-500 font-bold ml-1">(perd. ${formatCurrency(missedInc)})</span>` : ''}
-                        </span>
+                        ${fatInc > 0
+                            ? `<span class="text-sm font-bold text-slate-700 dark:text-slate-300" title="Pago — sobre o Aprovado (SMSA)">
+                                 Pago: ${formatCurrency(fatInc)}
+                                 ${missedInc > 0 ? `<span class="text-[10px] text-red-500 font-bold ml-1">(perd. ${formatCurrency(missedInc)})</span>` : ''}
+                               </span>`
+                            : (missedInc > 0
+                                ? `<span class="text-sm font-bold text-red-500" title="Incentivo perdido — meta não atingida">(perd. ${formatCurrency(missedInc)})</span>`
+                                : `<span class="text-sm text-slate-300 dark:text-slate-600">—</span>`)}
                         <span class="text-[10px] text-slate-400 font-medium group-hover/inc:text-primary transition-colors leading-none mt-0.5">clique para detalhes</span>
                     </button>
                 </td>
 
-                <!-- Total (Previsto / Pago) -->
+                <!-- Total (Pago) -->
                 <td class="px-6 py-4 text-right font-mono text-xs">
-                    <div class="text-[10px] text-slate-400">Prev: ${formatCurrency(totalPrev)}</div>
                     <div class="text-sm font-black text-primary">Pago: ${formatCurrency(totalPago)}</div>
                 </td>
             </tr>
@@ -1039,6 +1084,14 @@ window.openBreakdownModal = (key) => {
         }
         itemsByInst[item.instId].push(item);
     });
+
+    // Meta avaliada pela REDE (soma das ofertas dos institutos), nunca por instituto.
+    const ofertaRede = group.totalOffer;
+    const metaRede = group.totalMeta;
+
+    // "Incentivo Pago" recalculado a persistir: registros importados/relançados podem não
+    // ter o valor gravado (só era calculado ao editar o campo). Recuperamos ao abrir o modal.
+    const pendingIncentivoSaves = [];
 
     const rows = [];
     instOrder.forEach(instId => {
@@ -1111,6 +1164,20 @@ window.openBreakdownModal = (key) => {
             </td>`;
 
             const retornoSMSAVal = (item.producao?.aprovada !== undefined && item.producao?.aprovada !== null) ? item.producao.aprovada : '';
+
+            // Recalcula o Incentivo Pago (sobre o Retorno SMSA) com a meta avaliada pela REDE.
+            // Se divergir do valor gravado (ex.: item relançado com aprovada mas sem cálculo),
+            // corrige e persiste — assim o cálculo não depende mais de reeditar o campo.
+            const incentivoPagoCalc = calcIncentivo({
+                vlrIncentivo: item.vlrIncentivo,
+                quantidade: getRetornoSMSA(item),
+                oferta: ofertaRede,
+                meta: metaRede,
+            });
+            if ((Number(item.incentivoPago) || 0) !== incentivoPagoCalc) {
+                item.incentivoPago = incentivoPagoCalc;
+                pendingIncentivoSaves.push(Repository.savePactuacao({ id: item.id, incentivoPago: incentivoPagoCalc }));
+            }
             const incentivoPagoVal = item.incentivoPago !== undefined && item.incentivoPago !== null ? item.incentivoPago : '';
 
             const retornoSMSACellHtml = `<td class="py-2 px-1.5 text-right align-middle">
@@ -1142,7 +1209,7 @@ window.openBreakdownModal = (key) => {
                     <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(meta)}</td>
                     <td class="py-2 px-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${formatNumber(finalOffer)}</td>
                     ${prodCellHtml}
-                    <td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300" title="Previsto (sobre o Produzido)">${formatCurrency(calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: prod, oferta: finalOffer, meta }))}</td>
+                    <td class="py-2 px-1.5 text-right font-mono text-xs font-bold text-slate-700 dark:text-slate-300" title="Previsto (sobre o Produzido)">${formatCurrency(calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: prod, oferta: ofertaRede, meta: metaRede }))}</td>
                     ${retornoSMSACellHtml}
                     ${incentivoPagoCellHtml}
                 </tr>
@@ -1151,6 +1218,13 @@ window.openBreakdownModal = (key) => {
     });
 
     tbody.innerHTML = rows.join('');
+
+    // Persiste os "Incentivo Pago" recuperados e atualiza a tabela de fundo com os totais corretos.
+    if (pendingIncentivoSaves.length) {
+        Promise.all(pendingIncentivoSaves)
+            .then(() => renderTable())
+            .catch(err => console.error('Erro ao recalcular Incentivo Pago:', err));
+    }
 
     document.getElementById('modal-breakdown').classList.remove('hidden');
 };
@@ -1266,9 +1340,8 @@ window.saveBreakdownField = async (pactId, field, value, groupKey) => {
             item.producao.aprovada = qtd;
             await Repository.savePactuacao({ id: item.id, producao: { aprovada: qtd } });
 
-            const meta = getMeta(item, localGruposOferta);
-            const oferta = getOferta(item);
-            const incentivoPago = calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: qtd, oferta, meta });
+            // Meta avaliada pela REDE (soma das ofertas dos institutos), nunca por instituto.
+            const incentivoPago = calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: qtd, oferta: group.totalOffer, meta: group.totalMeta });
             item.incentivoPago = incentivoPago;
             await Repository.savePactuacao({ id: item.id, incentivoPago });
 

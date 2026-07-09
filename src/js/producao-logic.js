@@ -2,7 +2,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getRetornoSMSA, getMeta, calcIncentivo } from './business-rules.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
 
 function formatNumber(v) { return new Intl.NumberFormat('pt-BR').format(v || 0); }
 function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0); }
@@ -118,7 +118,12 @@ function render() {
 
     const list = buildGroups();
     groupsByKey = {};
-    list.forEach(g => { groupsByKey[g.key] = g; });
+    // Oferta da REDE por procedimento/grupo (soma entre institutos) para avaliar a meta.
+    const netMap = mapaOfertaRede(allPactuacoes.filter(p => p.competencia === currentComp));
+    list.forEach(g => {
+        g.ofertaRede = netMap[chaveOfertaRede(g.items[0])] || 0;
+        groupsByKey[g.key] = g;
+    });
 
     const countEl = document.getElementById('row-count');
     if (countEl) countEl.textContent = `${list.length} linha(s)`;
@@ -129,8 +134,8 @@ function render() {
     }
 
     tbody.innerHTML = list.map(g => {
-        const incPrev = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.produzido, oferta: g.oferta, meta: g.meta });
-        const incPago = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.aprovada, oferta: g.oferta, meta: g.meta });
+        const incPrev = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.produzido, oferta: g.ofertaRede, meta: g.meta });
+        const incPago = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.aprovada, oferta: g.ofertaRede, meta: g.meta });
         const progLabel = [...g.progNomes].join(', ');
         return `
         <tr class="even:bg-slate-50/70 dark:even:bg-slate-800/20 hover:bg-blue-50/60 dark:hover:bg-slate-800/50 transition-colors">
@@ -183,7 +188,7 @@ document.addEventListener('change', async (e) => {
                 const inc = calcIncentivo({
                     vlrIncentivo: parseFloat(p.vlrIncentivo || 0),
                     quantidade: g.aprovada,
-                    oferta: g.oferta,
+                    oferta: g.ofertaRede, // meta pela REDE (soma dos institutos)
                     meta: getMeta(p, localGruposOferta),
                 });
                 p.incentivoPago = inc;
@@ -192,8 +197,8 @@ document.addEventListener('change', async (e) => {
         }
 
         // Atualiza as células de incentivo (resumo do grupo)
-        const incPrev = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.produzido, oferta: g.oferta, meta: g.meta });
-        const incPago = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.aprovada, oferta: g.oferta, meta: g.meta });
+        const incPrev = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.produzido, oferta: g.ofertaRede, meta: g.meta });
+        const incPago = calcIncentivo({ vlrIncentivo: g.vInc, quantidade: g.aprovada, oferta: g.ofertaRede, meta: g.meta });
         const elPrev = document.querySelector(`[data-incprev="${key}"]`);
         const elPago = document.querySelector(`[data-incpago="${key}"]`);
         if (elPrev) elPrev.textContent = formatCurrency(incPrev);
