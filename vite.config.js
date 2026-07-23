@@ -19,6 +19,7 @@ export default defineConfig({
         perfil: resolve(__dirname, 'perfil.html'),
         alertas: resolve(__dirname, 'alertas.html'),
         financeiro_instituto: resolve(__dirname, 'financeiro_instituto.html'),
+        retorno_instituto: resolve(__dirname, 'retorno_instituto.html'),
       },
     },
   },

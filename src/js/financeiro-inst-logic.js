@@ -365,7 +365,6 @@ function renderTable() {
                         <div class="text-[10px] text-slate-400">aprov: ${formatNumber(d.aprovada)}</div>
                     </td>
                     <td class="px-6 py-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 leading-tight">
-                        <div class="text-[11px] text-slate-400">Prev: ${formatCurrency(d.totalBase)}</div>
                         <div class="font-bold">Pago: ${formatCurrency(d.totalBasePago)}</div>
                     </td>
                     <td class="px-6 py-4 text-right font-mono text-sm text-slate-600 dark:text-slate-400">${formatCurrency(d.totalInc)}</td>
@@ -377,7 +376,7 @@ function renderTable() {
 
     // Update Footer Totals
     const elFootSigtap = document.getElementById('foot-sigtap');
-    if (elFootSigtap) elFootSigtap.innerHTML = `<span class="text-[11px] text-slate-400 font-normal block">Prev: ${formatCurrency(totalSigtap)}</span>Pago: ${formatCurrency(totalSigtapPago)}`;
+    if (elFootSigtap) elFootSigtap.innerHTML = `Pago: ${formatCurrency(totalSigtapPago)}`;
     const elFootIncPrev = document.getElementById('foot-inc-prev');
     if (elFootIncPrev) elFootIncPrev.textContent = formatCurrency(totalIncentivo);
     const elFootIncPago = document.getElementById('foot-inc-pago');

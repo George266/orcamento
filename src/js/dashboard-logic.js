@@ -640,46 +640,48 @@ function renderCharts(currentData, allPactuacoes) {
         const progStats = {};
         currentData.forEach(p => {
             const pid = p.progId || 'Sem Programa';
-            if (!progStats[pid]) progStats[pid] = { id: pid, total: 0, totalPago: 0 };
+            if (!progStats[pid]) progStats[pid] = { id: pid, sigtap: 0, incentivo: 0 };
             const vBase = parseFloat(p.vlrSigtapBase || 0);
             const vInc = parseFloat(p.vlrIncentivo || 0);
-            const prod = getProduzido(p);
-            const aprov = getRetornoSMSA(p);
+            const aprov = getRetornoSMSA(p); // base = aprovado/SMSA (receita realizada). Trocar por getProduzido(p) p/ usar o produzido.
             const oferta = progNetMap[chaveOfertaRede(p)] || 0; // meta pela REDE (soma dos institutos)
             const meta = getMeta(p, localGruposOferta);
-            // Previsto (sobre o produzido) e Pago (sobre o aprovado/SMSA); incentivo só se meta atingida
-            progStats[pid].total += vBase * prod + calcIncentivo({ vlrIncentivo: vInc, quantidade: prod, oferta, meta });
-            progStats[pid].totalPago += vBase * aprov + calcIncentivo({ vlrIncentivo: vInc, quantidade: aprov, oferta, meta });
+            // Colunas separadas: base SIGTAP e incentivo (incentivo só se meta atingida)
+            progStats[pid].sigtap += vBase * aprov;
+            progStats[pid].incentivo += calcIncentivo({ vlrIncentivo: vInc, quantidade: aprov, oferta, meta });
         });
 
-        const sortedProgs = Object.values(progStats).sort((a, b) => b.total - a.total);
-        const totalRev = sortedProgs.reduce((acc, i) => acc + i.total, 0);
+        const sortedProgs = Object.values(progStats)
+            .sort((a, b) => (b.sigtap + b.incentivo) - (a.sigtap + a.incentivo));
 
         if (sortedProgs.length === 0) {
             incentiveContainer.innerHTML = `<div class="h-40 flex items-center justify-center text-slate-400 text-xs italic">Sem faturamento.</div>`;
         } else {
-            // We need names. I'll fetch them in `updateDashboard`.
-            // Here I'll try to find name from a global `localProgramas` if it exists, else ID.
+            const header = `
+                <div class="flex items-center justify-between text-[10px] uppercase tracking-wide font-semibold text-slate-400 dark:text-slate-500 pb-1.5 mb-0.5 border-b border-slate-100 dark:border-slate-800">
+                    <span>Programa</span>
+                    <div class="flex gap-4 shrink-0">
+                        <span class="w-24 text-right">SIGTAP</span>
+                        <span class="w-24 text-right">Incentivo</span>
+                    </div>
+                </div>`;
 
-            incentiveContainer.innerHTML = sortedProgs.map(item => {
-                const pct = totalRev > 0 ? (item.total / totalRev) * 100 : 0;
-                // Placeholder for name lookup
+            const rows = sortedProgs.map(item => {
                 const name = (window.localProgramas?.find(pg => pg.id === item.id)?.nome) || item.id;
-
                 return `
                     <div class="flex items-center justify-between text-sm group">
                         <div class="flex items-center gap-2 flex-1 overflow-hidden">
                              <div class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></div>
                              <span class="truncate text-slate-700 dark:text-slate-300" title="${name}">${name}</span>
                         </div>
-                        <div class="text-right flex flex-col items-end leading-tight">
-                             <span class="text-[11px] text-slate-500 dark:text-slate-400">Prev: ${formatCurrency(item.total)}</span>
-                             <span class="text-sm font-bold text-slate-900 dark:text-white">Pago: ${formatCurrency(item.totalPago)}</span>
-                             <span class="text-[10px] text-slate-400">${pct.toFixed(1)}%</span>
+                        <div class="flex gap-4 shrink-0">
+                             <span class="w-24 text-right font-bold text-slate-900 dark:text-white">${formatCurrency(item.sigtap)}</span>
+                             <span class="w-24 text-right font-bold text-indigo-600 dark:text-indigo-400">${formatCurrency(item.incentivo)}</span>
                         </div>
-                    </div>
-                 `;
+                    </div>`;
             }).join('');
+
+            incentiveContainer.innerHTML = header + rows;
         }
     }
 

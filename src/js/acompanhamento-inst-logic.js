@@ -991,10 +991,14 @@ function renderTable() {
                 const subRows = (grupoObj?.procedimentos || []).map(sigtap => {
                     const proc = localProcs.find(x => x.sigtap === sigtap);
                     const procName = proc?.nome || sigtap;
-                    // Find the matching pactuacao item for this institute + sigtap
-                    const pact = group.items.find(i => i.sigtap === sigtap);
-                    const pactId = pact?.id || '';
-                    const semVals = [1,2,3,4,5].map(w => parseInt(pact?.producao?.[`sem${w}`] || 0));
+                    // Agrega TODAS as pactuações deste sigtap presentes no grupo.
+                    // Na visão "Todos os Vinculados" isso soma a rede (vários institutos);
+                    // numa visão de instituto único devolve o(s) registro(s) do próprio instituto.
+                    // Antes usava .find() e mostrava só o primeiro registro (zerava o agregado).
+                    const pacts = group.items.filter(i => cleanSigtapFn(i.sigtap) === cleanSigtapFn(sigtap));
+                    const pactId = pacts[0]?.id || ''; // edição (visão individual) grava no registro do instituto
+                    const semVals = [1,2,3,4,5].map(w =>
+                        pacts.reduce((s, p) => s + (parseInt(p?.producao?.[`sem${w}`] || 0)), 0));
                     const subTotal = semVals.reduce((s, v) => s + v, 0);
 
                     // All procedures in the group are editable — pass sigtap so a pactuação can be auto-created if missing
