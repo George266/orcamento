@@ -3,7 +3,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getMeta, atingimentoPct, statusMeta } from './business-rules.js';
+import { getOferta, getMeta, atingimentoPct, statusMeta, normalizarCodigo } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -716,7 +716,7 @@ function renderTable() {
     // 2. Group by SIGTAP (or by grupoOfertaId when unified)
     const groups = {};
     filtered.forEach(p => {
-        const cleanSigtap = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
+        const cleanSigtap = (s) => normalizarCodigo(s); // preserva sufixo de variante (ex.: -CARD)
 
         const parseRobust = (v) => {
             if (typeof v === 'number') return v;
@@ -847,7 +847,7 @@ function renderTable() {
         }
     });
 
-    const cleanSigtapFn = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
+    const cleanSigtapFn = (s) => normalizarCodigo(s); // preserva sufixo de variante (ex.: -CARD)
 
     // Remove standalone entries for SIGTAPs already covered by a unified group
     const sigtapsInGrupos = new Set();
@@ -1423,7 +1423,7 @@ window.openDetailModal = (groupKey) => {
     if (modalFooter) modalFooter.classList.remove('hidden');
 
     const currentComp = document.getElementById('filter-competencia')?.value || '';
-    const cleanSigtapFn = s => (s || '').replace(/\D/g, '');
+    const cleanSigtapFn = s => normalizarCodigo(s); // preserva sufixo de variante (ex.: -CARD)
     const userInstIds = new Set(group.items.map(i => i.instId));
     const redeBody = document.getElementById('modal-rede-body');
 

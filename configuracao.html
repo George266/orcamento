@@ -66,31 +66,28 @@
     <header
         class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
         <div class="px-4 md:px-8 flex items-center justify-between h-16">
-            <a href="dashboard_orcamento.html"
-                class="flex items-center gap-4 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
-                <div class="size-10 flex items-center justify-center overflow-hidden">
-                    <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
-                </div>
-                <div>
-                    <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Módulo Orçamento</p>
-                </div>
-            </a>
-            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="dashboard_orcamento.html">Visão Geral</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="alertas.html">Alertas</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="lancamento_producao.html">Lançar Produção</a>
-                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5"
-                    href="configuracao.html">Parâmetros do Incentivo</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="usuarios.html">Gestão de Usuários</a>
-            </nav>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 lg:gap-8 min-w-0">
+                <a href="dashboard_orcamento.html"
+                    class="flex items-center gap-3 shrink-0 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+                    <div class="size-10 flex items-center justify-center overflow-hidden">
+                        <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Módulo Orçamento</p>
+                    </div>
+                </a>
+                <nav class="hidden md:flex items-center gap-5 lg:gap-7">
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="dashboard_orcamento.html">Visão Geral</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="alertas.html">Alertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="lancamento_producao.html">Lançar Produção</a>
+                    <a class="whitespace-nowrap text-primary text-sm font-bold border-b-2 border-primary py-5" href="configuracao.html">Parâmetros do Incentivo</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="usuarios.html">Gestão de Usuários</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="kanban.html">Demandas</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
                 <button onclick="window.handleLogout && window.handleLogout()"
                     class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
                     <span class="material-symbols-outlined text-[20px]">logout</span>
@@ -206,6 +203,10 @@
                         <button onclick="window.openAuditModal()"
                             class="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2" title="Temporário — remover após correção dos dados">
                             <span class="material-symbols-outlined text-[18px]">bug_report</span> Auditar SIGTAP
+                        </button>
+                        <button onclick="window.openEspecialidadesModal()"
+                            class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2" title="Gerenciar especialidades das consultas">
+                            <span class="material-symbols-outlined text-[18px]">stethoscope</span> Especialidades
                         </button>
                         <button onclick="openModal('modal-procedimento')"
                             class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
@@ -332,10 +333,20 @@
                         <h2 class="text-lg font-bold text-slate-900 dark:text-white">Grupos de Oferta Unificada</h2>
                         <p class="text-xs text-slate-500 mt-1">Agrupe procedimentos que compartilham uma meta coletiva (ex: 1.000 mamografias entre rastreamento e diagnóstica).</p>
                     </div>
-                    <button onclick="openModal('modal-grupo', null, 'grupo')"
-                        class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shrink-0">
-                        <span class="material-symbols-outlined text-[18px]">add</span> Novo Grupo
-                    </button>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <div id="grupo-filtro-status" class="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs font-bold">
+                            <button data-filtro="vigente" onclick="window.setGrupoFiltro('vigente')"
+                                class="px-3 py-1.5 transition-colors">Vigentes</button>
+                            <button data-filtro="encerrada" onclick="window.setGrupoFiltro('encerrada')"
+                                class="px-3 py-1.5 transition-colors border-l border-slate-200 dark:border-slate-700">Encerradas</button>
+                            <button data-filtro="todas" onclick="window.setGrupoFiltro('todas')"
+                                class="px-3 py-1.5 transition-colors border-l border-slate-200 dark:border-slate-700">Todas</button>
+                        </div>
+                        <button onclick="openModal('modal-grupo', null, 'grupo')"
+                            class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">add</span> Novo Grupo
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -628,6 +639,7 @@
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Competência</label>
                             <select id="item-competencia"
+                                onchange="window.onItemCompetenciaChange()"
                                 class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
                         </div>
                         <div class="md:col-span-2">
@@ -686,17 +698,20 @@
                             class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Início</label>
-                        <input type="month" id="grupo-vigencia-inicio"
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                <div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Início</label>
+                            <input type="month" id="grupo-vigencia-inicio" oninput="window.marcarVigenciaManual()"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Fim</label>
+                            <input type="month" id="grupo-vigencia-fim" oninput="window.marcarVigenciaManual()"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Vigência Fim</label>
-                        <input type="month" id="grupo-vigencia-fim"
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
-                    </div>
+                    <p id="grupo-vigencia-hint" class="text-[10px] mt-1"></p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Procedimentos do Grupo</label>
@@ -840,7 +855,7 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Código SIGTAP <span class="text-slate-400 font-normal normal-case">(10 dígitos)</span></label>
                     <input type="text" id="proc-sigtap" maxlength="10"
-                        oninput="this.value=this.value.replace(/\D/g,'')"
+                        oninput="this.value=this.value.replace(/\D/g,''); window.updateProcCodigoPreview && window.updateProcCodigoPreview()"
                         onblur="if(this.value)this.value=this.value.replace(/\D/g,'').padStart(10,'0')"
                         class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono">
                 </div>
@@ -857,6 +872,27 @@
                         <option value="Inativo">Inativo</option>
                     </select>
                 </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Especialidade <span class="text-slate-400 font-normal normal-case">(só para consultas especializadas que dividem o mesmo SIGTAP)</span></label>
+                    <select id="proc-especialidade" onchange="window.onProcEspecialidadeChange()"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                        <option value="">— Nenhuma (procedimento comum) —</option>
+                    </select>
+                    <div id="proc-esp-nova" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800/60">
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Nome da nova especialidade</label>
+                            <input type="text" id="proc-esp-nova-nome"
+                                class="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Código curto</label>
+                            <input type="text" id="proc-esp-nova-codigo" maxlength="10"
+                                oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); window.updateProcCodigoPreview && window.updateProcCodigoPreview()"
+                                class="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono">
+                        </div>
+                    </div>
+                    <p id="proc-codigo-preview" class="text-[11px] text-slate-500 mt-2 font-mono"></p>
+                </div>
             </div>
             <div class="flex gap-3 mt-8">
                 <button onclick="closeModal('modal-procedimento')"
@@ -867,8 +903,294 @@
         </div>
     </div>
 
+    <!-- MODAL: INCENTIVOS DO PROCEDIMENTO (espelho da aba de incentivos, com o procedimento travado) -->
+    <div id="modal-proc-vinculos"
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-5xl w-full shadow-2xl overflow-y-auto max-h-[95vh]">
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold" id="pv-title">Incentivos do procedimento</h3>
+                    <p class="text-xs text-slate-500 mt-1 font-mono" id="pv-subtitle"></p>
+                </div>
+                <button onclick="closeModal('modal-proc-vinculos')"
+                    class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Form: adicionar / editar vínculo -->
+            <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
+                <h4 class="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-wider">Vincular este
+                    procedimento a um incentivo</h4>
+                <input type="hidden" id="pv-sigtap">
+                <input type="hidden" id="pv-item-id">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Incentivo</label>
+                        <select id="pv-prog" onchange="window.pvOnProgChange()"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Instituto</label>
+                        <select id="pv-inst" onchange="window.pvSugerirMeta()"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Competência</label>
+                        <select id="pv-comp" onchange="window.pvSugerirMeta()"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Grupo de Oferta</label>
+                        <select id="pv-grupo" onchange="window.pvOnGrupoChange()"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm"></select>
+                    </div>
+                    <div class="md:col-span-1" id="pv-qtd-container">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Meta</label>
+                        <input type="number" id="pv-qtd"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Incentivo R$</label>
+                        <input type="number" step="0.01" id="pv-vlr"
+                            class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1 flex gap-2">
+                        <button id="pv-btn-save" onclick="window.pvSave()" title="Salvar"
+                            class="w-full bg-primary text-white font-bold py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[18px]">check</span>
+                        </button>
+                        <button id="pv-btn-reset" onclick="window.pvResetForm()" title="Cancelar edição"
+                            class="hidden w-full bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold py-2 rounded-lg text-sm flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">A meta é sugerida com base no mês anterior deste
+                    incentivo/instituto, quando houver. Ao escolher um grupo, a meta passa a ser a do grupo.</p>
+            </div>
+
+            <!-- Tabela: vínculos existentes -->
+            <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/30">
+                        <tr>
+                            <th class="px-4 py-3">Incentivo</th>
+                            <th class="px-4 py-3">Instituto</th>
+                            <th class="px-4 py-3 text-center">Competência</th>
+                            <th class="px-4 py-3">Grupo</th>
+                            <th class="px-4 py-3 text-right">Meta</th>
+                            <th class="px-4 py-3 text-right">Incentivo R$</th>
+                            <th class="px-4 py-3 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pv-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-especialidades"
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-[#151e2a] rounded-2xl p-6 max-w-xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="text-xl font-bold">Especialidades das consultas</h3>
+                <button onclick="closeModal('modal-especialidades')" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Usadas para distinguir consultas especializadas que compartilham o mesmo código SIGTAP. O código curto vira o sufixo (ex.: <span class="font-mono">0301010072-CARD</span>).</p>
+            <div id="especialidades-list" class="overflow-y-auto flex-1 space-y-2 pr-1"></div>
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between gap-3">
+                <button onclick="window.addEspecialidadeRow()"
+                    class="px-4 py-2 text-sm font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[18px]">add</span> Adicionar
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="closeModal('modal-especialidades')"
+                        class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm">Cancelar</button>
+                    <button onclick="window.saveEspecialidades()"
+                        class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition-colors text-sm">Salvar lista</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { Repository } from './src/js/repository.js';
+
+        // --- VIGÊNCIA / COMPETÊNCIA (ponte única) -------------------------------
+        // A vigência dos grupos usa formato de mês "YYYY-MM" (input type=month);
+        // a competência dos itens usa "mmm/yy" (ex.: "jul/25"). Toda comparação
+        // entre os dois passa por estas funções — não parsear datas fora daqui.
+        const _MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+        // "jul/25" -> "2025-07". Retorna null para competência não-mensal ("Geral", vazio).
+        window.competenciaToYM = (comp) => {
+            if (!comp) return null;
+            const m = comp.toString().trim().toLowerCase().match(/^([a-zç]{3})\/(\d{2,4})$/);
+            if (!m) return null;
+            const mi = _MESES_CURTOS.indexOf(m[1]);
+            if (mi < 0) return null;
+            const yy = m[2].length <= 2 ? 2000 + parseInt(m[2], 10) : parseInt(m[2], 10);
+            return `${yy}-${String(mi + 1).padStart(2, '0')}`;
+        };
+
+        // "YYYY-MM-DD" (data do incentivo) -> "YYYY-MM". Nulo se inválido.
+        const _dataToYM = (d) => (d && /^\d{4}-\d{2}/.test(d.toString())) ? d.toString().slice(0, 7) : null;
+
+        // Verdadeiro se a competência cai dentro da vigência do grupo.
+        // Nulos = período aberto; grupo sem vigência ou competência "Geral" => sempre dentro.
+        window.competenciaDentroVigencia = (comp, grupo) => {
+            if (!grupo) return true;
+            const vi = grupo.vigenciaInicio || null;
+            const vf = grupo.vigenciaFim || null;
+            if (!vi && !vf) return true;              // grupo sem vigência: vale sempre
+            const ym = window.competenciaToYM(comp);
+            if (!ym) return true;                     // "Geral"/sem competência: não restringe
+            return ym >= (vi || '0000-01') && ym <= (vf || '9999-12');
+        };
+
+        // Interseção das vigências dos incentivos: max(inícios), min(fins).
+        // Incentivo sem data conta como "aberto" (não restringe). vazia=true se não se cruzam.
+        window.interseccaoVigenciaIncentivos = (progIds) => {
+            let inicio = null, fim = null;
+            (progIds || []).forEach(pid => {
+                const prog = localProgramas.find(p => p.id === pid);
+                if (!prog) return;
+                const pi = _dataToYM(prog.inicio);
+                const pf = _dataToYM(prog.fim);
+                if (pi && (!inicio || pi > inicio)) inicio = pi;   // max dos inícios
+                if (pf && (!fim || pf < fim)) fim = pf;            // min dos fins
+            });
+            return { inicio, fim, vazia: !!(inicio && fim && inicio > fim) };
+        };
+
+        // --- ESPECIALIDADES (consultas especializadas) --------------------------
+        // Consultas especializadas compartilham o mesmo código SIGTAP real. A "variante"
+        // (código curto) distingue cada especialidade no relatório. Guardadas em config/system.
+        const DEFAULT_ESPECIALIDADES = [
+            { codigo: 'ANEST', nome: 'Anestesiologia' },
+            { codigo: 'CARD', nome: 'Cardiologia' },
+            { codigo: 'CIRAMB', nome: 'Cirurgia Ambulatorial' },
+            { codigo: 'CIRCABP', nome: 'Cirurgia de Cabeça e Pescoço' },
+            { codigo: 'CIRCARDV', nome: 'Cirurgia Cardiovascular' },
+            { codigo: 'CIRGER', nome: 'Cirurgia Geral' },
+            { codigo: 'CIRPED', nome: 'Cirurgia Pediátrica' },
+            { codigo: 'CIRPLA', nome: 'Cirurgia Plástica' },
+            { codigo: 'CIRTOR', nome: 'Cirurgia Torácica' },
+            { codigo: 'CIRVASC', nome: 'Cirurgia Vascular' },
+            { codigo: 'CLIGER', nome: 'Clínica Geral' },
+            { codigo: 'COLOPRO', nome: 'Coloproctologia' },
+            { codigo: 'CONSMED', nome: 'Consultório Médico' },
+            { codigo: 'DERMA', nome: 'Dermatologia' },
+            { codigo: 'ELETROF', nome: 'Eletrofisiologia' },
+            { codigo: 'ENDOCR', nome: 'Endocrinologia/Metabologia' },
+            { codigo: 'ENDODIG', nome: 'Endoscopia Digestiva' },
+            { codigo: 'ENFERM', nome: 'Enfermagem' },
+            { codigo: 'GASTRO', nome: 'Gastroenterologia' },
+            { codigo: 'GERIAT', nome: 'Geriatria' },
+            { codigo: 'GINEC', nome: 'Ginecologia' },
+            { codigo: 'GINOBST', nome: 'Ginecologia/Obstetrícia' },
+            { codigo: 'HEMAT', nome: 'Hematologia' },
+            { codigo: 'INFECTO', nome: 'Infectologia' },
+            { codigo: 'INFERT', nome: 'Infertilidade' },
+            { codigo: 'MASTO', nome: 'Mastologia' },
+            { codigo: 'NEFRO', nome: 'Nefrologia' },
+            { codigo: 'NEURO', nome: 'Neurologia' },
+            { codigo: 'OFTAL', nome: 'Oftalmologia' },
+            { codigo: 'ONCOL', nome: 'Oncologia Clínica' },
+            { codigo: 'ORTO', nome: 'Ortopedia/Traumatologia' },
+            { codigo: 'OTORRINO', nome: 'Otorrinolaringologia' },
+            { codigo: 'PEDIAT', nome: 'Pediatria' },
+            { codigo: 'PNEUMO', nome: 'Pneumologia/Tisiologia' },
+            { codigo: 'PROCTO', nome: 'Proctologia' },
+            { codigo: 'PSIQ', nome: 'Psiquiatria' },
+            { codigo: 'RADIOL', nome: 'Radiologia' },
+            { codigo: 'RADIOT', nome: 'Radioterapia' },
+            { codigo: 'REUMA', nome: 'Reumatologia' },
+            { codigo: 'TECENF', nome: 'Técnico de Enfermagem' },
+            { codigo: 'UROL', nome: 'Urologia' },
+        ];
+        let localEspecialidades = [];
+
+        // Carrega a lista (semeando os padrões na 1ª vez).
+        window.loadEspecialidades = async () => {
+            const cfg = (await Repository.getSystemConfig()) || {};
+            if (Array.isArray(cfg.especialidades) && cfg.especialidades.length) {
+                localEspecialidades = cfg.especialidades;
+            } else {
+                localEspecialidades = DEFAULT_ESPECIALIDADES.slice();
+                await Repository.saveSystemConfig({ especialidades: localEspecialidades });
+            }
+            return localEspecialidades;
+        };
+
+        const persistEspecialidades = async () => {
+            await Repository.saveSystemConfig({ especialidades: localEspecialidades });
+        };
+
+        // Preenche o <select> de especialidade no modal de procedimento.
+        const preencherSelectEspecialidade = (selected = '') => {
+            const sel = document.getElementById('proc-especialidade');
+            if (!sel) return;
+            const opts = ['<option value="">— Nenhuma (procedimento comum) —</option>']
+                .concat(localEspecialidades
+                    .slice()
+                    .sort((a, b) => a.nome.localeCompare(b.nome))
+                    .map(e => `<option value="${e.codigo}">${e.nome} (${e.codigo})</option>`))
+                .concat('<option value="__nova__">+ Outra especialidade…</option>');
+            sel.innerHTML = opts.join('');
+            sel.value = selected || '';
+        };
+
+        // Gerenciador de especialidades (revisar/ajustar a lista).
+        const renderEspecialidadeRows = () => {
+            const cont = document.getElementById('especialidades-list');
+            cont.innerHTML = (window._espDraft || []).map((e, i) => `
+                <div class="flex gap-2 items-center">
+                    <input type="text" value="${(e.nome || '').replace(/"/g, '&quot;')}" oninput="window._espDraft[${i}].nome=this.value"
+                        placeholder="Nome da especialidade" class="flex-1 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm px-3 py-2">
+                    <input type="text" value="${(e.codigo || '').replace(/"/g, '&quot;')}" maxlength="10"
+                        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); window._espDraft[${i}].codigo=this.value"
+                        placeholder="COD" class="w-28 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg text-sm px-3 py-2 font-mono">
+                    <button onclick="window.removeEspecialidadeRow(${i})" class="text-slate-400 hover:text-red-500 shrink-0"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                </div>`).join('') || '<p class="text-xs text-slate-400 text-center py-6">Nenhuma especialidade. Clique em "Adicionar".</p>';
+        };
+
+        window.openEspecialidadesModal = async () => {
+            if (!localEspecialidades.length) await window.loadEspecialidades();
+            window._espDraft = localEspecialidades.map(e => ({ ...e }));
+            renderEspecialidadeRows();
+            openModal('modal-especialidades');
+        };
+
+        window.addEspecialidadeRow = () => {
+            window._espDraft = window._espDraft || [];
+            window._espDraft.push({ nome: '', codigo: '' });
+            renderEspecialidadeRows();
+        };
+
+        window.removeEspecialidadeRow = (i) => {
+            window._espDraft.splice(i, 1);
+            renderEspecialidadeRows();
+        };
+
+        window.saveEspecialidades = async () => {
+            const draft = (window._espDraft || [])
+                .map(e => ({ nome: (e.nome || '').trim(), codigo: (e.codigo || '').trim().toUpperCase() }))
+                .filter(e => e.nome || e.codigo);
+            for (const e of draft) {
+                if (!e.nome || !e.codigo) { alert('Toda especialidade precisa de nome e código curto.'); return; }
+            }
+            const codes = draft.map(e => e.codigo);
+            const dup = codes.find((c, i) => codes.indexOf(c) !== i);
+            if (dup) { alert(`Código repetido: "${dup}". Cada especialidade precisa de um código único.`); return; }
+            localEspecialidades = draft;
+            await persistEspecialidades();
+            closeModal('modal-especialidades');
+            alert('Lista de especialidades salva.');
+        };
 
         // --- SYSTEM CONFIG LOGIC ---
         window.loadSystemConfig = async () => {
@@ -1144,20 +1466,27 @@
 
             if (entity === 'proc') {
                 const titleEl = document.getElementById('modal-proc-title');
+                document.getElementById('proc-esp-nova').classList.add('hidden');
+                document.getElementById('proc-esp-nova-nome').value = '';
+                document.getElementById('proc-esp-nova-codigo').value = '';
                 if (id) {
                     const proc = localProcedimentos.find(p => p.id === id);
                     titleEl.textContent = 'Editar Procedimento';
                     document.getElementById('proc-nome').value = proc.nome;
-                    document.getElementById('proc-sigtap').value = proc.sigtap;
+                    // Campo SIGTAP mostra sempre o código real (só dígitos).
+                    document.getElementById('proc-sigtap').value = proc.codigoFaturamento || proc.sigtap;
                     document.getElementById('proc-vlr-sigtap').value = proc.vlrSigtap || 0;
                     document.getElementById('proc-status').value = proc.status;
+                    preencherSelectEspecialidade(proc.variante || '');
                 } else {
                     titleEl.textContent = 'Novo Procedimento SIGTAP';
                     document.getElementById('proc-nome').value = '';
                     document.getElementById('proc-sigtap').value = '';
                     document.getElementById('proc-vlr-sigtap').value = '';
                     document.getElementById('proc-status').value = 'Ativo';
+                    preencherSelectEspecialidade('');
                 }
+                window.updateProcCodigoPreview();
             }
 
             if (entity === 'grupo') {
@@ -1172,6 +1501,10 @@
                     document.getElementById('grupo-vigencia-inicio').value = g.vigenciaInicio || '';
                     document.getElementById('grupo-vigencia-fim').value = g.vigenciaFim || '';
                     window._grupoSelectedProgs = g.progIds || (g.progId ? [g.progId] : []);
+                    // Só re-herda vigência se este grupo já era 'herdada'. Grupos antigos
+                    // (sem a flag) contam como personalizados → nunca sobrescreve dados existentes.
+                    window._grupoVigenciaTouched = g.vigenciaOrigem !== 'herdada';
+                    window._grupoFamiliaId = g.familiaId || g.id; // preserva a linhagem ao editar
                 } else {
                     titleEl.textContent = 'Novo Grupo de Oferta';
                     document.getElementById('grupo-nome').value = '';
@@ -1179,10 +1512,13 @@
                     document.getElementById('grupo-vigencia-inicio').value = '';
                     document.getElementById('grupo-vigencia-fim').value = '';
                     window._grupoSelectedProgs = [];
+                    window._grupoVigenciaTouched = false; // grupo novo: herda por padrão
+                    window._grupoFamiliaId = null;         // grupo novo: vira sua própria família
                 }
                 window.renderGrupoProgChips();
                 window._grupoSelectedProcs = selected;
                 window.renderGrupoProcList('');
+                window.aplicarHerancaVigencia();
             }
 
             if (modalId === 'modal-po') {
@@ -1209,66 +1545,9 @@
             }
         };
 
-        let currentSortItens = { field: 'instituto', direction: 'asc' };
-        let currentProgItens = [];
-
-        window.openItensModal = async (progId, editItemId = null) => {
-            const prog = localProgramas.find(p => p.id === progId);
-            document.getElementById('item-modal-title').textContent = `${prog.nome}`;
-            document.getElementById('item-modal-subtitle').textContent = `${prog.processamento || ''}`;
-            document.getElementById('item-prog-id').value = progId;
-
-            // Reset form
-            window.resetItemForm();
-
-            // Populate Inst Select (Form)
-            const activeInsts = localInstitutos.filter(i => i.status === 'Ativo');
-            const instSelect = document.getElementById('item-inst');
-            instSelect.innerHTML = `<option value="">Selecione o Instituto...</option>` +
-                activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
-
-            // Populate Proc Select (Form)
-            const procSelect = document.getElementById('item-proc');
-            procSelect.innerHTML = `<option value="">Selecione o Procedimento...</option>` +
-                localProcedimentos.filter(p => p.status === 'Ativo').map(p => `<option value="${p.sigtap}">${p.sigtap} - ${p.nome}</option>`).join('');
-
-            // Populate Competencia Select (Form)
-            const compSelect = document.getElementById('item-competencia');
-            const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-            const now = new Date();
-            const compOptions = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
-            for (let i = -now.getMonth(); i <= 12; i++) {
-                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-                const label = `${shortMonths[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
-                compOptions.push(`<option value="${label}">${label}</option>`);
-            }
-            compSelect.innerHTML = compOptions.join('');
-            // Pre-select current month
-            const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
-            compSelect.value = currentLabel;
-
-            // Populate Grupo Select (Form)
-            const grupoSelect = document.getElementById('item-grupo');
-            if (localGruposOferta.length === 0) await Repository.getGruposOferta().then(r => { localGruposOferta = r; });
-            const gruposDoPrograma = localGruposOferta.filter(g =>
-                (g.progIds?.length ? g.progIds.includes(progId) : g.progId === progId));
-            grupoSelect.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
-                gruposDoPrograma.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
-            document.getElementById('item-qtd-container').style.display = '';
-
-            // Populate Filter Select
-            const filterSelect = document.getElementById('filter-instituto');
-            filterSelect.innerHTML = `<option value="">Todos os Institutos</option>` +
-                activeInsts.map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
-
-            await window.loadItensIncentivo(progId);
-            document.getElementById('modal-itens-incentivo').classList.remove('hidden');
-
-            // Copy logic: if editing, pre-fill form
-            if (editItemId) {
-                window.editItemIncentivo(editItemId);
-            }
-        };
+        // NOTA: a versão ativa de window.openItensModal fica mais abaixo (modal só-formulário).
+        // A antiga versão com tabela de itens (e o estado currentProgItens/currentSortItens)
+        // foi removida — a tabela de itens não existe mais no HTML.
 
         window.closeModal = (modalId) => {
             document.getElementById(modalId).classList.add('hidden');
@@ -1302,31 +1581,44 @@
             }
         };
 
-        window.editItemIncentivo = (id) => {
-            const item = currentProgItens.find(i => i.id === id);
-            if (!item) return;
+        // Popula o select de Grupo de Oferta do item, filtrando pelos grupos do
+        // incentivo E cuja vigência cobre a competência escolhida. O grupo já
+        // vinculado (selectedId) permanece visível mesmo fora da vigência, marcado,
+        // para não "sumir" ao editar um item existente.
+        window.populateItemGrupoSelect = (progId, competencia, selectedId = '') => {
+            const sel = document.getElementById('item-grupo');
+            if (!sel) return;
+            const doPrograma = localGruposOferta.filter(g =>
+                (g.progIds?.length ? g.progIds.includes(progId) : g.progId === progId));
+            const opts = [`<option value="">Nenhum (oferta individual)</option>`];
+            doPrograma.forEach(g => {
+                const dentro = window.competenciaDentroVigencia(competencia, g);
+                const ehSelecionado = g.id === selectedId;
+                if (!dentro && !ehSelecionado) return; // fora da vigência: oculta (salvo se já vinculado)
+                const meta = parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR');
+                const aviso = !dentro ? ' ⚠ fora da vigência' : '';
+                opts.push(`<option value="${g.id}">${g.nome} (meta: ${meta})${aviso}</option>`);
+            });
+            sel.innerHTML = opts.join('');
+            sel.value = selectedId || '';
+        };
 
-            document.getElementById('item-id').value = item.id;
-            document.getElementById('item-inst').value = item.instId;
-            document.getElementById('item-proc').value = item.sigtap;
-            document.getElementById('item-competencia').value = item.competencia;
-            document.getElementById('item-qtd').value = item.ofertaMinima;
-            document.getElementById('item-vlr').value = item.vlrIncentivo;
-
-            document.getElementById('btn-delete-item').classList.remove('hidden');
-            document.getElementById('btn-save-item').innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>';
-            document.getElementById('btn-save-item').title = "Salvar Alterações";
+        // Ao trocar a competência do item, repovoa o select de grupo respeitando a vigência.
+        window.onItemCompetenciaChange = () => {
+            const progId = document.getElementById('item-prog-id').value;
+            const comp = document.getElementById('item-competencia').value;
+            const atual = document.getElementById('item-grupo').value;
+            window.populateItemGrupoSelect(progId, comp, atual);
+            window.onItemGrupoChange();
         };
 
         window.deleteItemFromForm = async () => {
             const id = document.getElementById('item-id').value;
-            const progId = document.getElementById('item-prog-id').value;
 
             if (!id) return;
             if (!confirm('Tem certeza que deseja excluir este item?')) return;
 
             await Repository.deletePactuacao(id);
-            window.loadItensIncentivo(progId);
             window.resetItemForm();
             window.loadPO(); // Update main counts
         };
@@ -1349,25 +1641,70 @@
             window.closeModal('modal-instituto');
         };
 
+        // Mostra/esconde os campos de "nova especialidade" e atualiza o preview do código.
+        window.onProcEspecialidadeChange = () => {
+            const val = document.getElementById('proc-especialidade').value;
+            const nova = document.getElementById('proc-esp-nova');
+            nova.classList.toggle('hidden', val !== '__nova__');
+            window.updateProcCodigoPreview();
+        };
+
+        // Preview do código final (SIGTAP real + variante) enquanto se digita.
+        window.updateProcCodigoPreview = () => {
+            const prev = document.getElementById('proc-codigo-preview');
+            if (!prev) return;
+            const digs = (document.getElementById('proc-sigtap').value || '').replace(/\D/g, '');
+            const sel = document.getElementById('proc-especialidade');
+            const variante = sel.value === '__nova__'
+                ? (document.getElementById('proc-esp-nova-codigo').value || '').trim()
+                : (sel.value || '');
+            if (!digs) { prev.textContent = ''; return; }
+            const padded = digs.padStart(10, '0').slice(-10);
+            prev.textContent = variante
+                ? `Código final: ${padded}-${variante}   ·   SIGTAP real: ${padded}`
+                : `Código final: ${padded}`;
+        };
+
         window.saveProcedimento = async () => {
             const nome = document.getElementById('proc-nome').value.trim();
             const sigtapRaw = document.getElementById('proc-sigtap').value.trim().replace(/\D/g, '');
-            const sigtap = sigtapRaw.padStart(10, '0').slice(-10);
+            const codigoFaturamento = sigtapRaw.padStart(10, '0').slice(-10);
 
             if (!nome) { alert('Informe o nome do procedimento.'); return; }
             if (!sigtapRaw) { alert('Informe o código SIGTAP.'); return; }
             if (sigtapRaw.length > 10) { alert('Código SIGTAP deve ter no máximo 10 dígitos.'); return; }
 
+            // Resolve a especialidade (variante) escolhida — inclusive cadastro de uma nova.
+            const sel = document.getElementById('proc-especialidade');
+            let variante = '', especialidade = '';
+            if (sel.value === '__nova__') {
+                especialidade = document.getElementById('proc-esp-nova-nome').value.trim();
+                variante = document.getElementById('proc-esp-nova-codigo').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (!especialidade || !variante) { alert('Preencha o nome e o código curto da nova especialidade.'); return; }
+                if (localEspecialidades.some(e => e.codigo === variante)) { alert(`Já existe uma especialidade com o código "${variante}". Escolha outro.`); return; }
+                localEspecialidades.push({ codigo: variante, nome: especialidade });
+                await persistEspecialidades();
+            } else if (sel.value) {
+                const e = localEspecialidades.find(x => x.codigo === sel.value);
+                if (e) { variante = e.codigo; especialidade = e.nome; }
+            }
+
+            // Identidade = SIGTAP composto (real-VARIANTE nas especializadas).
+            const sigtap = variante ? `${codigoFaturamento}-${variante}` : codigoFaturamento;
+
             const duplicate = localProcedimentos.find(p => p.sigtap === sigtap && p.id !== currentEditId);
             if (duplicate) {
-                alert(`Já existe um procedimento com SIGTAP ${sigtap}:\n"${duplicate.nome}"`);
+                alert(`Já existe um procedimento com o código ${sigtap}:\n"${duplicate.nome}"`);
                 return;
             }
 
-            document.getElementById('proc-sigtap').value = sigtap;
+            document.getElementById('proc-sigtap').value = codigoFaturamento;
             const proc = {
                 nome,
                 sigtap,
+                codigoFaturamento,
+                variante,
+                especialidade,
                 vlrSigtap: parseFloat(document.getElementById('proc-vlr-sigtap').value) || 0,
                 status: document.getElementById('proc-status').value
             };
@@ -1394,105 +1731,86 @@
             window.closeModal('modal-po');
         };
 
-        window.loadItensIncentivo = async (progId) => {
-            currentProgItens = await Repository.getPactuacoes(progId);
-            window.renderItensIncentivo();
-        };
+        // Comparação de códigos SIGTAP/variante como no business-rules (mantém as letras da
+        // variante; só remove separadores). Ex.: "0301010072-CARD" === "0301010072CARD".
+        const _normCod = (s) => String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 
-        window.renderItensIncentivo = () => {
-            const tbody = document.getElementById('table-itens-incentivo');
-            const filterInstId = document.getElementById('filter-instituto').value;
+        /**
+         * Fonte ÚNICA de escrita de pactuação — usada pela aba de Incentivos E pela aba de
+         * Procedimentos. Centraliza validação dos campos estruturais, coerência do vlrSigtapBase,
+         * a trava do grupo (sigtap precisa estar no grupo) e a checagem de tupla já existente
+         * (evita duplicar / sobrescrever cego pela chave composta progId_instId_sigtap_competencia).
+         * @returns {Promise<boolean>} true se gravou.
+         */
+        window.upsertPactuacao = async ({ id = '', progId, instId, sigtap, competencia,
+                                          grupoOfertaId = null, ofertaMinima = 0, vlrIncentivo = 0 }) => {
+            if (!progId)      { alert('Selecione o incentivo.'); return false; }
+            if (!instId)      { alert('Selecione o instituto (local de oferta).'); return false; }
+            if (!sigtap)      { alert('Selecione o procedimento.'); return false; }
+            if (!competencia) { alert('Selecione a competência.'); return false; }
 
-            // Filter
-            let filtered = currentProgItens;
-            if (filterInstId) {
-                filtered = filtered.filter(i => i.instId === filterInstId);
-            }
+            grupoOfertaId = grupoOfertaId || null;
 
-            // Sort
-            filtered.sort((a, b) => {
-                let valA, valB;
-
-                if (currentSortItens.field === 'instituto') {
-                    const instA = localInstitutos.find(i => i.id == a.instId);
-                    const instB = localInstitutos.find(i => i.id == b.instId);
-                    valA = (instA?.nome || '').toLowerCase();
-                    valB = (instB?.nome || '').toLowerCase();
-                } else if (currentSortItens.field === 'sigtap') {
-                    const procA = localProcedimentos.find(p => p.id == a.sigtap);
-                    const procB = localProcedimentos.find(p => p.id == b.sigtap);
-                    valA = (procA?.nome || '').toLowerCase();
-                    valB = (procB?.nome || '').toLowerCase();
-                } else {
-                    valA = a[currentSortItens.field];
-                    valB = b[currentSortItens.field];
+            // Trava: anexar a um grupo exige que o procedimento esteja no grupo, senão a soma
+            // da meta da rede diverge (mapaOfertaRede agrupa por grupo).
+            if (grupoOfertaId) {
+                const grupo = localGruposOferta.find(g => g.id === grupoOfertaId);
+                if (grupo) {
+                    const procs = Array.isArray(grupo.procedimentos) ? grupo.procedimentos : [];
+                    if (!procs.some(s => _normCod(s) === _normCod(sigtap))) {
+                        if (!confirm(`O procedimento não está na lista do grupo "${grupo.nome}".\n\nIncluir no grupo para a meta somar corretamente?`)) return false;
+                        grupo.procedimentos = [...procs, sigtap];
+                        await Repository.saveGrupoOferta(grupo);
+                        localGruposOferta = await Repository.getGruposOferta();
+                    }
                 }
-
-                if (valA < valB) return currentSortItens.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return currentSortItens.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-
-            // Update Sort Icons
-            document.querySelectorAll('.sort-icon').forEach(el => el.classList.add('invisible'));
-            // (Optional: Logic to show visible arrow, skipping for simplicity or can add later)
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Nenhum item encontrado.</td></tr>`;
-                return;
             }
 
-            tbody.innerHTML = filtered.map(item => {
-                const proc = localProcedimentos.find(pr => pr.id == item.sigtap);
-                const inst = localInstitutos.find(i => i.id == item.instId);
-                return `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td class="px-4 py-3 text-xs font-bold text-slate-900 dark:text-white">${inst?.sigla || inst?.nome || '???'}</td>
-                        <td class="px-4 py-3 text-xs font-bold text-slate-900 dark:text-white">${proc?.nome || '???'}</td>
-                        <td class="px-4 py-3 text-center text-[10px] font-black">${item.competencia || '-'}</td>
-                        <td class="px-4 py-3 text-right font-mono text-xs">${parseInt(item.ofertaMinima || 0).toLocaleString()}</td>
-                        <td class="px-4 py-3 text-right font-mono text-xs text-primary">R$ ${parseFloat(item.vlrIncentivo || 0).toFixed(2)}</td>
-                        <td class="px-4 py-3 text-center">
-                            <button onclick="window.editItemIncentivo('${item.id}')" class="text-slate-400 hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        };
+            // Identidade: sem id explícito, adota o de uma pactuação já existente com a MESMA
+            // tupla para não duplicar nem sobrescrever cego (o merge zeraria campos por engano).
+            let resolvedId = id || '';
+            if (!resolvedId) {
+                const jaExiste = (localPactuacoes || []).find(p =>
+                    p.progId === progId && p.instId === instId &&
+                    _normCod(p.sigtap) === _normCod(sigtap) && p.competencia === competencia);
+                if (jaExiste) {
+                    if (!confirm('Já existe um vínculo deste procedimento neste incentivo / instituto / competência.\n\nDeseja atualizá-lo?')) return false;
+                    resolvedId = jaExiste.id;
+                }
+            }
 
-        window.sortItens = (field) => {
-            if (currentSortItens.field === field) {
-                currentSortItens.direction = currentSortItens.direction === 'asc' ? 'desc' : 'asc';
+            const pact = {
+                progId, instId, sigtap, competencia,
+                grupoOfertaId,
+                ofertaMinima: grupoOfertaId ? 0 : (Number(ofertaMinima) || 0),
+                vlrIncentivo: Number(vlrIncentivo) || 0,
+                updatedAt: new Date()
+            };
+            if (resolvedId) {
+                pact.id = resolvedId; // edição: preserva vlrSigtapBase existente (merge)
             } else {
-                currentSortItens.field = field;
-                currentSortItens.direction = 'asc';
+                // Registro novo: coerência do valor base com o próprio procedimento.
+                const proc = (localProcedimentos || []).find(p => _normCod(p.sigtap) === _normCod(sigtap));
+                if (proc) pact.vlrSigtapBase = Number(proc.vlrSigtap) || 0;
             }
-            window.renderItensIncentivo();
+
+            await Repository.savePactuacao(pact);
+            await window.loadPO(); // recarrega localProgramas/localPactuacoes/localGruposOferta
+            return true;
         };
 
         window.saveItemIncentivo = async () => {
-            const progId = document.getElementById('item-prog-id').value;
-            const itemId = document.getElementById('item-id').value;
-
-            const grupoOfertaId = document.getElementById('item-grupo').value || null;
-            const item = {
-                progId,
+            const ok = await window.upsertPactuacao({
+                id: document.getElementById('item-id').value,
+                progId: document.getElementById('item-prog-id').value,
                 instId: document.getElementById('item-inst').value,
                 sigtap: document.getElementById('item-proc').value,
                 competencia: document.getElementById('item-competencia').value,
-                grupoOfertaId,
-                ofertaMinima: grupoOfertaId ? 0 : (document.getElementById('item-qtd').value || 0),
-                vlrIncentivo: document.getElementById('item-vlr').value,
-                updatedAt: new Date()
-            };
-
-            if (itemId) item.id = itemId;
-
-            await Repository.savePactuacao(item);
-            window.loadPO(); // Reload main page (includes pactuacoes)
-            window.closeModal('modal-itens-incentivo');
+                grupoOfertaId: document.getElementById('item-grupo').value || null,
+                ofertaMinima: document.getElementById('item-qtd').value || 0,
+                vlrIncentivo: document.getElementById('item-vlr').value
+            });
+            if (ok) window.closeModal('modal-itens-incentivo');
         };
 
         // window.deleteItemIncentivo removed (replaced by deleteItemFromForm)
@@ -1548,8 +1866,11 @@
                 }
 
                 btn.textContent = 'Copiando...';
-                const count = await Repository.duplicateCompetencia(origem, destino);
-                alert(`Sucesso! ${count} itens foram replicados para ${destino}.`);
+                const { count, reapontados } = await Repository.duplicateCompetencia(origem, destino);
+                const extra = reapontados > 0
+                    ? `\n\n${reapontados} item(ns) tiveram o grupo de oferta reapontado para a vigência de ${destino}.`
+                    : '';
+                alert(`Sucesso! ${count} itens foram replicados para ${destino}.${extra}`);
                 window.closeModal('modal-replicar');
 
                 // Update filter and reload to show new items
@@ -1592,31 +1913,244 @@
         };
 
         window.loadProcedimentos = async () => {
+            if (!localEspecialidades.length) await window.loadEspecialidades();
             localProcedimentos = await Repository.getProcedimentos();
             window.renderProcedimentos();
         };
 
         window.renderProcedimentos = () => {
             const query = document.getElementById('search-procedimentos').value.toLowerCase();
-            let filtered = localProcedimentos.filter(p => (p.nome || '').toLowerCase().includes(query) || (p.sigtap || '').includes(query));
+            let filtered = localProcedimentos.filter(p =>
+                (p.nome || '').toLowerCase().includes(query) ||
+                (p.sigtap || '').toLowerCase().includes(query) ||
+                (p.especialidade || '').toLowerCase().includes(query));
             filtered = applySort(filtered);
             const tbody = document.getElementById('table-procedimentos');
-            tbody.innerHTML = filtered.map(proc => `
+            tbody.innerHTML = filtered.map(proc => {
+                const espBadge = proc.especialidade
+                    ? `<span class="inline-block ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary align-middle">${proc.especialidade}</span>`
+                    : '';
+                return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td class="px-6 py-4 font-mono text-xs text-slate-600">${proc.sigtap}</td>
-                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${proc.nome}</td>
+                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${proc.nome}${espBadge}</td>
                     <td class="px-6 py-4 text-right text-xs">R$ ${parseFloat(proc.vlrSigtap || 0).toFixed(2)}</td>
                     <td class="px-6 py-4 text-center">
-                        <button onclick="window.openModal('modal-procedimento', '${proc.id}', 'proc')" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+                        <button onclick="window.openProcVinculos('${proc.sigtap}')" title="Incentivos deste procedimento" class="text-slate-400 hover:text-primary mr-1"><span class="material-symbols-outlined text-[20px]">add_link</span></button>
+                        <button onclick="window.openModal('modal-procedimento', '${proc.id}', 'proc')" title="Editar procedimento" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[20px]">edit</span></button>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
+        };
+
+        // ── VÍNCULOS DO PROCEDIMENTO (aba Procedimentos, espelho da aba de Incentivos) ──
+        // O procedimento fica travado (pv-sigtap) e o usuário escolhe incentivo + instituto +
+        // competência + grupo + meta + valor. Grava pela MESMA fonte única (upsertPactuacao).
+
+        window.openProcVinculos = async (sigtap) => {
+            const proc = (localProcedimentos || []).find(p => _normCod(p.sigtap) === _normCod(sigtap)) || {};
+            const cod = proc.sigtap || sigtap;
+            document.getElementById('pv-sigtap').value = cod;
+            document.getElementById('pv-title').textContent = proc.nome || 'Procedimento';
+            document.getElementById('pv-subtitle').textContent = proc.especialidade ? `${cod} · ${proc.especialidade}` : cod;
+
+            // Incentivo (todos os programas, ordenados por nome)
+            const progSel = document.getElementById('pv-prog');
+            progSel.innerHTML = `<option value="">Selecione o incentivo...</option>` +
+                [...localProgramas].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+                    .map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+
+            // Instituto (só ativos)
+            const instSel = document.getElementById('pv-inst');
+            instSel.innerHTML = `<option value="">Selecione...</option>` +
+                localInstitutos.filter(i => i.status === 'Ativo')
+                    .map(i => `<option value="${i.id}">${i.sigla || i.nome}</option>`).join('');
+
+            // Competência (Geral + meses ao redor do atual), formato "jan/26"
+            const compSel = document.getElementById('pv-comp');
+            const now = new Date();
+            const opts = ['<option value="">Selecione...</option>', '<option value="Geral">Geral</option>'];
+            for (let i = -now.getMonth(); i <= 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const label = `${_MESES_CURTOS[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`;
+                opts.push(`<option value="${label}">${label}</option>`);
+            }
+            compSel.innerHTML = opts.join('');
+            compSel.value = `${_MESES_CURTOS[now.getMonth()]}/${String(now.getFullYear()).slice(-2)}`;
+
+            window.pvResetForm();      // limpa item-id / meta / valor / grupo
+            window.pvOnProgChange();   // monta select de grupo (prog vazio => "Nenhum")
+            window.pvRenderTable();
+            document.getElementById('modal-proc-vinculos').classList.remove('hidden');
+        };
+
+        window.pvResetForm = () => {
+            document.getElementById('pv-item-id').value = '';
+            document.getElementById('pv-qtd').value = '';
+            document.getElementById('pv-vlr').value = '';
+            document.getElementById('pv-grupo').value = '';
+            document.getElementById('pv-qtd-container').style.display = '';
+            document.getElementById('pv-btn-reset').classList.add('hidden');
+            document.getElementById('pv-btn-save').innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span>';
+        };
+
+        window.pvOnProgChange = () => {
+            const progId = document.getElementById('pv-prog').value;
+            const grupoSel = document.getElementById('pv-grupo');
+            const grupos = (localGruposOferta || []).filter(g =>
+                progId && (g.progIds?.length ? g.progIds.includes(progId) : g.progId === progId));
+            grupoSel.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
+                grupos.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
+            window.pvOnGrupoChange();
+            window.pvSugerirMeta();
+        };
+
+        window.pvOnGrupoChange = () => {
+            const grupoId = document.getElementById('pv-grupo').value;
+            const cont = document.getElementById('pv-qtd-container');
+            if (grupoId) { cont.style.display = 'none'; document.getElementById('pv-qtd').value = '0'; }
+            else { cont.style.display = ''; }
+        };
+
+        // Sugere a meta do mês anterior do mesmo trio (incentivo+instituto+procedimento).
+        window.pvSugerirMeta = () => {
+            if (document.getElementById('pv-item-id').value) return;   // editando: não mexe
+            if (document.getElementById('pv-grupo').value) return;     // grupo define a meta
+            const qtdEl = document.getElementById('pv-qtd');
+            if (qtdEl.value) return;                                    // usuário já digitou
+            const progId = document.getElementById('pv-prog').value;
+            const instId = document.getElementById('pv-inst').value;
+            const comp = document.getElementById('pv-comp').value;
+            const sigtap = document.getElementById('pv-sigtap').value;
+            if (!progId || !instId || !sigtap) return;
+
+            const cands = (localPactuacoes || []).filter(p =>
+                p.progId === progId && p.instId === instId &&
+                _normCod(p.sigtap) === _normCod(sigtap) && Number(p.ofertaMinima) > 0);
+            if (!cands.length) return;
+            cands.sort((a, b) => (window.competenciaToYM(b.competencia) || '').localeCompare(window.competenciaToYM(a.competencia) || ''));
+            const alvoYM = window.competenciaToYM(comp);
+            let sugestao = cands[0];
+            if (alvoYM) {
+                const anteriores = cands.filter(p => { const ym = window.competenciaToYM(p.competencia); return ym && ym < alvoYM; });
+                if (anteriores.length) sugestao = anteriores[0];
+            }
+            if (sugestao) qtdEl.value = sugestao.ofertaMinima;
+        };
+
+        window.pvSave = async () => {
+            const ok = await window.upsertPactuacao({
+                id: document.getElementById('pv-item-id').value,
+                progId: document.getElementById('pv-prog').value,
+                instId: document.getElementById('pv-inst').value,
+                sigtap: document.getElementById('pv-sigtap').value,
+                competencia: document.getElementById('pv-comp').value,
+                grupoOfertaId: document.getElementById('pv-grupo').value || null,
+                ofertaMinima: document.getElementById('pv-qtd').value || 0,
+                vlrIncentivo: document.getElementById('pv-vlr').value
+            });
+            if (ok) { window.pvResetForm(); window.pvRenderTable(); }
+        };
+
+        window.pvEdit = (id) => {
+            const p = (localPactuacoes || []).find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('pv-item-id').value = p.id;
+            document.getElementById('pv-prog').value = p.progId;
+            window.pvOnProgChange();                       // reconstrói o select de grupo do incentivo
+            document.getElementById('pv-inst').value = p.instId;
+            // Garante que a competência do vínculo exista no select (senão editar gravaria comp errada).
+            const compSel = document.getElementById('pv-comp');
+            if (p.competencia && !Array.from(compSel.options).some(o => o.value === p.competencia)) {
+                compSel.insertAdjacentHTML('beforeend', `<option value="${p.competencia}">${p.competencia}</option>`);
+            }
+            compSel.value = p.competencia;
+            document.getElementById('pv-grupo').value = p.grupoOfertaId || '';
+            document.getElementById('pv-qtd').value = p.ofertaMinima || 0;
+            document.getElementById('pv-vlr').value = p.vlrIncentivo || 0;
+            window.pvOnGrupoChange();
+            document.getElementById('pv-btn-reset').classList.remove('hidden');
+            document.getElementById('pv-btn-save').innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>';
+        };
+
+        window.pvDelete = async (id) => {
+            const p = (localPactuacoes || []).find(x => x.id === id);
+            if (!p) return;
+            const temProd = Number(p.ofertado || 0) > 0 ||
+                Number(p.producao?.realizada || 0) > 0 || Number(p.producao?.aprovada || 0) > 0;
+            if (temProd) {
+                alert('Não é possível remover: este vínculo já tem oferta/produção lançada.\n\nZere a produção antes de remover, ou faça isso pela aba de Incentivos.');
+                return;
+            }
+            if (!confirm('Remover este vínculo do procedimento?')) return;
+            await Repository.deletePactuacao(id);
+            await window.loadPO();
+            window.pvResetForm();
+            window.pvRenderTable();
+        };
+
+        window.pvRenderTable = () => {
+            const sigtap = document.getElementById('pv-sigtap').value;
+            const tbody = document.getElementById('pv-tbody');
+            const itens = (localPactuacoes || [])
+                .filter(p => _normCod(p.sigtap) === _normCod(sigtap))
+                .sort((a, b) => (a.progId || '').localeCompare(b.progId || '') || (a.competencia || '').localeCompare(b.competencia || ''));
+            if (!itens.length) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 text-xs">Este procedimento ainda não está vinculado a nenhum incentivo.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = itens.map(p => {
+                const prog = localProgramas.find(x => x.id === p.progId);
+                const inst = localInstitutos.find(x => x.id === p.instId);
+                const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+                const meta = grupo ? Number(grupo.ofertaMinima || 0) : Number(p.ofertaMinima || 0);
+                const grupoCell = grupo
+                    ? `<span class="text-[11px] text-primary">${grupo.nome}</span>`
+                    : `<span class="text-slate-400 text-[11px]">—</span>`;
+                return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td class="px-4 py-3 font-bold text-slate-800 dark:text-white">${prog?.nome || p.progId}</td>
+                    <td class="px-4 py-3 text-xs">${inst?.sigla || inst?.nome || p.instId}</td>
+                    <td class="px-4 py-3 text-center text-xs font-mono">${p.competencia || '—'}</td>
+                    <td class="px-4 py-3">${grupoCell}</td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">${parseInt(meta || 0).toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">${parseFloat(p.vlrIncentivo || 0).toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                        <button onclick="window.pvEdit('${p.id}')" title="Editar" class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                        <button onclick="window.pvDelete('${p.id}')" title="Remover" class="text-slate-400 hover:text-red-500 ml-1"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                    </td>
+                </tr>`;
+            }).join('');
         };
 
         window.loadGruposOferta = async () => {
             if (localProgramas.length === 0) localProgramas = await Repository.getProgramas();
             localGruposOferta = await Repository.getGruposOferta();
             window.renderGruposOferta();
+        };
+
+        // Famílias expandidas na tabela de grupos (mostra o histórico de vigências).
+        window._familiasExpandidas = window._familiasExpandidas || new Set();
+        window.toggleFamilia = (familiaId) => {
+            if (window._familiasExpandidas.has(familiaId)) window._familiasExpandidas.delete(familiaId);
+            else window._familiasExpandidas.add(familiaId);
+            window.renderGruposOferta();
+        };
+
+        // Filtro de status (por família): vigente (padrão) | encerrada | todas.
+        window._grupoFiltroStatus = window._grupoFiltroStatus || 'vigente';
+        window.setGrupoFiltro = (f) => {
+            window._grupoFiltroStatus = f;
+            window.renderGruposOferta();
+        };
+        const _realcarBotoesFiltro = () => {
+            const box = document.getElementById('grupo-filtro-status');
+            if (!box) return;
+            box.querySelectorAll('button').forEach(b => {
+                const ativo = b.dataset.filtro === window._grupoFiltroStatus;
+                b.className = `px-3 py-1.5 transition-colors ${b.dataset.filtro !== 'vigente' ? 'border-l border-slate-200 dark:border-slate-700 ' : ''}${
+                    ativo ? 'bg-primary text-white' : 'bg-white dark:bg-slate-900 text-slate-500 hover:text-primary'}`;
+            });
         };
 
         window.renderGruposOferta = () => {
@@ -1631,14 +2165,58 @@
                 const [y, m] = ym.split('-');
                 return `${m}/${y}`;
             };
-            tbody.innerHTML = localGruposOferta.map(g => {
-                const progIds = g.progIds?.length ? g.progIds : (g.progId ? [g.progId] : []);
-                const progs = progIds.map(id => localProgramas.find(p => p.id === id)).filter(Boolean);
+            const now = new Date();
+            const nowYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const statusVig = (g) => {
+                const vi = g.vigenciaInicio, vf = g.vigenciaFim;
+                if (vf && vf < nowYM) return 'encerrada';
+                if (vi && vi > nowYM) return 'futura';
+                return 'vigente';
+            };
+            const badgeStatus = (st) => ({
+                vigente:   `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">vigente</span>`,
+                futura:    `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">futura</span>`,
+                encerrada: `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">encerrada</span>`,
+            }[st] || '');
+
+            // Agrupa por família (fallback = próprio id) e escolhe a versão a destacar:
+            // a vigente; na ausência, a de início mais recente (futura ou última encerrada).
+            const familias = new Map();
+            localGruposOferta.forEach(g => {
+                const fam = g.familiaId || g.id;
+                if (!familias.has(fam)) familias.set(fam, []);
+                familias.get(fam).push(g);
+            });
+            const ordInicio = (a, b) => (b.vigenciaInicio || '').localeCompare(a.vigenciaInicio || '');
+            const escolherPrincipal = (vs) => {
+                const vig = vs.filter(g => statusVig(g) === 'vigente');
+                return (vig.length ? vig : vs).slice().sort(ordInicio)[0];
+            };
+
+            // Monta as células reaproveitadas por linha (principal ou sub-linha do histórico).
+            const montarLinha = (g, { isSub, expander = '' }) => {
                 const procs = g.procedimentos || [];
                 const procNames = procs.map(s => {
                     const p = localProcedimentos.find(x => x.sigtap === s);
                     return p ? p.nome : s;
                 });
+                const MAX_ROWS = 5;
+                const procCell = procs.length === 0
+                    ? `<span class="text-slate-400 italic text-xs">—</span>`
+                    : `<div class="flex flex-col gap-0.5 text-left max-w-[340px] mx-auto">${
+                        procs.slice(0, MAX_ROWS).map((s, i) =>
+                            `<div class="flex items-baseline gap-1.5">
+                                <span class="font-mono text-[10px] text-slate-400 shrink-0">${s}</span>
+                                <span class="text-xs text-slate-600 dark:text-slate-300 truncate">${procNames[i]}</span>
+                            </div>`
+                        ).join('')
+                    }${
+                        procs.length > MAX_ROWS
+                            ? `<span class="text-[10px] font-bold text-slate-400 mt-0.5" title="${procNames.slice(MAX_ROWS).join(', ')}">+${procs.length - MAX_ROWS} outro${procs.length - MAX_ROWS !== 1 ? 's' : ''}</span>`
+                            : ''
+                    }</div>`;
+                const progIds = g.progIds?.length ? g.progIds : (g.progId ? [g.progId] : []);
+                const progs = progIds.map(id => localProgramas.find(p => p.id === id)).filter(Boolean);
                 const progCell = progs.length === 0
                     ? `<span class="text-slate-400 italic text-xs">—</span>`
                     : progs.length === 1
@@ -1648,16 +2226,30 @@
                           ).join('')}</div>`;
                 const ini = fmtMes(g.vigenciaInicio);
                 const fim = fmtMes(g.vigenciaFim);
-                const vigCell = ini || fim
-                    ? `<span class="text-xs text-slate-600 dark:text-slate-300 font-mono">${ini || '—'} – ${fim || '—'}</span>`
-                    : `<span class="text-slate-400 italic text-xs">—</span>`;
+                const seloVig = g.vigenciaOrigem === 'herdada'
+                    ? `<span class="block mt-0.5 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400" title="Vigência herdada do incentivo">herdada</span>`
+                    : g.vigenciaOrigem === 'personalizada'
+                        ? `<span class="block mt-0.5 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400" title="Vigência ajustada manualmente">personalizada</span>`
+                        : '';
+                const vigCell = `<div class="flex flex-col items-center gap-1">
+                        ${badgeStatus(statusVig(g))}
+                        ${ini || fim
+                            ? `<span class="text-xs text-slate-600 dark:text-slate-300 font-mono">${ini || '—'} – ${fim || '—'}</span>${seloVig}`
+                            : `<span class="text-slate-400 italic text-xs">sem vigência</span>`}
+                    </div>`;
+                const rowCls = isSub
+                    ? 'bg-slate-50/60 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
+                const nomeCell = isSub
+                    ? `<td class="px-6 py-3 pl-12 text-sm text-slate-500 dark:text-slate-400 border-l-2 border-slate-200 dark:border-slate-700">↳ ${g.nome}</td>`
+                    : `<td class="px-6 py-4 font-bold text-slate-900 dark:text-white">
+                            <div class="flex items-center gap-2">${g.nome}${expander}</div>
+                       </td>`;
                 return `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${g.nome}</td>
+                <tr class="${rowCls} transition-colors">
+                    ${nomeCell}
                     <td class="px-6 py-4">${progCell}</td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="text-xs text-slate-500" title="${procNames.join(', ')}">${procs.length} procedimento${procs.length !== 1 ? 's' : ''}</span>
-                    </td>
+                    <td class="px-6 py-4 text-center">${procCell}</td>
                     <td class="px-6 py-4 text-center">${vigCell}</td>
                     <td class="px-6 py-4 text-right font-mono text-sm">${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')}</td>
                     <td class="px-6 py-4 text-center flex justify-center gap-2">
@@ -1666,6 +2258,41 @@
                         <button onclick="window.deleteGrupoOferta('${g.id}')" title="Excluir" class="text-slate-400 hover:text-red-500"><span class="material-symbols-outlined text-[20px]">delete</span></button>
                     </td>
                 </tr>`;
+            };
+
+            // Aplica o filtro de status (pela versão principal da família) e ordena por nome.
+            _realcarBotoesFiltro();
+            const filtro = window._grupoFiltroStatus || 'vigente';
+            const passaFiltro = (principal) => {
+                const st = statusVig(principal);
+                if (filtro === 'todas') return true;
+                if (filtro === 'encerrada') return st === 'encerrada';
+                return st !== 'encerrada'; // 'vigente' inclui vigentes e futuras (em curso/por vir)
+            };
+            const grupos = [...familias.values()]
+                .filter(vs => passaFiltro(escolherPrincipal(vs)))
+                .sort((a, b) => (escolherPrincipal(a).nome || '').localeCompare(escolherPrincipal(b).nome || ''));
+
+            if (grupos.length === 0) {
+                const rotulo = filtro === 'encerrada' ? 'encerrado' : (filtro === 'todas' ? 'cadastrado' : 'vigente');
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 text-sm">Nenhum grupo ${rotulo}.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = grupos.map(vs => {
+                const principal = escolherPrincipal(vs);
+                const fam = principal.familiaId || principal.id;
+                const outras = vs.filter(g => g.id !== principal.id).sort(ordInicio);
+                const aberto = window._familiasExpandidas.has(fam);
+                const expander = outras.length > 0
+                    ? `<button onclick="window.toggleFamilia('${fam}')" title="Ver versões anteriores"
+                            class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 hover:text-primary transition-colors">
+                            <span class="material-symbols-outlined text-[14px]">${aberto ? 'expand_less' : 'expand_more'}</span>${vs.length} versões
+                       </button>`
+                    : '';
+                let html = montarLinha(principal, { isSub: false, expander });
+                if (aberto) html += outras.map(g => montarLinha(g, { isSub: true })).join('');
+                return html;
             }).join('');
         };
 
@@ -1733,12 +2360,58 @@
             if (!window._grupoSelectedProgs.includes(progId)) {
                 window._grupoSelectedProgs.push(progId);
                 window.renderGrupoProgChips();
+                window.aplicarHerancaVigencia();
             }
         };
 
         window.removeGrupoPrograma = (progId) => {
             window._grupoSelectedProgs = (window._grupoSelectedProgs || []).filter(id => id !== progId);
             window.renderGrupoProgChips();
+            window.aplicarHerancaVigencia();
+        };
+
+        // Usuário editou a vigência à mão → vira 'personalizada' e para de herdar.
+        window.marcarVigenciaManual = () => {
+            window._grupoVigenciaTouched = true;
+            window.atualizarHintVigencia('personalizada');
+        };
+
+        // Pré-preenche a vigência do grupo com a interseção dos incentivos ligados,
+        // exceto se o usuário já personalizou (_grupoVigenciaTouched).
+        window.aplicarHerancaVigencia = () => {
+            const iniEl = document.getElementById('grupo-vigencia-inicio');
+            const fimEl = document.getElementById('grupo-vigencia-fim');
+            if (!iniEl || !fimEl) return;
+            if (window._grupoVigenciaTouched) {
+                window.atualizarHintVigencia('personalizada');
+                return;
+            }
+            const progs = window._grupoSelectedProgs || [];
+            if (progs.length === 0) {
+                iniEl.value = '';
+                fimEl.value = '';
+                window.atualizarHintVigencia('vazio');
+                return;
+            }
+            const { inicio, fim, vazia } = window.interseccaoVigenciaIncentivos(progs);
+            iniEl.value = inicio || '';
+            fimEl.value = fim || '';
+            window.atualizarHintVigencia(vazia ? 'incompativel' : 'herdada');
+        };
+
+        window.atualizarHintVigencia = (estado) => {
+            const hint = document.getElementById('grupo-vigencia-hint');
+            if (!hint) return;
+            const mapa = {
+                herdada: ['text-emerald-600 dark:text-emerald-400', '✓ Vigência herdada do(s) incentivo(s). Edite para personalizar.'],
+                personalizada: ['text-amber-600 dark:text-amber-400', '✎ Vigência personalizada (não segue mais o incentivo).'],
+                incompativel: ['text-red-500', '⚠ Os incentivos selecionados não têm período em comum — ajuste manualmente.'],
+                vazio: ['text-slate-400', 'Vincule um incentivo para herdar a vigência, ou defina manualmente.'],
+                novociclo: ['text-amber-600 dark:text-amber-400', '↻ Cópia para novo ciclo: defina a vigência do novo período (sem sobrepor a versão anterior).'],
+            };
+            const [cls, txt] = mapa[estado] || ['', ''];
+            hint.className = `text-[10px] mt-1 ${cls}`;
+            hint.textContent = txt;
         };
 
         window.saveGrupoOferta = async () => {
@@ -1784,7 +2457,11 @@
                 procedimentos,
                 vigenciaInicio: vigIni,
                 vigenciaFim: vigFim,
+                // 'herdada' = ainda segue o incentivo; 'personalizada' = ajustada à mão.
+                vigenciaOrigem: window._grupoVigenciaTouched ? 'personalizada' : 'herdada',
             };
+            // Linhagem: cópia/edição preserva a família; grupo novo (null) vira a própria no repo.
+            if (window._grupoFamiliaId) grupo.familiaId = window._grupoFamiliaId;
             if (currentEditId) grupo.id = currentEditId;
             await Repository.saveGrupoOferta(grupo);
             localGruposOferta = await Repository.getGruposOferta();
@@ -1829,8 +2506,14 @@
             document.getElementById('grupo-proc-search').value = '';
             window._grupoSelectedProgs = [...(g.progIds || (g.progId ? [g.progId] : []))];
             window._grupoSelectedProcs = [...(g.procedimentos || [])];
+            // Cópia = mesma família da origem (liga as versões p/ o reapontamento do Replicar).
+            window._grupoFamiliaId = g.familiaId || g.id;
+            // Vigência em branco: a cópia é para um NOVO período, definido por você — herdar o
+            // período atual do incentivo poderia sobrepor a versão anterior. Fica 'personalizada'.
+            window._grupoVigenciaTouched = true;
             window.renderGrupoProgChips();
             window.renderGrupoProcList('');
+            window.atualizarHintVigencia('novociclo');
         };
 
         window.loadPO = async () => {
@@ -2079,13 +2762,9 @@
             const currentLabel = `${shortMonths[now.getMonth()]}/${now.getFullYear().toString().slice(-2)}`;
             compSelect.value = currentLabel;
 
-            // Populate Grupo Select (Form)
-            const grupoSel = document.getElementById('item-grupo');
+            // Populate Grupo Select (Form) — filtrado pela vigência da competência atual
             if (localGruposOferta.length === 0) localGruposOferta = await Repository.getGruposOferta();
-            const gruposDoProgr = localGruposOferta.filter(g =>
-                (g.progIds?.length ? g.progIds.includes(progId) : g.progId === progId));
-            grupoSel.innerHTML = `<option value="">Nenhum (oferta individual)</option>` +
-                gruposDoProgr.map(g => `<option value="${g.id}">${g.nome} (meta: ${parseInt(g.ofertaMinima || 0).toLocaleString('pt-BR')})</option>`).join('');
+            window.populateItemGrupoSelect(progId, compSelect.value, '');
             document.getElementById('item-qtd-container').style.display = '';
 
             // If editItemId is passed, find it in localPactuacoes
@@ -2096,8 +2775,13 @@
                     document.getElementById('item-id').value = item.id;
                     document.getElementById('item-inst').value = item.instId;
                     document.getElementById('item-proc').value = item.sigtap;
-                    document.getElementById('item-competencia').value = item.competencia;
-                    document.getElementById('item-grupo').value = item.grupoOfertaId || '';
+                    // Garante que a competência do item exista no select (senão editar gravaria comp errada).
+                    if (item.competencia && !Array.from(compSelect.options).some(o => o.value === item.competencia)) {
+                        compSelect.insertAdjacentHTML('beforeend', `<option value="${item.competencia}">${item.competencia}</option>`);
+                    }
+                    compSelect.value = item.competencia;
+                    // Repovoa o grupo p/ a competência do item, mantendo o grupo já vinculado visível
+                    window.populateItemGrupoSelect(progId, item.competencia, item.grupoOfertaId || '');
                     document.getElementById('item-qtd').value = item.ofertaMinima;
                     document.getElementById('item-vlr').value = item.vlrIncentivo;
                     window.onItemGrupoChange();

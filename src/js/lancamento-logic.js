@@ -1,6 +1,6 @@
 import { Repository } from './repository.js';
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getMeta, atingimentoPct, statusMeta } from './business-rules.js';
+import { getOferta, getMeta, atingimentoPct, statusMeta, chaveOfertaRede, ofertaInstitutoChave } from './business-rules.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -153,7 +153,11 @@ function renderTable() {
 
     tbody.innerHTML = displayItems.map(group => {
         const target = group.maxMeta;
-        const progress = atingimentoPct(group.totalOferta, target);
+        // Progresso a NÍVEL DE GRUPO: para grupo de oferta soma os SIGTAPs do grupo neste
+        // instituto (a meta é do grupo inteiro). Individual: igual à oferta do próprio SIGTAP.
+        const isGrupo = !!group.items[0]?.grupoOfertaId;
+        const ofertaGrupo = ofertaInstitutoChave(group.items[0], filtered);
+        const progress = atingimentoPct(ofertaGrupo, target);
 
         const status = statusMeta(progress);
         const statusColor = status === 'ok' ? 'bg-green-500' : (status === 'alerta' ? 'bg-yellow-500' : 'bg-red-500');
@@ -162,7 +166,7 @@ function renderTable() {
         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/row">
             <td class="px-6 py-4">
                 <div class="flex flex-col">
-                    <span class="text-sm font-bold text-slate-900 dark:text-white" title="${group.procName}">${group.procName}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white" title="${group.procName}">${group.procName}${isGrupo ? ' <span class="text-[9px] font-medium text-slate-400">(grupo)</span>' : ''}</span>
                     <span class="text-xs text-slate-500 font-mono mt-0.5">Cód: ${group.sigtap}</span>
                 </div>
             </td>
@@ -172,7 +176,7 @@ function renderTable() {
             <td class="px-6 py-4 align-middle">
                 <div class="flex flex-col gap-1 max-w-[140px] mx-auto">
                     <div class="flex justify-between text-xs mb-1">
-                        <span class="text-slate-600 dark:text-slate-400 font-medium">${formatNumber(group.totalOferta)} ofertado</span>
+                        <span class="text-slate-600 dark:text-slate-400 font-medium">${formatNumber(ofertaGrupo)} ofertado${isGrupo ? ' (grupo)' : ''}</span>
                         <span class="font-bold text-slate-700 dark:text-white">${Math.round(progress)}%</span>
                     </div>
                     <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
@@ -189,6 +193,7 @@ function renderTable() {
                     value="${group.totalOferta || ''}"
                     type="number"
                     placeholder="0"
+                    title="${isGrupo ? 'Oferta deste procedimento (SIGTAP) — a meta é do grupo inteiro' : 'Oferta deste procedimento'}"
                 />
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -234,6 +239,10 @@ window.openDetailModal = async (key) => {
     document.getElementById('modal-title').textContent = group.procName;
     document.getElementById('modal-subtitle').textContent = `Cód. SIGTAP: ${group.sigtap}`;
 
+    // Progresso a nível de grupo (soma os SIGTAPs do grupo neste instituto); a meta é do grupo.
+    const periodData = allPactuacoes.filter(x => x.competencia === group.items[0]?.competencia);
+    const ofertaGrupoModal = ofertaInstitutoChave(group.items[0], periodData);
+
     const tbody = document.getElementById('modal-table-body');
     tbody.innerHTML = group.items.map(item => {
         const prog = localProgs.find(p => p.id === item.progId);
@@ -241,7 +250,7 @@ window.openDetailModal = async (key) => {
 
         const meta = getMeta(item, gruposOferta);
         const oferta = getOferta(item);
-        const progress = atingimentoPct(oferta, meta);
+        const progress = atingimentoPct(ofertaGrupoModal, meta);
 
         const status = statusMeta(progress);
         const statusColor = status === 'ok' ? 'bg-green-500' : (status === 'alerta' ? 'bg-yellow-500' : 'bg-red-500');
@@ -277,13 +286,16 @@ function checkDeadlineCompliance(pactuacoes, instId, procs, config) {
     const relevant = pactuacoes.filter(p => p.instId === instId && p.competencia === targetComp);
     if (relevant.length === 0) return;
 
+    // Chaveia por chaveOfertaRede: grupo de oferta é avaliado junto (soma dos SIGTAPs),
+    // não uma vez por SIGTAP (que superflagava itens de grupo com 0 oferta isolada).
     const groups = {};
     relevant.forEach(p => {
-        if (!groups[p.sigtap]) {
-            groups[p.sigtap] = { sigtap: p.sigtap, maxMeta: 0, totalOferta: 0 };
+        const chave = chaveOfertaRede(p);
+        if (!groups[chave]) {
+            groups[chave] = { sigtap: p.sigtap, maxMeta: 0, totalOferta: 0 };
         }
-        groups[p.sigtap].maxMeta = Math.max(groups[p.sigtap].maxMeta, getMeta(p, gruposOferta));
-        groups[p.sigtap].totalOferta = Math.max(groups[p.sigtap].totalOferta, getOferta(p));
+        groups[chave].maxMeta = Math.max(groups[chave].maxMeta, getMeta(p, gruposOferta));
+        groups[chave].totalOferta = ofertaInstitutoChave(p, relevant);
     });
 
     // Alerta: itens com meta mas sem OFERTA lançada pelo instituto

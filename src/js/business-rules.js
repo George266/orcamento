@@ -147,10 +147,34 @@ export function consolidarSigtap(itens, acc) {
 // das ofertas de todos os institutos para o mesmo procedimento (ou grupo de oferta).
 // Estes helpers dão a "fonte única" desse cálculo para todas as telas.
 
-/** Chave de agregação da oferta da rede: grupo de oferta (se houver) ou SIGTAP normalizado. */
+/**
+ * Normaliza um código de procedimento para uso como CHAVE de agrupamento.
+ * Mantém dígitos E letras (sufixo de variante da especialidade), removendo apenas
+ * separadores. Ex.: "0301010072-CARD" -> "0301010072CARD"; "0301010072" -> "0301010072".
+ *
+ * ⚠️ NÃO use replace(/\D/g,'') para agrupar: isso apagaria o sufixo e fundiria
+ * consultas especializadas distintas (cardio, orto...) que compartilham o mesmo
+ * código SIGTAP real. O SIGTAP real (só dígitos) fica em `codigoFaturamento`.
+ */
+export function normalizarCodigo(sigtap) {
+    return String(sigtap || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+}
+
+/**
+ * Código para exibição. O campo `sigtap` já traz o composto "real-VARIANTE"
+ * (ex.: "0301010072-CARD") nas consultas especializadas; aqui acrescentamos o nome
+ * da especialidade quando houver. Ex.: "0301010072-CARD · Cardiologia".
+ */
+export function codigoExibicao(p, { comNome = true } = {}) {
+    const cod = p?.sigtap || p?.codigoFaturamento || '';
+    if (comNome && p?.especialidade) return `${cod} · ${p.especialidade}`;
+    return cod;
+}
+
+/** Chave de agregação da oferta da rede: grupo de oferta (se houver) ou código normalizado. */
 export function chaveOfertaRede(p) {
     if (p?.grupoOfertaId) return `grupo_${p.grupoOfertaId}`;
-    return `sig_${String(p?.sigtap || '').replace(/\D/g, '')}`;
+    return `sig_${normalizarCodigo(p?.sigtap)}`;
 }
 
 /**
@@ -178,4 +202,51 @@ export function mapaOfertaRede(pactuacoes = []) {
         mapa[chave] = Object.values(porChaveInst[chave]).reduce((s, v) => s + v, 0);
     }
     return mapa;
+}
+
+/**
+ * Mapa { chave -> META da REDE } — o par do mapaOfertaRede para o lado da meta.
+ * Grupo de oferta: a meta é um alvo ÚNICO da rede, conta UMA vez (nunca por SIGTAP nem por
+ * instituto). Procedimento individual: soma entre institutos (a maior meta por instituto).
+ * Evita o erro de multiplicar a meta do grupo pela quantidade de SIGTAPs.
+ *
+ * @param {Array} pactuacoes - pactuações da rede, já filtradas por competência
+ * @param {Array} gruposOferta - lista de grupos de oferta (para resolver a meta do grupo)
+ * @returns {Object} mapa chave (via chaveOfertaRede) -> meta total da rede
+ */
+export function mapaMetaRede(pactuacoes = [], gruposOferta = []) {
+    const indivPorInst = {}; // chave -> { instId -> meta }
+    const grupoMeta = {};    // chave -> meta única do grupo
+    for (const p of pactuacoes) {
+        const chave = chaveOfertaRede(p);
+        if (p?.grupoOfertaId) {
+            grupoMeta[chave] = getMeta(p, gruposOferta); // única (mesmo valor em todas as linhas do grupo)
+        } else {
+            if (!indivPorInst[chave]) indivPorInst[chave] = {};
+            indivPorInst[chave][p.instId] = Math.max(indivPorInst[chave][p.instId] || 0, getMeta(p, gruposOferta));
+        }
+    }
+    const mapa = {};
+    for (const chave of Object.keys(grupoMeta)) mapa[chave] = grupoMeta[chave];
+    for (const chave of Object.keys(indivPorInst)) {
+        mapa[chave] = Object.values(indivPorInst[chave]).reduce((s, v) => s + v, 0);
+    }
+    return mapa;
+}
+
+/**
+ * Oferta de UM instituto para a chave da rede (grupo de oferta ou procedimento).
+ *  - Grupo: soma a MAIOR oferta de cada SIGTAP do grupo (dedup de incentivos repetidos).
+ *  - Individual: maior oferta entre os incentivos do instituto.
+ * `pacts` deve conter pactuações da mesma competência.
+ */
+export function ofertaInstitutoChave(p, pacts = []) {
+    const chave = chaveOfertaRede(p);
+    const mesmos = pacts.filter(x => x.instId === p.instId && chaveOfertaRede(x) === chave);
+    if (p?.grupoOfertaId) {
+        const porSigtap = {};
+        mesmos.forEach(x => { porSigtap[x.sigtap] = Math.max(porSigtap[x.sigtap] || 0, getOferta(x)); });
+        return Object.values(porSigtap).reduce((s, v) => s + v, 0);
+    }
+    return mesmos.reduce((m, x) => Math.max(m, getOferta(x)), 0);
 }

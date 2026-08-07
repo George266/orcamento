@@ -2,7 +2,7 @@ import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
+import { getOferta, getProduzido, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, mapaMetaRede, chaveOfertaRede, ofertaInstitutoChave } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -237,15 +237,16 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
     const processedKeys = new Set(); // Key: instId_sigtap
 
     relevant.forEach(p => {
-        const key = `${p.instId}_${p.sigtap}`;
+        // Grupo de oferta: chave por (instituto + grupo) para avaliar os SIGTAPs juntos;
+        // procedimento individual: por (instituto + sigtap).
+        const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+        const key = grupo ? `${p.instId}_grupo_${grupo.id}` : `${p.instId}_${p.sigtap}`;
         if (processedKeys.has(key)) return;
+        processedKeys.add(key);
 
-        // Check the whole group (all programs for this sigtap/inst)
-        const groupItems = relevant.filter(i => i.instId === p.instId && i.sigtap === p.sigtap);
-
-        // Max Meta Concept
-        const maxMeta = groupItems.reduce((max, i) => Math.max(max, getMeta(i, localGruposOferta)), 0);
-        const totalRealized = groupItems.reduce((max, i) => Math.max(max, getOferta(i)), 0);
+        // Meta do grupo (uma vez) ou do procedimento; oferta = soma dos SIGTAPs do grupo neste instituto.
+        const maxMeta = getMeta(p, localGruposOferta);
+        const totalRealized = ofertaInstitutoChave(p, relevant);
 
         if (maxMeta > 0 && totalRealized === 0) {
             pendingItems.push({
@@ -254,7 +255,6 @@ function checkDeadlineCompliance(allPactuacoes, allowedInstIds, allInstitutes, c
                 procName: 'Carregando...', // We'll try to look this up or pass procs
                 meta: maxMeta
             });
-            processedKeys.add(key);
         }
     });
 
@@ -335,6 +335,8 @@ async function renderDashboard() {
         const data = currentPactuacoes.filter(p => p.competencia === period);
         // Oferta da REDE (soma de todos os institutos) para avaliar a meta — nunca por instituto.
         const netMap = mapaOfertaRede(redePactuacoes.filter(p => p.competencia === period));
+        // META por chave da rede: grupo de oferta conta uma vez (não por SIGTAP).
+        const metaMap = mapaMetaRede(data, localGruposOferta);
         // Deduplica por sigtap+instituto (considerar a maior); atingimento = OFERTA DA REDE ÷ META
         const byKey = {};
         data.forEach(p => {
@@ -346,9 +348,9 @@ async function renderDashboard() {
             byKey[k].vBase = Math.max(byKey[k].vBase, parseFloat(p.vlrSigtapBase || 0));
             byKey[k].vInc = Math.max(byKey[k].vInc, parseFloat(p.vlrIncentivo || 0));
         });
-        let pact = 0, real = 0, fin = 0;
+        let real = 0, fin = 0;
+        const pact = Object.values(metaMap).reduce((s, v) => s + v, 0); // meta do grupo uma vez
         Object.values(byKey).forEach(v => {
-            pact += v.meta;
             real += v.oferta;
             fin += v.vBase * v.prod + calcIncentivo({ vlrIncentivo: v.vInc, quantidade: v.prod, oferta: netMap[v.chave] || 0, meta: v.meta });
         });
@@ -362,11 +364,16 @@ async function renderDashboard() {
     let notStartedItems = 0;
     let inProgressItems = 0;
 
-    // Using filtered (Current Period)
+    // Using filtered (Current Period). Deduplica por instituto+chave: um grupo de oferta
+    // conta uma vez (não por SIGTAP) e usa a oferta somada dos SIGTAPs do grupo.
     const filtered = currentPactuacoes.filter(p => p.competencia === currentPeriod);
+    const seenCrit = new Set();
     filtered.forEach(p => {
+        const ck = `${p.instId}||${chaveOfertaRede(p)}`;
+        if (seenCrit.has(ck)) return;
+        seenCrit.add(ck);
         const pact = getMeta(p, localGruposOferta);
-        const oferta = getOferta(p);
+        const oferta = ofertaInstitutoChave(p, filtered);
         const atingimento = pact > 0 ? (oferta / pact) * 100 : 100;
 
         if (pact > 0) {
@@ -447,7 +454,8 @@ async function renderDashboard() {
                 const progName = prog ? prog.nome : (p.progId || 'Incentivo Padrão');
 
                 const pact = getMeta(p, localGruposOferta);
-                const real = getOferta(p);
+                // Oferta do instituto somando os SIGTAPs do grupo (evita % subestimado por linha)
+                const real = ofertaInstitutoChave(p, filtered);
                 const status = pact > 0 ? (real / pact) * 100 : 0;
 
                 return `
@@ -525,19 +533,18 @@ function renderWeeklyChart() {
     let totalRealizadoPeriodo = 0;
 
     filtered.forEach(p => {
-        const pact = getMeta(p, localGruposOferta);
-
-        // Meta semanal de referência: meta mensal dividida pelo número de semanas exibidas
-        const weeklyTarget = pact > 0 ? pact / weeks.length : 0;
-
         weeks.forEach(w => {
-            const val = parseInt(p.producao?.[w.id] || 0);
-            w.real += val;
-            w.target += weeklyTarget;
+            w.real += parseInt(p.producao?.[w.id] || 0);
         });
-
         totalRealizadoPeriodo += getOferta(p);
     });
+
+    // Meta semanal de referência: meta MENSAL (grupo de oferta conta uma vez, não por SIGTAP)
+    // dividida pelo número de semanas exibidas.
+    const metaMapSemanal = mapaMetaRede(filtered, localGruposOferta);
+    const metaMensalTotal = Object.values(metaMapSemanal).reduce((s, v) => s + v, 0);
+    const weeklyTarget = metaMensalTotal / weeks.length;
+    weeks.forEach(w => { w.target = weeklyTarget; });
 
     const totalEl = document.getElementById('chart-total-exams');
     if (totalEl) totalEl.textContent = formatNumber(totalRealizadoPeriodo);

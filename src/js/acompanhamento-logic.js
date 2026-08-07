@@ -1,7 +1,7 @@
 import { Repository } from './repository.js';
 import { auth } from './firebase-config.js';
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo } from './business-rules.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo, normalizarCodigo } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -645,8 +645,10 @@ async function renderTable() {
     // ------------------------------------------------------------------
     // 1. Group Data (Procedure + Program)
     // ------------------------------------------------------------------
-    // Helper: Clean SIGTAP (strip leading zeros and symbols)
-    const cleanSigtap = (s) => String(s || "").replace(/^0+/, "").replace(/[^0-9]/g, "");
+    // Helper: Clean SIGTAP (strip leading zeros and symbols).
+    // Mantém letras do sufixo de variante (ex.: 0301010072-CARD) para não fundir
+    // consultas especializadas que compartilham o mesmo código SIGTAP real.
+    const cleanSigtap = (s) => String(s || "").toUpperCase().replace(/^0+/, "").replace(/[^0-9A-Z]/g, "");
 
     const safeParseFloat = (val) => {
         if (typeof val === 'number') return val;
@@ -1283,11 +1285,11 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
     if (!masterItem) return;
 
     const targetInstId = masterItem.instId;
-    const targetSigtap = String(masterItem.sigtap || '').replace(/\D/g, '');
+    const targetSigtap = normalizarCodigo(masterItem.sigtap);
 
     // Update only items with the same SIGTAP+Institute (same procedure, possibly multiple programs)
     const itemsToUpdate = group.items.filter(i => {
-        const iSigtap = String(i.sigtap || '').replace(/\D/g, '');
+        const iSigtap = normalizarCodigo(i.sigtap);
         return i.instId === targetInstId && iSigtap === targetSigtap;
     });
 
@@ -1304,7 +1306,7 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
         // Recalc Group Totals (deduplicate by instId+sigtap to avoid double-counting multiple programs for same procedure)
         const seenRecalcKeys = new Set();
         group.totalProd = group.items.reduce((sum, i) => {
-            const k = `${i.instId}_${String(i.sigtap || '').replace(/\D/g, '')}`;
+            const k = `${i.instId}_${normalizarCodigo(i.sigtap)}`;
             if (seenRecalcKeys.has(k)) return sum;
             seenRecalcKeys.add(k);
             return sum + (parseInt(i.producao?.realizada) || 0);

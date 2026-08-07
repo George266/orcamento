@@ -100,3 +100,69 @@ Fatos já confirmados no código:
 2. Aguardar o retorno do **teste funcional** (login repassado à testadora).
 3. Corrigir o que o teste apontar (base limpa, sem segurança misturada).
 4. Iniciar o **Lote C** na ordem acima.
+
+---
+
+## 10. Espelhamento procedimento ⇄ incentivo (feature em andamento)
+
+**Objetivo:** dar uma **segunda porta de entrada** para os vínculos de incentivo, agora pela aba de **Procedimentos** — hoje só dá para cadastrar pela aba de Incentivos ([openItensModal](configuracao.html) / [saveItemIncentivo](configuracao.html)). Não é dado novo: é a MESMA coleção `pactuacoes` (tupla `progId × instId × sigtap × competencia`, com `ofertaMinima`, `vlrIncentivo`, `grupoOfertaId`), vista pelo outro lado (com o `sigtap` travado no procedimento aberto).
+
+### Decisões travadas (com o usuário)
+- **Local de oferta = instituto** (`instId`).
+- **Meta é do usuário:** ao adicionar item novo, perguntar a meta; **sugerir a do mês anterior** do mesmo trio (incentivo+instituto+procedimento), se houver.
+- **Grupo** entra no form (filtrado ao incentivo escolhido).
+- **Remover vínculo bloqueia se já houver produção/oferta lançada** (`ofertado`/`producao.realizada`).
+- **UI = tabela completa**: ao abrir o procedimento, mostra TODOS os vínculos dele (linha por incentivo+instituto+mês) + form de adicionar. Espelho exato do modal de itens do incentivo.
+
+### Guardas contra desencontro (obrigatórias)
+1. **Uma única função de escrita (upsert)** compartilhada pelas duas abas — nunca duas validações.
+2. Antes de gravar, **checar se a tupla já existe** (em `localPactuacoes`) → editar em vez de duplicar/sobrescrever cego. Cuidado: o ID é composto e `savePactuacao` faz `{merge:true}` — mandar `ofertaMinima:0` sem querer **zera meta** existente.
+3. **Competência sempre no formato `jan/26`** (é o que o banco guarda; o filtro `type=month` é convertido em [renderPO](configuracao.html)).
+4. Ao anexar a grupo, **garantir o `sigtap` dentro de `grupo.procedimentos[]`** — senão a soma da rede fica torta.
+5. `vlrSigtapBase` = `vlrSigtap` do próprio procedimento.
+
+### ⚠️ Descoberta importante (mudou o plano)
+O `configuracao.html` ganhou (em paralelo) um sistema de **variante/especialidade**: o `sigtap` do procedimento virou **identidade composta** (`0301010072-CARD`), com `codigoFaturamento` (SIGTAP real, só dígitos), `variante` e `especialidade`. O antigo `cleanSigtap` (apagava não-dígitos) foi trocado por **`normalizarCodigo`** ([business-rules.js](src/js/business-rules.js)), que **preserva as letras** — então variantes do mesmo SIGTAP real **não colidem** mais na agregação da rede.
+- Consequência: o plano antigo de "**código sintético só-dígitos `99…`** para procedimento sem SIGTAP" foi **DESCARTADO** — seria um segundo esquema de identidade competindo com a variante. O usuário confirmou que "sem SIGTAP" **já está coberto pela variante**. Sem trabalho de sem-SIGTAP.
+- O novo modal deve **exibir o código composto + especialidade** (usar `codigoExibicao`) e chavear pelo `sigtap` composto (a identidade do procedimento).
+
+### Ordem de execução
+1. Extrair **upsert compartilhado** (refactor de `saveItemIncentivo`, sem mudar comportamento) → build.
+2. **Modal novo na aba de Procedimentos** (tabela de vínculos + form add/editar/remover) reusando o upsert → build.
+3. **Guardas** (competência, grupo, bloqueio de remoção com produção, vlrSigtapBase) → build final.
+
+Nenhuma tela consumidora muda (mesma estrutura de dado). `savePactuacao` no [repository.js](src/js/repository.js) já monta o ID composto e faz merge.
+
+---
+
+## 11. Consultas especializadas — variante/especialidade (CONCLUÍDO, build verde)
+
+**Problema:** várias consultas especializadas (cardio, orto…) **compartilham o mesmo código SIGTAP real**. Antes, a gambiarra inventava códigos falsos (`000001`, `000002`) no campo `sigtap` — distinguia no relatório, mas **perdia o SIGTAP verdadeiro**.
+
+**Solução (abordagem de baixo risco escolhida com o usuário):** manter o campo `sigtap` como **identidade** (os ~212 usos que chaveiam por ele continuam intactos) e **inverter** — o SIGTAP real ganha um campo novo.
+
+### Modelo de dados (procedimentos e pactuações)
+| Campo | Comum | Especializada | Papel |
+|---|---|---|---|
+| `sigtap` | `0301010072` | `0301010030-CARD` | **identidade** (chave de ligação/agrupamento) |
+| `codigoFaturamento` | `0301010072` | `0301010030` | SIGTAP **real**, só dígitos (faturamento/conferência) |
+| `variante` | — | `CARD` | sufixo curto da especialidade |
+| `especialidade` | — | `Cardiologia` | nome para exibição |
+
+Procedimento comum = `variante` vazio → **idêntico ao comportamento antigo**.
+
+### Pontos-chave do código
+- **[business-rules.js](src/js/business-rules.js)**: `normalizarCodigo` (preserva letras — NÃO usar `replace(/\D/g,'')` para agrupar) + `codigoExibicao`; `chaveOfertaRede` usa `normalizarCodigo` → variantes não se fundem na oferta da rede.
+- **[acompanhamento-logic.js](src/js/acompanhamento-logic.js)** e **[acompanhamento-inst-logic.js](src/js/acompanhamento-inst-logic.js)**: todos os `cleanSigtap`/strips passaram a preservar o sufixo (via `normalizarCodigo`).
+- **[repository.js](src/js/repository.js)** (`importData`): lê a coluna **Especialidade** (aceita nome OU código curto, com fallback derivado); monta o `sigtap` composto; grava `codigoFaturamento`/`variante`/`especialidade`. **O ID composto da pactuação usa o `sigtap` composto** → especialidades do mesmo código real não colidem. `savePactuacao`/`duplicateCompetencia`/`saveJustificativa` já usam `pact.sigtap` (agora composto) — consistentes sem mudança.
+- **[configuracao.html](configuracao.html)**: lista de especialidades em `config/system` (`especialidades: [{codigo, nome}]`), semeada com **41** padrões; gerenciador próprio (botão **Especialidades** → add/editar/excluir, valida código único); campo **Especialidade** no cadastro de procedimento (dropdown + **"Outra"** on-the-fly) + **preview** do código final. Campo SIGTAP continua só-dígitos (= `codigoFaturamento`).
+- **[dashboard-logic.js](src/js/dashboard-logic.js)**: detalhe e tabela exibem o nome da especialidade + o SIGTAP real ao lado.
+- **[modelo_importacao.csv](modelo_importacao.csv)**: coluna **Especialidade** + 2 linhas de exemplo (mesmo código real, variantes diferentes).
+
+### Sem migração
+Dados eram só de teste → **recriar** com a coluna Especialidade. Nenhum script de migração.
+
+### Pendências / atenção
+- **Códigos curtos propostos** (`CIRCABP`, `GINOBST`, `CIRCARDV`…): revisar no gerenciador; garanti só que não repetem.
+- **Matching no import por nome**: nome muito abreviado/diferente do cadastrado não casa → vira código derivado. Conferir a lista antes de importar em massa (ou usar o código curto direto no CSV).
+- A **auditoria SIGTAP** foi verificada: tolera o composto (parte de dígitos = 10; `id === sigtap`) e não corrompe especializados — deixada intacta.

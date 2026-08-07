@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Quadro de Demandas (Kanban) - Gestão SUS</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind Config -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "primary-dark": "#0b4cb4",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                        "text-main": "#0d131b",
+                        "text-secondary": "#4c6c9a",
+                        "border-light": "#e7ecf3",
+                        "border-dark": "#334155",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"],
+                        "body": ["Public Sans", "sans-serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Feedback visual da coluna durante o drag & drop */
+        .kanban-col-drop.drag-over {
+            outline: 2px dashed #136dec;
+            outline-offset: -4px;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-text-main dark:text-slate-200 font-display antialiased flex flex-col min-h-screen transition-colors duration-200">
+    <!-- Top Navigation -->
+    <header
+        class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
+        <div class="px-4 md:px-8 flex items-center justify-between h-16">
+            <div class="flex items-center gap-4 lg:gap-8 min-w-0">
+                <a href="dashboard_orcamento.html"
+                    class="flex items-center gap-3 shrink-0 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+                    <div class="size-10 flex items-center justify-center overflow-hidden">
+                        <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Módulo Orçamento</p>
+                    </div>
+                </a>
+                <nav class="hidden md:flex items-center gap-5 lg:gap-7">
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="dashboard_orcamento.html">Visão Geral</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="alertas.html">Alertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="lancamento_producao.html">Lançar Produção</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="configuracao.html">Parâmetros do Incentivo</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="usuarios.html">Gestão de Usuários</a>
+                    <a class="whitespace-nowrap text-primary text-sm font-bold border-b-2 border-primary py-5" href="kanban.html">Demandas</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+                <button onclick="window.handleLogout && window.handleLogout()"
+                    class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+                <script type="module" src="/src/js/auth-guard.js"></script>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-4 py-6 md:px-8 flex flex-col min-h-0">
+        <!-- Toolbar -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary text-3xl">view_kanban</span>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-text-main dark:text-white">
+                        Quadro de Demandas</h1>
+                    <p id="kanban-subtitle" class="text-sm text-text-secondary dark:text-slate-400 mt-0.5">
+                        Acompanhamento das demandas de ajuste do sistema.</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Filtro por área -->
+                <div class="relative">
+                    <select id="filter-area"
+                        class="appearance-none rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-main dark:text-white pl-3 pr-8 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="">Todas as áreas</option>
+                        <option value="central">Central (Orçamento)</option>
+                        <option value="institutos">Institutos</option>
+                        <option value="ambos">Ambos / Geral</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
+                </div>
+
+                <!-- Alternância de visão -->
+                <div class="flex rounded-lg border border-border-light dark:border-border-dark overflow-hidden text-sm">
+                    <button id="tab-board"
+                        class="px-3 py-2 font-semibold bg-primary text-white transition-colors">Quadro</button>
+                    <button id="tab-archived"
+                        class="px-3 py-2 font-medium bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">inventory_2</span> Arquivados
+                    </button>
+                    <button id="tab-cancelled"
+                        class="px-3 py-2 font-medium bg-white dark:bg-slate-800 text-text-secondary dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">cancel</span> Cancelados
+                    </button>
+                </div>
+
+                <button id="btn-new-card"
+                    class="inline-flex items-center gap-1.5 h-[38px] px-4 text-sm font-bold rounded-lg bg-primary hover:bg-primary-dark text-white shadow-sm transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">add</span> Nova demanda
+                </button>
+            </div>
+        </div>
+
+        <!-- Board -->
+        <div id="kanban-board"
+            class="flex-1 min-h-0 flex gap-4 overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1">
+            <!-- Colunas renderizadas via JS -->
+        </div>
+
+        <!-- Arquivados (oculto por padrão) -->
+        <div id="kanban-archived" class="flex-1 min-h-0 overflow-y-auto hidden">
+            <!-- Cards arquivados renderizados via JS -->
+        </div>
+
+        <!-- Cancelados (oculto por padrão) -->
+        <div id="kanban-cancelled" class="flex-1 min-h-0 overflow-y-auto hidden">
+            <!-- Cards cancelados renderizados via JS -->
+        </div>
+    </main>
+
+    <!-- Raiz dos modais / toasts (preenchidos via JS) -->
+    <div id="kanban-modal-root"></div>
+    <div id="kanban-toast-root" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2"></div>
+
+    <script type="module" src="/src/js/auth-guard.js"></script>
+    <script type="module" src="/src/js/kanban-logic.js"></script>
+</body>
+
+</html>

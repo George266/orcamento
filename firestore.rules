@@ -32,5 +32,12 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
+
+    // Quadro de Demandas (Kanban). {id=**} — wildcard recursivo: cobre
+    // kanban_cards/{id} E a subcoleção kanban_cards/{id}/comments/{commentId}.
+    // Exige apenas autenticação (mesmo critério das demais coleções).
+    match /kanban_cards/{id=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

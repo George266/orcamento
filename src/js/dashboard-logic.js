@@ -1,6 +1,6 @@
 import { Repository } from './repository.js';
 import { DateUtils } from './utils/date-utils.js';
-import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, chaveOfertaRede } from './business-rules.js';
+import { getOferta, getProduzido, getRetornoSMSA, getMeta, atingimentoPct, statusMeta, calcIncentivo, mapaOfertaRede, mapaMetaRede, chaveOfertaRede, ofertaInstitutoChave } from './business-rules.js';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -27,6 +27,13 @@ let trendSearchQuery = '';
 export async function initDashboard() {
     const pactuacoes = await Repository.getPactuacoes();
     const monthSelector = document.getElementById('month-selector');
+
+    // Restaura o estado recolhido do painel de Alertas Operacionais (se existir na página).
+    if (document.getElementById('col-alertas')) {
+        let collapsed = false;
+        try { collapsed = localStorage.getItem('alerts_panel_collapsed') === '1'; } catch (e) { /* ignore */ }
+        if (collapsed) applyAlertsCollapsed(true);
+    }
 
     const checkboxesContainer = document.getElementById('period-checkboxes');
     if (checkboxesContainer) {
@@ -158,6 +165,9 @@ export async function initDashboard() {
 
     if (deadlineAlert && DateUtils.isPastDeadline(deadlineDay, deadlineRule)) {
         const insts = await Repository.getInstitutos(); // Ensure we have names
+        // updateDashboard (que popula localGruposOferta) roda sem await; garante os grupos
+        // aqui para o monitor resolver a meta de grupo corretamente.
+        if (!localGruposOferta.length) localGruposOferta = await Repository.getGruposOferta();
         checkGlobalCompliance(pactuacoes, insts, { deadlineDay, deadlineRule });
     }
 }
@@ -193,8 +203,11 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     let totalFinanceiroPrev = 0;  // financeiro Previsto (sobre o Produzido)
     let totalFinanceiroPago = 0;  // financeiro Pago (sobre o Aprovado/SMSA)
 
-    // Oferta da REDE por procedimento/grupo (soma entre institutos) para avaliar a meta.
+    // Oferta e META da REDE por procedimento/grupo. A meta do grupo conta UMA vez
+    // (não por SIGTAP), evitando inflar o Pactuado quando o grupo tem vários SIGTAPs.
     const netMap = mapaOfertaRede(filtered);
+    const metaMap = mapaMetaRede(filtered, localGruposOferta);
+    totalPactuado = Object.values(metaMap).reduce((s, v) => s + v, 0);
 
     const kpiMap = {};
     filtered.forEach(p => {
@@ -209,7 +222,6 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     });
     let totalOfertado = 0;   // oferta (instituto)
     Object.values(kpiMap).forEach(v => {
-        totalPactuado += v.meta;
         totalOfertado += v.oferta;
         // Incentivo condicionado à meta da REDE; Previsto = sobre o Produzido, Pago = sobre o Aprovado/SMSA
         const ofertaRede = netMap[v.chave] || 0;
@@ -238,40 +250,45 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     const elFinanceiroDetail = document.getElementById('kpi-financeiro-detail');
     if (elFinanceiroDetail) elFinanceiroDetail.innerHTML = `Previsto (produzido) · <span class="font-bold text-slate-600 dark:text-slate-300">Pago (SMSA): ${formatCurrency(totalFinanceiroPago)}</span>`;
 
-    // Grouping for Table (by Procedimento)
+    // Grouping for Table (by Procedimento / Grupo de Oferta)
+    // Chaveia por chaveOfertaRede: um grupo de oferta vira UMA linha (meta única do grupo,
+    // oferta somada dos SIGTAPs), em vez de uma linha por SIGTAP com a meta do grupo repetida.
     const groupsMap = {};
-    const seenTableKeys = {}; // sigtap -> { instId -> {meta, oferta} } (dedup por instituto)
     filtered.forEach(p => {
-        const key = p.sigtap;
+        const key = chaveOfertaRede(p);
         if (!groupsMap[key]) {
+            const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
             const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
             groupsMap[key] = {
-                sigtap: key,
-                nome: proc ? proc.nome : `SIGTAP: ${p.sigtap}`,
-                pactuado: 0,
-                ofertado: 0,
-                progIds: new Set()
+                chave: key,
+                sigtap: p.sigtap, // SIGTAP de referência (drill-down usa a chave)
+                isGrupo: !!grupo,
+                nome: grupo
+                    ? (grupo.nome || 'Grupo de Oferta')
+                    : (proc ? (proc.especialidade ? `${proc.nome} — ${proc.especialidade}` : proc.nome) : `SIGTAP: ${p.sigtap}`),
+                progIds: new Set(),
+                sigtaps: new Set()
             };
         }
-        // Dedup por instituto (considerar a maior meta/oferta); soma entre institutos
-        if (!seenTableKeys[key]) seenTableKeys[key] = {};
-        const inst = seenTableKeys[key][p.instId] || { meta: 0, oferta: 0 };
-        const meta = getMeta(p, localGruposOferta);
-        const oferta = getOferta(p);
-        if (meta > inst.meta) { groupsMap[key].pactuado += (meta - inst.meta); inst.meta = meta; }
-        if (oferta > inst.oferta) { groupsMap[key].ofertado += (oferta - inst.oferta); inst.oferta = oferta; }
-        seenTableKeys[key][p.instId] = inst;
         if (p.progId) groupsMap[key].progIds.add(p.progId);
+        if (p.sigtap) groupsMap[key].sigtaps.add(p.sigtap);
     });
 
-    const groups = Object.values(groupsMap).map(g => ({
-        ...g,
-        status: g.pactuado > 0 ? Math.round((g.ofertado / g.pactuado) * 100) : 0,
-        programNames: Array.from(g.progIds).map(id => {
-            const prog = window.localProgramas?.find(pr => pr.id === id);
-            return prog ? prog.nome : id;
-        }).join(', ') || '-'
-    })).sort((a, b) => b.pactuado - a.pactuado);
+    const groups = Object.values(groupsMap).map(g => {
+        const pactuado = metaMap[g.chave] || 0;   // meta do grupo conta uma vez
+        const ofertado = netMap[g.chave] || 0;    // oferta somada da rede
+        return {
+            ...g,
+            pactuado,
+            ofertado,
+            codigos: Array.from(g.sigtaps).join(', '),
+            status: pactuado > 0 ? Math.round((ofertado / pactuado) * 100) : 0,
+            programNames: Array.from(g.progIds).map(id => {
+                const prog = window.localProgramas?.find(pr => pr.id === id);
+                return prog ? prog.nome : id;
+            }).join(', ') || '-'
+        };
+    }).sort((a, b) => b.pactuado - a.pactuado);
 
     // Update Table
     const tableBody = document.getElementById('dashboard-table-body');
@@ -283,8 +300,11 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                 <tr class="bg-white dark:bg-[#101822] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
                         <div class="flex items-center gap-3">
-                            <div class="size-2 rounded-full ${item.status >= 100 ? 'bg-green-500' : item.status >= 70 ? 'bg-yellow-500' : 'bg-red-500'}"></div>
-                            <span class="truncate max-w-[300px]" title="${item.nome}">${item.nome}</span>
+                            <div class="size-2 rounded-full shrink-0 ${item.status >= 100 ? 'bg-green-500' : item.status >= 70 ? 'bg-yellow-500' : 'bg-red-500'}"></div>
+                            <div class="min-w-0">
+                                <span class="truncate max-w-[300px] block" title="${item.nome}">${item.nome}${item.isGrupo ? ' <span class="text-[9px] font-medium text-slate-400">(grupo)</span>' : ''}</span>
+                                <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[300px] block" title="${item.codigos}">${item.codigos}</span>
+                            </div>
                         </div>
                     </td>
                     <td class="px-6 py-4 text-xs text-slate-500 dark:text-slate-400">
@@ -298,7 +318,7 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                         </span>
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <button onclick="window.openDetalhamento('${item.sigtap}')" class="text-slate-300 hover:text-primary transition-colors">
+                        <button onclick="window.openDetalhamento('${item.chave}')" class="text-slate-300 hover:text-primary transition-colors">
                             <span class="material-symbols-outlined text-[18px]">visibility</span>
                         </button>
                     </td>
@@ -310,19 +330,37 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
     // Alerts
     const alertsContainer = document.getElementById('alerts-container');
     if (alertsContainer) {
-        const critical = filtered.filter(p => {
+        // Avaliação POR INSTITUTO, deduplicando por instituto + chave da rede (grupo ou
+        // procedimento). Para grupos de oferta, compara a oferta somada dos SIGTAPs do
+        // grupo (naquele instituto) contra a meta do grupo — não 1 SIGTAP contra a meta
+        // do grupo inteiro (que gerava críticos falsos e cards repetidos).
+        const seen = new Set();
+        const critical = [];
+        filtered.forEach(p => {
+            const dedupKey = `${p.instId}||${chaveOfertaRede(p)}`;
+            if (seen.has(dedupKey)) return;
+            seen.add(dedupKey);
             const meta = getMeta(p, localGruposOferta);
-            const status = meta > 0 ? atingimentoPct(getOferta(p), meta) : 100;
-            return status < 70;
+            if (meta <= 0) return;
+            const status = atingimentoPct(ofertaInstitutoChave(p, filtered), meta);
+            if (status < 70) critical.push({ p, status });
         });
+        critical.sort((a, b) => a.status - b.status); // mais crítico primeiro
 
         if (critical.length === 0) {
             alertsContainer.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs italic">Nenhuma oferta mínima crítica. Produção dentro do esperado.</div>`;
         } else {
-            alertsContainer.innerHTML = critical.map(p => {
+            alertsContainer.innerHTML = critical.map(({ p, status }) => {
                 const inst = localInsts.find(i => i.id === p.instId);
                 const proc = localProcs.find(pr => pr.sigtap === p.sigtap);
-                const status = atingimentoPct(getOferta(p), getMeta(p, localGruposOferta));
+                const grupo = p.grupoOfertaId ? localGruposOferta.find(g => g.id === p.grupoOfertaId) : null;
+                const titulo = grupo ? (grupo.nome || 'Grupo de Oferta') : (proc?.nome || p.sigtap);
+                // Código(s) SIGTAP: grupo lista todos os SIGTAPs do grupo neste instituto.
+                const chave = chaveOfertaRede(p);
+                const sigtaps = grupo
+                    ? [...new Set(filtered.filter(x => x.instId === p.instId && chaveOfertaRede(x) === chave).map(x => x.sigtap))]
+                    : [p.sigtap];
+                const codigos = sigtaps.join(', ');
                 return `
                     <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-l-4 ${status < 50 ? 'border-red-500' : 'border-orange-500'} shadow-sm">
                         <div class="flex items-start justify-between gap-3">
@@ -331,7 +369,10 @@ async function updateDashboard(periods = [], allPactuacoes = null) {
                                     ${status < 50 ? 'error' : 'warning'}
                                 </span>
                                 <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">${proc?.nome || p.sigtap}</h4>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">${titulo}${grupo ? ' <span class="text-[9px] font-medium text-slate-400">(grupo)</span>' : ''}</h4>
+                                    <p class="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-0.5" title="${codigos}">
+                                        SIGTAP: ${codigos}
+                                    </p>
                                     <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                                         Atingimento: <span class="font-bold">${status}%</span> no ${inst?.sigla || inst?.nome || 'Instituto'}
                                     </p>
@@ -551,12 +592,13 @@ function renderCharts(currentData, allPactuacoes) {
         const seenGoalKeys = new Set();
         currentData.forEach(p => {
             if (!instStats[p.instId]) instStats[p.instId] = { id: p.instId, pact: 0, real: 0 };
-            // Atingimento = OFERTA ÷ META, deduplicando por instituto+sigtap
-            const goalKey = `${p.instId}-${p.sigtap}`;
+            // Atingimento = OFERTA ÷ META, deduplicando por instituto+chave da rede
+            // (um grupo de oferta conta uma vez por instituto; oferta soma os SIGTAPs do grupo).
+            const goalKey = `${p.instId}||${chaveOfertaRede(p)}`;
             if (!seenGoalKeys.has(goalKey)) {
                 seenGoalKeys.add(goalKey);
                 instStats[p.instId].pact += getMeta(p, localGruposOferta);
-                instStats[p.instId].real += getOferta(p);
+                instStats[p.instId].real += ofertaInstitutoChave(p, currentData);
             }
         });
 
@@ -1043,38 +1085,58 @@ window.resetTrendSelection = () => {
     renderProcTrendChart(procTrendMode);
 };
 
-window.openDetalhamento = (sigtap) => {
-    const proc = localProcs.find(p => p.sigtap === sigtap);
-    const filtered = currentPactuacoes.filter(p => p.sigtap === sigtap && (selectedPeriods.length === 0 || selectedPeriods.includes(p.competencia)));
+window.openDetalhamento = (key) => {
+    // `key` é a chaveOfertaRede (grupo_<id> ou sig_<num>). Filtra as pactuações da mesma chave.
+    const scope = currentPactuacoes.filter(p => selectedPeriods.length === 0 || selectedPeriods.includes(p.competencia));
+    const items = scope.filter(p => chaveOfertaRede(p) === key);
+    if (items.length === 0) return;
 
-    document.getElementById('detail-proc-nome').textContent = proc?.nome || `Procedimento ${sigtap}`;
-    document.getElementById('detail-proc-sigtap').textContent = `Código SIGTAP: ${sigtap}`;
+    const sample = items[0];
+    const grupo = sample.grupoOfertaId ? localGruposOferta.find(g => g.id === sample.grupoOfertaId) : null;
+    const proc = localProcs.find(p => p.sigtap === sample.sigtap);
+
+    if (grupo) {
+        const sigtaps = [...new Set(items.map(i => i.sigtap))];
+        document.getElementById('detail-proc-nome').textContent = grupo.nome || 'Grupo de Oferta';
+        document.getElementById('detail-proc-sigtap').textContent = `Grupo de oferta · ${sigtaps.length} procedimento(s): ${sigtaps.join(', ')}`;
+    } else {
+        document.getElementById('detail-proc-nome').textContent =
+            (proc?.nome || `Procedimento ${sample.sigtap}`) + (proc?.especialidade ? ` — ${proc.especialidade}` : '');
+        document.getElementById('detail-proc-sigtap').textContent = proc?.codigoFaturamento && proc.codigoFaturamento !== sample.sigtap
+            ? `Código: ${sample.sigtap} · SIGTAP real: ${proc.codigoFaturamento}`
+            : `Código SIGTAP: ${sample.sigtap}`;
+    }
+
+    // Agrega POR INSTITUTO. Grupo: soma os SIGTAPs (maior por SIGTAP, dedup de incentivos);
+    // meta do grupo é única. Individual: maior por SIGTAP.
+    const byInst = {};
+    items.forEach(p => {
+        if (!byInst[p.instId]) byInst[p.instId] = { instId: p.instId, meta: 0, perSigtap: {} };
+        const b = byInst[p.instId];
+        b.meta = grupo ? getMeta(p, localGruposOferta) : Math.max(b.meta, getMeta(p, localGruposOferta));
+        const s = b.perSigtap[p.sigtap] || { ofertado: 0, produzido: 0, vBase: 0, vInc: 0 };
+        s.ofertado = Math.max(s.ofertado, getOferta(p));
+        s.produzido = Math.max(s.produzido, getProduzido(p));
+        s.vBase = Math.max(s.vBase, parseFloat(p.vlrSigtapBase || 0));
+        s.vInc = Math.max(s.vInc, parseFloat(p.vlrIncentivo || 0));
+        b.perSigtap[p.sigtap] = s;
+    });
 
     const tbody = document.getElementById('detail-table-body');
-    tbody.innerHTML = filtered.map(p => {
-        const inst = localInsts.find(i => i.id === p.instId);
-
-        // Safe Parsing
-        const rawOff = p.ofertado;
-        const rawReal = p.producao?.realizada;
-
-        const pact = getMeta(p, localGruposOferta); // meta (resolve grupo)
-        const ofertado = !isNaN(parseInt(rawOff)) ? parseInt(rawOff) : 0;
-        const realizado = !isNaN(parseInt(rawReal)) ? parseInt(rawReal) : 0;
-
-        const vBase = parseFloat(p.vlrSigtapBase || 0);
-        const vInc = parseFloat(p.vlrIncentivo || 0);
-        const totalLinha = (vBase + vInc) * realizado;
-
-        // Status typically tracks Offer vs Pactuado now
-        const status = pact > 0 ? Math.round((ofertado / pact) * 100) : 0;
+    tbody.innerHTML = Object.values(byInst).map(b => {
+        const inst = localInsts.find(i => i.id === b.instId);
+        const sigs = Object.values(b.perSigtap);
+        const ofertado = sigs.reduce((s, x) => s + x.ofertado, 0);
+        const produzido = sigs.reduce((s, x) => s + x.produzido, 0);
+        const totalLinha = sigs.reduce((s, x) => s + (x.vBase + x.vInc) * x.produzido, 0);
+        const status = b.meta > 0 ? Math.round((ofertado / b.meta) * 100) : 0;
 
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">${inst?.sigla || inst?.nome || '???'}</td>
-                <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(pact)}</td>
+                <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(b.meta)}</td>
                 <td class="px-6 py-4 text-right font-mono text-xs">${formatNumber(ofertado)}</td>
-                <td class="px-6 py-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400">${formatNumber(realizado)}</td>
+                <td class="px-6 py-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400">${formatNumber(produzido)}</td>
                 <td class="px-6 py-4 text-center">
                     <span class="text-[10px] font-black px-2 py-0.5 rounded border ${status >= 90 ? 'bg-green-100 text-green-800 border-green-200' : status >= 70 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}">
                         ${status}%
@@ -1090,6 +1152,32 @@ window.openDetalhamento = (sigtap) => {
 
 window.closeDetailModal = () => {
     document.getElementById('modal-detalhe-procedimento').classList.add('hidden');
+};
+
+// Recolhe/expande o painel "Alertas Operacionais" PARA O LADO: esconde a coluna e a
+// tabela ocupa a largura toda. Persiste no localStorage.
+function applyAlertsCollapsed(collapsed) {
+    const col = document.getElementById('col-alertas');
+    const tbl = document.getElementById('col-tabela');
+    const reopen = document.getElementById('alerts-reopen');
+    if (!col) return;
+    col.classList.toggle('hidden', collapsed);
+    if (tbl) {
+        tbl.classList.toggle('xl:col-span-2', !collapsed);
+        tbl.classList.toggle('xl:col-span-3', collapsed);
+    }
+    if (reopen) {
+        reopen.classList.toggle('hidden', !collapsed);
+        reopen.classList.toggle('flex', collapsed);
+    }
+}
+
+window.toggleAlertsPanel = () => {
+    const col = document.getElementById('col-alertas');
+    if (!col) return;
+    const collapsed = !col.classList.contains('hidden'); // estado após o toggle
+    applyAlertsCollapsed(collapsed);
+    try { localStorage.setItem('alerts_panel_collapsed', collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
 };
 
 function renderContactButtons(pact, inst, proc) {
@@ -1158,7 +1246,9 @@ window.openCommModal = (type, pactId, instId) => {
     let subjectText, bodyText;
     if (pact) {
         const metaPct = getMeta(pact, localGruposOferta);
-        const pct = metaPct > 0 ? atingimentoPct(getOferta(pact), metaPct) : 0;
+        // Oferta do instituto para o grupo/procedimento (soma os SIGTAPs do grupo)
+        const ofertaInst = ofertaInstitutoChave(pact, currentPactuacoes.filter(x => x.competencia === pact.competencia));
+        const pct = metaPct > 0 ? atingimentoPct(ofertaInst, metaPct) : 0;
         subjectText = `Alerta de Produção: ${proc?.nome || pact.sigtap}`;
         bodyText = `Olá,\n\nIdentificamos que o procedimento ${proc?.nome || pact.sigtap} está com produção abaixo do esperado (${pct}%) no mês de ${pact.competencia}.\n\nFavor verificar.\n\nAtenciosamente,\nEquipe Orçamento`;
     } else {
@@ -1250,6 +1340,9 @@ function checkGlobalCompliance(allPactuacoes, institutes, config) {
     // Initialize map for institutes involved in this period (or all active? Let's use involved in pactuacoes)
     // Actually, we should check ALL institutes that HAVE pactuation goals > 0.
 
+    // Dedup por instituto + chave da rede: um grupo de oferta conta como UM item
+    // (não uma vez por SIGTAP) e a pendência considera a oferta somada do grupo.
+    const seenCompliance = new Set();
     periodItems.forEach(p => {
         if (!complianceMap[p.instId]) {
             complianceMap[p.instId] = {
@@ -1259,10 +1352,14 @@ function checkGlobalCompliance(allPactuacoes, institutes, config) {
             };
         }
 
+        const dedupKey = `${p.instId}||${chaveOfertaRede(p)}`;
+        if (seenCompliance.has(dedupKey)) return;
+        seenCompliance.add(dedupKey);
+
         const meta = getMeta(p, localGruposOferta);
         if (meta > 0) {
             complianceMap[p.instId].totalCount++;
-            const oferta = getOferta(p); // compliance = o instituto lançou a oferta?
+            const oferta = ofertaInstitutoChave(p, periodItems); // compliance = o instituto lançou a oferta?
             if (!oferta || oferta === 0) {
                 complianceMap[p.instId].pendingCount++;
             }
