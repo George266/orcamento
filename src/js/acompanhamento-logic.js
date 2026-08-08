@@ -232,7 +232,7 @@ function checkBudgetDeadlineCompliance(allPactuacoes, institutes, config) {
         if (!statusMap[p.instId]) statusMap[p.instId] = { started: false, pendingItems: new Set() };
 
         const prod = parseInt(p.producao?.realizada || 0);
-        const offer = parseInt(p.ofertado || 0);
+        const offer = getOferta(p); // oferta = soma das semanas (fonte única)
 
         if (prod > 0 || offer > 0) {
             statusMap[p.instId].started = true;
@@ -1105,13 +1105,7 @@ window.openBreakdownModal = (key) => {
 
             let meta = getMeta(item, localGruposOferta); // resolve meta do grupo
 
-            const semOfferModal = (parseInt(item.producao?.sem1 || 0) + parseInt(item.producao?.sem2 || 0) +
-                parseInt(item.producao?.sem3 || 0) + parseInt(item.producao?.sem4 || 0) + parseInt(item.producao?.sem5 || 0));
-            let offer = parseInt(item.producao?.realizada);
-            if (isNaN(offer)) offer = 0;
-            let staticOffer = parseInt(item.ofertado);
-            if (isNaN(staticOffer)) staticOffer = 0;
-            const finalOffer = getOferta(item); // OFERTA do instituto = ofertado (só leitura)
+            const finalOffer = getOferta(item); // OFERTA do instituto = soma das semanas (fonte única)
 
             let prod = getProduzido(item);       // "Produzido" = producao.realizada
             if (isNaN(prod)) prod = 0;
@@ -1510,7 +1504,7 @@ function updateStats(pact, real, fin, filteredList = [], globalStatus = {}) {
             // Using the existing logic for now.
             const criticalCount = filteredList.filter(p => {
                 const pactVal = parseInt(p.ofertaMinima || 0);
-                const offerVal = parseInt(p.ofertado || 0);
+                const offerVal = getOferta(p); // oferta = soma das semanas (fonte única)
                 return pactVal > 0 && (offerVal / pactVal) < 0.7;
             }).length;
             elements[3].textContent = criticalCount;

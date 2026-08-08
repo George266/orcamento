@@ -519,6 +519,21 @@
                     </ul>
                 </div>
 
+                <!-- Diagnóstico de Integridade -->
+                <div class="mt-8 border-t border-slate-200 dark:border-slate-800 pt-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
+                            <span class="material-symbols-outlined text-blue-500">health_and_safety</span> Diagnóstico de Integridade
+                        </h3>
+                        <button onclick="runIntegrityDiagnostic()"
+                            class="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">troubleshoot</span> Rodar Diagnóstico
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Aponta incentivos órfãos, institutos/programas duplicados por grafia (ex.: IOCM x IONCM) e usuários vinculados a instituto inexistente.</p>
+                    <div id="integrity-result" class="hidden text-sm space-y-3"></div>
+                </div>
+
                 <!-- Danger Zone -->
                 <div class="mt-8 border-t border-slate-200 dark:border-slate-800 pt-8">
                     <h3 class="text-sm font-bold text-red-600 uppercase mb-4 flex items-center gap-2">
@@ -1013,14 +1028,20 @@
                 percent.textContent = '30%';
 
                 // Process Data via Repository
-                await Repository.importData(jsonData, (progress, message) => {
+                const result = await Repository.importData(jsonData, (progress, message) => {
                     bar.style.width = `${30 + (progress * 0.7)}%`;
                     percent.textContent = `${Math.round(30 + (progress * 0.7))}%`;
-                    if (message) logDiv.innerHTML += `<div>${message}</div>`;
+                    if (message) {
+                        const isWarn = message.startsWith('⚠');
+                        logDiv.innerHTML += `<div class="${isWarn ? 'text-amber-400 font-bold' : ''}">${message}</div>`;
+                    }
                     logDiv.scrollTop = logDiv.scrollHeight;
                 });
 
                 logDiv.innerHTML += `<div class="text-emerald-400 font-bold">> Importação concluída com sucesso!</div>`;
+                if (result?.warnings?.length) {
+                    logDiv.innerHTML += `<div class="text-amber-400 font-bold mt-2">> ${result.warnings.length} aviso(s) de possível duplicata acima — recomenda-se rodar o Diagnóstico de Integridade.</div>`;
+                }
                 bar.style.width = '100%';
                 percent.textContent = '100%';
                 bar.classList.remove('bg-blue-500');
@@ -1077,6 +1098,76 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
+            }
+        };
+
+        // --- DIAGNÓSTICO DE INTEGRIDADE ---
+        window.runIntegrityDiagnostic = async () => {
+            const box = document.getElementById('integrity-result');
+            const btn = event.target.closest('button');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = 'Analisando...'; }
+            box.classList.remove('hidden');
+            box.innerHTML = '<div class="text-slate-400">Rodando diagnóstico...</div>';
+
+            try {
+                const r = await Repository.getIntegrityReport();
+                const esc = (s) => (s ?? '').toString().replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+                const blocks = [];
+
+                const card = (color, icon, title, bodyHtml) => `
+                    <div class="border rounded-lg p-3 border-${color}-200 dark:border-${color}-900/40 bg-${color}-50 dark:bg-${color}-900/10">
+                        <p class="font-bold text-${color}-700 dark:text-${color}-400 flex items-center gap-2 mb-1">
+                            <span class="material-symbols-outlined text-[18px]">${icon}</span> ${title}</p>
+                        <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">${bodyHtml}</div>
+                    </div>`;
+
+                if (r.orphanProgs.length) {
+                    blocks.push(card('amber', 'link_off', `Incentivos órfãos (${r.orphanProgs.length})`,
+                        r.orphanProgs.map(o => `• <strong>${esc(o.progId)}</strong> — ${o.count} pactuação(ões), institutos: ${o.instIds.map(esc).join(', ') || '-'} <em>(sem cadastro em Programas)</em>`).join('<br>')));
+                }
+                if (r.orphanInsts.length) {
+                    blocks.push(card('amber', 'domain_disabled', `Institutos órfãos (${r.orphanInsts.length})`,
+                        r.orphanInsts.map(o => `• <strong>${esc(o.instId)}</strong> — ${o.count} pactuação(ões) <em>(sem cadastro em Institutos)</em>`).join('<br>')));
+                }
+                if (r.duplicateInstitutos.length) {
+                    blocks.push(card('red', 'content_copy', `Institutos parecidos — possível duplicata (${r.duplicateInstitutos.length})`,
+                        r.duplicateInstitutos.map(p => `• <strong>${esc(p.a.id)}</strong> (${esc(p.a.nome)}) ↔ <strong>${esc(p.b.id)}</strong> (${esc(p.b.nome)})`).join('<br>')));
+                }
+                if (r.duplicateProgramas.length) {
+                    blocks.push(card('red', 'content_copy', `Incentivos parecidos — possível duplicata (${r.duplicateProgramas.length})`,
+                        r.duplicateProgramas.map(p => `• <strong>${esc(p.a.id)}</strong> (${esc(p.a.nome)}) ↔ <strong>${esc(p.b.id)}</strong> (${esc(p.b.nome)})`).join('<br>')));
+                }
+                if (r.usersBadBinding.length) {
+                    blocks.push(card('red', 'person_alert', `Usuários com vínculo inválido (${r.usersBadBinding.length})`,
+                        r.usersBadBinding.map(u => `• ${esc(u.email)} → vínculos: [${u.instIds.map(esc).join(', ') || 'nenhum'}]${u.invalidIds.length ? ` <strong class="text-red-600">(inexistente: ${u.invalidIds.map(esc).join(', ')})</strong>` : ' <strong class="text-red-600">(sem instituto)</strong>'}`).join('<br>')));
+                }
+
+                // Listagem de vínculos de usuários de instituto (para conferência visual —
+                // pega vínculo errado mas válido, ex.: usuário IONCM apontando para IOCM).
+                if (r.instUserBindings && r.instUserBindings.length) {
+                    const rows = r.instUserBindings.map(u => {
+                        const vinc = u.vinculos.length
+                            ? u.vinculos.map(v => v.sigla ? `<strong>${esc(v.sigla)}</strong> (${esc(v.nome)})` : `<strong class="text-red-600">${esc(v.id)} ⚠ inexistente</strong>`).join(', ')
+                            : '<span class="text-red-600">sem vínculo</span>';
+                        return `• ${esc(u.name || u.email)} — ${vinc}`;
+                    }).join('<br>');
+                    blocks.push(card('blue', 'group', `Vínculos de usuários de instituto (${r.instUserBindings.length})`, rows));
+                }
+
+                const summary = `<div class="text-xs text-slate-400">${r.counts.pactuacoes} pactuações · ${r.counts.programas} programas · ${r.counts.institutos} institutos · ${r.counts.usuarios} usuários</div>`;
+
+                const problemCount = r.orphanProgs.length + r.orphanInsts.length + r.duplicateInstitutos.length + r.duplicateProgramas.length + r.usersBadBinding.length;
+                if (problemCount === 0) {
+                    box.innerHTML = card('emerald', 'check_circle', 'Nenhuma inconsistência crítica encontrada', 'Confira abaixo os vínculos dos usuários para garantir que cada um aponta para o instituto correto.') + blocks.join('') + summary;
+                } else {
+                    box.innerHTML = blocks.join('') + summary;
+                }
+            } catch (err) {
+                console.error(err);
+                box.innerHTML = `<div class="text-red-500 font-bold">Erro ao rodar diagnóstico: ${err.message}</div>`;
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
             }
         };
 

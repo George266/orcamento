@@ -47,6 +47,35 @@ const parseMoney = (v) => {
     return isNaN(n) ? 0 : n;
 };
 
+// Distância de Levenshtein — usada para detectar ids "quase iguais" (ex.: "iocm" x "ioncm")
+// que indicam duplicatas acidentais de instituto/programa por diferença de grafia na planilha.
+const levenshtein = (a = '', b = '') => {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    let prev = Array.from({ length: n + 1 }, (_, i) => i);
+    for (let i = 1; i <= m; i++) {
+        let cur = [i];
+        for (let j = 1; j <= n; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+        }
+        prev = cur;
+    }
+    return prev[n];
+};
+
+// Retorna ids existentes "quase iguais" ao id novo (distância pequena), sem serem idênticos.
+// Ignora strings muito curtas para evitar falso-positivo.
+const findNearMatches = (id, existingIds, maxDist = 2) => {
+    if (!id || id.length < 4) return [];
+    return existingIds.filter(other =>
+        other && other !== id && Math.abs(other.length - id.length) <= maxDist &&
+        levenshtein(id, other) <= maxDist
+    );
+};
+
 /**
  * Repository to handle all Firestore operations.
  */
@@ -424,13 +453,22 @@ export const Repository = {
         // 3. Save Metadata (Programs, Institutes, Procedures) - PRESERVE EXISTING
 
         // Fetch existing IDs to prevent overwrite
-        const [existInsts, existProcs] = await Promise.all([
+        const [existInsts, existProcs, existProgs] = await Promise.all([
             getDocs(collection(db, COLL_INSTITUTOS)),
-            getDocs(collection(db, COLL_PROCEDIMENTOS))
+            getDocs(collection(db, COLL_PROCEDIMENTOS)),
+            getDocs(collection(db, COLL_PROGRAMAS))
         ]);
 
         const existingInstIds = new Set(existInsts.docs.map(d => d.id));
         const existingProcIds = new Set(existProcs.docs.map(d => d.id));
+        const existingProgIds = new Set(existProgs.docs.map(d => d.id));
+
+        // Guarda os ids ANTES da importação para detectar novos cadastros e near-matches.
+        const priorInstIdList = Array.from(existingInstIds);
+        const priorProgIdList = Array.from(existingProgIds);
+        const warnings = [];
+        const createdInstitutos = [];
+        const createdProgramas = [];
 
         const metadataItems = [
             ...Array.from(uniqueProgs).map(([id, nome]) => ({ type: 'prog', id, nome })),
@@ -442,10 +480,18 @@ export const Repository = {
             if (item.type === 'prog') {
                 // Programs are groups, safe to update names if needed, or we can choose to skip too.
                 // Usually we want to ensure the Program exists.
+                if (!existingProgIds.has(item.id)) {
+                    createdProgramas.push({ id: item.id, nome: item.nome });
+                    const near = findNearMatches(item.id, priorProgIdList);
+                    if (near.length) warnings.push(`Programa novo "${item.nome}" (id: ${item.id}) é muito parecido com já existente(s): ${near.join(', ')}. Verifique se não é duplicata por diferença de grafia.`);
+                }
                 batch.set(doc(db, COLL_PROGRAMAS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
             } else if (item.type === 'inst') {
                 // SKIP if exists
                 if (!existingInstIds.has(item.id)) {
+                    createdInstitutos.push({ id: item.id, nome: item.nome });
+                    const near = findNearMatches(item.id, priorInstIdList);
+                    if (near.length) warnings.push(`Instituto novo "${item.nome}" (id: ${item.id}) é muito parecido com já existente(s): ${near.join(', ')}. Verifique se não é duplicata (ex.: siglas quase iguais como IOCM x IONCM).`);
                     batch.set(doc(db, COLL_INSTITUTOS, item.id), { nome: item.nome, status: 'Ativo', updatedAt: new Date() }, { merge: true });
                 }
             } else if (item.type === 'proc') {
@@ -455,6 +501,14 @@ export const Repository = {
                 }
             }
         }, 10, 30);
+
+        // 3.1 Reporta novos cadastros e possíveis duplicatas (blindagem contra
+        // instituto/programa criado por diferença de grafia — causa de incentivo "sumido").
+        if (onProgress) {
+            if (createdInstitutos.length) onProgress(30, `Novos institutos cadastrados: ${createdInstitutos.map(i => i.nome).join(', ')}`);
+            if (createdProgramas.length) onProgress(30, `Novos incentivos/programas cadastrados: ${createdProgramas.map(p => p.nome).join(', ')}`);
+            warnings.forEach(w => onProgress(30, `⚠ ATENÇÃO: ${w}`));
+        }
 
         // 4. Save Pactuacoes (Main Data)
         await processBatch(data, (batch, row) => {
@@ -528,9 +582,107 @@ export const Repository = {
         await this.logActivity('IMPORT_DATA', {
             lines: data.length,
             procs: uniqueProcs.size,
-            insts: uniqueInsts.size
+            insts: uniqueInsts.size,
+            newInstitutos: createdInstitutos.length,
+            newProgramas: createdProgramas.length,
+            warnings: warnings.length
         });
 
-        return { success: true, rows: data.length };
+        return {
+            success: true,
+            rows: data.length,
+            warnings,
+            createdInstitutos,
+            createdProgramas
+        };
+    },
+
+    // --- DIAGNÓSTICO DE INTEGRIDADE ---
+    // Varre as coleções e aponta inconsistências que fazem um incentivo "desaparecer"
+    // dos filtros do instituto: pactuações órfãs, institutos/programas duplicados por
+    // grafia e usuários vinculados a instituto inexistente.
+    async getIntegrityReport() {
+        const [pactsSnap, progsSnap, instsSnap, usersSnap] = await Promise.all([
+            getDocs(collection(db, COLL_PACTUACOES)),
+            getDocs(collection(db, COLL_PROGRAMAS)),
+            getDocs(collection(db, COLL_INSTITUTOS)),
+            getDocs(collection(db, COLL_USUARIOS))
+        ]);
+
+        const pacts = pactsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const progs = progsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const insts = instsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const progIds = new Set(progs.map(p => p.id));
+        const instIds = new Set(insts.map(i => i.id));
+
+        // 1. Pactuações com progId sem documento em 'programas' (incentivo órfão → some do filtro)
+        const orphanProgMap = new Map();
+        // 2. Pactuações com instId sem documento em 'institutos'
+        const orphanInstMap = new Map();
+        pacts.forEach(p => {
+            if (p.progId && !progIds.has(p.progId)) {
+                const e = orphanProgMap.get(p.progId) || { progId: p.progId, count: 0, instIds: new Set() };
+                e.count++; if (p.instId) e.instIds.add(p.instId);
+                orphanProgMap.set(p.progId, e);
+            }
+            if (p.instId && !instIds.has(p.instId)) {
+                const e = orphanInstMap.get(p.instId) || { instId: p.instId, count: 0 };
+                e.count++;
+                orphanInstMap.set(p.instId, e);
+            }
+        });
+        const orphanProgs = Array.from(orphanProgMap.values()).map(e => ({ ...e, instIds: Array.from(e.instIds) }));
+        const orphanInsts = Array.from(orphanInstMap.values());
+
+        // 3. Institutos e programas com ids quase iguais (possível duplicata por grafia)
+        const nearDupPairs = (list) => {
+            const pairs = [];
+            for (let i = 0; i < list.length; i++) {
+                for (let j = i + 1; j < list.length; j++) {
+                    const d = levenshtein(list[i].id, list[j].id);
+                    if (list[i].id.length >= 4 && list[j].id.length >= 4 && d > 0 && d <= 2) {
+                        pairs.push({ a: { id: list[i].id, nome: list[i].nome }, b: { id: list[j].id, nome: list[j].nome }, dist: d });
+                    }
+                }
+            }
+            return pairs;
+        };
+        const duplicateInstitutos = nearDupPairs(insts);
+        const duplicateProgramas = nearDupPairs(progs);
+
+        // 4. Usuários de Instituto: vínculos inválidos + listagem completa resolvida.
+        // A listagem ajuda a flagrar vínculo ERRADO mas válido (ex.: usuário do IONCM
+        // apontando para IOCM) — que o check de "inexistente" não detecta sozinho.
+        const instById = new Map(insts.map(i => [i.id, i]));
+        const usersBadBinding = [];
+        const instUserBindings = [];
+        users.forEach(u => {
+            if (!u.role || !u.role.startsWith('Institutos')) return;
+            const ids = u.instIds || (u.instId ? [u.instId] : []);
+            const bad = ids.filter(id => id && !instIds.has(id));
+            if (bad.length || ids.length === 0) {
+                usersBadBinding.push({ email: u.email, name: u.name || '', instIds: ids, invalidIds: bad });
+            }
+            instUserBindings.push({
+                email: u.email,
+                name: u.name || '',
+                vinculos: ids.map(id => {
+                    const inst = instById.get(id);
+                    return { id, sigla: inst?.sigla || null, nome: inst?.nome || null };
+                })
+            });
+        });
+
+        return {
+            counts: { pactuacoes: pacts.length, programas: progs.length, institutos: insts.length, usuarios: users.length },
+            orphanProgs,
+            orphanInsts,
+            duplicateInstitutos,
+            duplicateProgramas,
+            usersBadBinding,
+            instUserBindings
+        };
     }
 };

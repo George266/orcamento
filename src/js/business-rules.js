@@ -54,7 +54,14 @@ export const STATUS_UI = {
 //   PRODUZIDO (central)     → producao.realizada   (coluna "Produzido") — base do pagamento
 //   RETORNO SMSA (central)  → producao.aprovada    (coluna "Retorno SMSA")
 //   META                    → ofertaMinima         (ou grupo.ofertaMinima quando há grupo de oferta)
-export const getOferta      = (p) => Number(p?.ofertado || 0);
+export const getOferta      = (p) => {
+    // OFERTA do instituto = soma das semanas (sem1..sem5), que é a fonte lançada na tela
+    // semanal. O campo `ofertado` é apenas o espelho dessa soma; registros antigos/importados
+    // podem tê-lo desatualizado (0/stale), por isso a soma das semanas tem prioridade e
+    // `ofertado` fica só como fallback quando nenhuma semana foi preenchida.
+    const semanas = [1, 2, 3, 4, 5].reduce((s, w) => s + (Number(p?.producao?.[`sem${w}`]) || 0), 0);
+    return semanas > 0 ? semanas : Number(p?.ofertado || 0);
+};
 export const getProduzido   = (p) => Number(p?.producao?.realizada || 0);
 export const getRetornoSMSA = (p) => Number(p?.producao?.aprovada || 0);
 

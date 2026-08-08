@@ -18,6 +18,55 @@ let localProgs = [];
 let localGruposOferta = [];
 let currentSort = { column: 'total', direction: 'desc' };
 
+// Monta o filtro de incentivo a partir das pactuações do instituto atual. Precisa ser
+// chamado no init E na troca de instituto, senão o dropdown congela com os incentivos
+// do instituto carregado inicialmente (bug do incentivo "sumido").
+function populateProgramFilterFin(preserveSelection = true) {
+    const progFilter = document.getElementById('filter-programa-fin');
+    if (!progFilter) return;
+
+    const previousVal = progFilter.value;
+    const uniqueProgIds = [...new Set(localPactuacoes.map(p => p.progId))].filter(Boolean);
+    const progs = uniqueProgIds.map(id => {
+        const prog = localProgs.find(pg => pg.id === id);
+        if (!prog) {
+            console.warn(`[INTEGRIDADE] Incentivo órfão: pactuação usa progId "${id}" sem cadastro em 'programas'. Exibindo com rótulo provisório.`);
+            return { id, nome: `⚠ ${id} (programa não cadastrado)` };
+        }
+        return prog;
+    });
+    progs.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    progFilter.innerHTML = `<option value="">Todos os Incentivos</option>` +
+        progs.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
+
+    if (preserveSelection && previousVal && progs.some(pg => pg.id === previousVal)) {
+        progFilter.value = previousVal;
+    } else {
+        progFilter.value = '';
+    }
+}
+
+// Reconstrói o filtro de competência a partir do instituto atual (evita competência
+// obsoleta ao trocar de instituto).
+function populateCompetenceFilterFin(preserveSelection = true) {
+    const compFilter = document.getElementById('filter-competencia-fin');
+    if (!compFilter) return;
+    const previousVal = compFilter.value;
+    if (localPactuacoes.length > 0) {
+        const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a));
+        compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (preserveSelection && previousVal && comps.includes(previousVal)) {
+            compFilter.value = previousVal;
+        } else {
+            const padraoFin = DateUtils.competenciaPadrao(comps);
+            if (padraoFin) compFilter.value = padraoFin;
+        }
+    } else {
+        compFilter.innerHTML = '<option value="">Sem dados</option>';
+    }
+}
+
 async function initFinanceiroInst() {
     onAuthStateChanged(auth, async (user) => {
         if (!user) return;
@@ -118,6 +167,11 @@ async function initFinanceiroInst() {
                             }
                         });
 
+                        // REFRESH FILTROS — sem isso os dropdowns de competência e incentivo
+                        // ficam com os dados do instituto anterior (bug do incentivo "sumido").
+                        populateCompetenceFilterFin(true);
+                        populateProgramFilterFin(true);
+
                         // Force re-render
                         renderTable();
                     });
@@ -141,26 +195,15 @@ async function initFinanceiroInst() {
 
         // Populate Competence Filter
         const compFilter = document.getElementById('filter-competencia-fin');
-        if (localPactuacoes.length > 0) {
-            const comps = [...new Set(localPactuacoes.map(p => p.competencia))].sort((a, b) => DateUtils.parseCompetencia(b) - DateUtils.parseCompetencia(a));
-            compFilter.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
-            const padraoFin = DateUtils.competenciaPadrao(comps);
-            if (padraoFin) compFilter.value = padraoFin;
-        }
-
+        populateCompetenceFilterFin(false);
         if (compFilter) {
             compFilter.addEventListener('change', renderTable);
         }
 
-        // Populate Program Filter
+        // Populate Program Filter (incentivo)
         const progFilter = document.getElementById('filter-programa-fin');
         if (progFilter) {
-            const uniqueProgIds = [...new Set(localPactuacoes.map(p => p.progId))];
-            const progs = uniqueProgIds.map(id => localProgs.find(pg => pg.id === id)).filter(Boolean);
-            progs.sort((a, b) => a.nome.localeCompare(b.nome));
-            progFilter.innerHTML = `<option value="">Todos os Incentivos</option>` +
-                progs.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
-
+            populateProgramFilterFin(false);
             progFilter.addEventListener('change', renderTable);
         }
 

@@ -63,6 +63,38 @@ function populateCompetenceFilter(selectElement, pactuacoes, preserveValue = fal
     }
 }
 
+// Monta o filtro de incentivo (programa) a partir das pactuações do instituto atual.
+// DEVE ser chamado tanto na inicialização quanto na TROCA de instituto (switcher),
+// senão o dropdown fica congelado com os incentivos do instituto carregado no init.
+function populateProgramFilter(preserveSelection = true) {
+    const progFilter = document.getElementById('filter-programa');
+    if (!progFilter) return;
+
+    const previousVal = progFilter.value;
+    const uniqueProgIds = [...new Set(localPactuacoes.map(p => p.progId))].filter(Boolean);
+    // Blindagem: incentivo órfão (sem cadastro em 'programas') aparece com rótulo
+    // provisório em vez de sumir silenciosamente do filtro.
+    const progs = uniqueProgIds.map(id => {
+        const prog = localProgs.find(pg => pg.id === id);
+        if (!prog) {
+            console.warn(`[INTEGRIDADE] Incentivo órfão: pactuação usa progId "${id}" sem cadastro em 'programas'. Exibindo com rótulo provisório.`);
+            return { id, nome: `⚠ ${id} (programa não cadastrado)` };
+        }
+        return prog;
+    });
+    progs.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    progFilter.innerHTML = `<option value="">Todos os Incentivos</option>` +
+        progs.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
+
+    // Preserva a seleção anterior se ainda existir no novo instituto; senão volta para "Todos".
+    if (preserveSelection && previousVal && progs.some(pg => pg.id === previousVal)) {
+        progFilter.value = previousVal;
+    } else {
+        progFilter.value = '';
+    }
+}
+
 async function initAcompanhamentoInst() {
     onAuthStateChanged(auth, async (user) => {
         if (!user) return;
@@ -195,6 +227,10 @@ async function initAcompanhamentoInst() {
                             populateCompetenceFilter(compFilter, localPactuacoes, true);
                         }
 
+                        // REFRESH INCENTIVO FILTER — sem isso o dropdown fica com os
+                        // incentivos do instituto anterior (bug do incentivo "sumido").
+                        populateProgramFilter(true);
+
                         renderTable();
                     });
                 });
@@ -242,19 +278,10 @@ async function initAcompanhamentoInst() {
             populateCompetenceFilter(compFilter, localPactuacoes, false);
         }
 
-        // Populate Program Filter
+        // Populate Program Filter (incentivo)
         const progFilter = document.getElementById('filter-programa');
         if (progFilter) {
-            // Get unique Program IDs from current pactuacoes
-            const uniqueProgIds = [...new Set(localPactuacoes.map(p => p.progId))];
-            // Map to Program Objects
-            const progs = uniqueProgIds.map(id => localProgs.find(pg => pg.id === id)).filter(Boolean);
-            // Sort by Name
-            progs.sort((a, b) => a.nome.localeCompare(b.nome));
-
-            progFilter.innerHTML = `<option value="">Todos os Incentivos</option>` +
-                progs.map(pg => `<option value="${pg.id}">${pg.nome}</option>`).join('');
-
+            populateProgramFilter(false);
             progFilter.addEventListener('change', renderTable);
         }
 
@@ -825,24 +852,31 @@ function renderTable() {
         const semanasTotal = sumSem1 + sumSem2 + sumSem3 + sumSem4 + sumSem5;
 
         if (group.isGrupo && group.grupoId) {
-            // Para oferta unificada: soma produção de TODOS os institutos da rede (o status é da rede, não do instituto)
-            const redeOferta = allPactuacoes
-                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
-                .reduce((sum, p) => sum + getOferta(p), 0);
-            const redeSemanas = allPactuacoes
-                .filter(p => p.competencia === compValue && p.grupoOfertaId === group.grupoId)
-                .reduce((sum, p) => sum + (parseInt(p.producao?.sem1 || 0) + parseInt(p.producao?.sem2 || 0) +
-                    parseInt(p.producao?.sem3 || 0) + parseInt(p.producao?.sem4 || 0) + parseInt(p.producao?.sem5 || 0)), 0);
-            group.totalRealizado = Math.max(redeOferta, redeSemanas);
+            // Oferta unificada: o status é da REDE (todos os institutos), somando os sigtaps do grupo.
+            // getOferta já devolve a soma das semanas, então redeOferta = oferta real da rede.
+            const grupoPacts = allPactuacoes.filter(p =>
+                p.competencia === compValue && p.grupoOfertaId === group.grupoId);
+            const perInst = {};
+            grupoPacts.forEach(p => { perInst[p.instId] = (perInst[p.instId] || 0) + getOferta(p); });
+            const redeOferta = Object.values(perInst).reduce((s, v) => s + v, 0);
+            group.totalRealizado = redeOferta;
+
+            // A meta da REDE é a do GRUPO (os itens têm ofertaMinima=0; a meta mora no grupo).
+            // Sem isso, o modal "Status da Rede" (openGlobalBreakdown) mostrava META REDE = 0.
+            const grupoObjG = localGruposOferta.find(g => g.id === group.grupoId);
+            const metaRede = parseInt(grupoObjG?.ofertaMinima || 0);
+            group.global = {
+                totalMeta: metaRede,
+                totalRealizado: redeOferta,
+                breakdown: Object.keys(perInst).map(instId => ({ instId, meta: metaRede, realizado: perInst[instId] })),
+            };
         } else {
             // Para procedimentos individuais: prioriza soma das semanas do próprio instituto.
-            // Só usa producao.realizada como fallback quando nenhuma semana foi preenchida.
+            // Só usa getOferta (que cai no ofertado) como fallback quando nenhuma semana foi preenchida.
             if (semanasTotal > 0) {
                 group.totalRealizado = semanasTotal;
             } else {
-                const localOferta = group.items
-                    .reduce((max, p) => Math.max(max, getOferta(p)), 0);
-                group.totalRealizado = localOferta;
+                group.totalRealizado = group.items.reduce((max, p) => Math.max(max, getOferta(p)), 0);
             }
         }
     });
@@ -895,6 +929,11 @@ function renderTable() {
 
     const tbody = document.getElementById('table-acompanhamento-inst');
     if (!tbody) return;
+
+    // A visão é multi-instituto ("Todos os Vinculados") quando há mais de um instituto carregado.
+    // Nela, TODA sub-linha de oferta unificada exibe a tag do instituto de origem (mesmo grupos com
+    // um só instituto). Na visão de instituto único a tag fica oculta (é sempre o próprio).
+    const isMultiInstituteView = new Set(localPactuacoes.map(p => p.instId)).size > 1;
 
     if (displayItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="12" class="px-6 py-10 text-center text-slate-400 italic">Aguardando ofertas</td></tr>`;
@@ -987,46 +1026,59 @@ function renderTable() {
                         </td>
                     </tr>`;
 
-                // Sub-rows — one per procedure in the group
-                const subRows = (grupoObj?.procedimentos || []).map(sigtap => {
-                    const proc = localProcs.find(x => x.sigtap === sigtap);
-                    const procName = proc?.nome || sigtap;
-                    // Agrega TODAS as pactuações deste sigtap presentes no grupo.
-                    // Na visão "Todos os Vinculados" isso soma a rede (vários institutos);
-                    // numa visão de instituto único devolve o(s) registro(s) do próprio instituto.
-                    // Antes usava .find() e mostrava só o primeiro registro (zerava o agregado).
-                    const pacts = group.items.filter(i => cleanSigtapFn(i.sigtap) === cleanSigtapFn(sigtap));
-                    const pactId = pacts[0]?.id || ''; // edição (visão individual) grava no registro do instituto
-                    const semVals = [1,2,3,4,5].map(w =>
-                        pacts.reduce((s, p) => s + (parseInt(p?.producao?.[`sem${w}`] || 0)), 0));
-                    const subTotal = semVals.reduce((s, v) => s + v, 0);
+                // Sub-linhas — uma por (INSTITUTO × procedimento) do grupo.
+                // Antes agregava todos os institutos numa única linha por sigtap, misturando as
+                // ofertas. Agora cada instituto tem suas próprias linhas: numa visão de instituto
+                // único aparece só o dele; na visão "Todos os Vinculados" cada linha ganha uma tag
+                // identificando de qual instituto é a oferta.
+                const instIdsInGroup = [...new Set(group.items.map(i => i.instId))];
 
-                    // All procedures in the group are editable — pass sigtap so a pactuação can be auto-created if missing
-                    const subWeekInputs = [1,2,3,4,5].map((w, idx) => `
-                        <td class="px-2 py-3 whitespace-nowrap text-center">
-                            <input
-                                onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value, '${pactId}', '${sigtap}')"
-                                class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
-                                min="0" value="${semVals[idx]}" type="number" ${inputState}
-                            />
-                        </td>`).join('');
+                const subRows = instIdsInGroup.map(instId => {
+                    const instObj = allInstitutes.find(x => x.id === instId);
+                    const instLabel = instObj?.sigla || instObj?.nome || 'Instituto';
+                    const instTag = isMultiInstituteView
+                        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 uppercase tracking-wide whitespace-nowrap" title="Oferta do instituto ${instLabel}">${instLabel}</span>`
+                        : '';
 
-                    return `
-                    <tr class="border-b border-indigo-50 dark:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800/30 transition-colors">
-                        <td class="pl-10 pr-4 py-3">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[14px] text-indigo-300">subdirectory_arrow_right</span>
-                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">${procName}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-3 text-[10px] font-mono text-slate-400">${sigtap}</td>
-                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
-                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
-                        <td class="px-6 py-3 text-center text-xs font-bold text-slate-500">${formatNumber(subTotal)}</td>
-                        <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
-                        ${subWeekInputs}
-                        <td></td>
-                    </tr>`;
+                    return (grupoObj?.procedimentos || []).map(sigtap => {
+                        const proc = localProcs.find(x => x.sigtap === sigtap);
+                        const procName = proc?.nome || sigtap;
+                        // Somente as pactuações deste sigtap E deste instituto (não mistura institutos).
+                        const pacts = group.items.filter(i =>
+                            i.instId === instId && cleanSigtapFn(i.sigtap) === cleanSigtapFn(sigtap));
+                        const pactId = pacts[0]?.id || ''; // edição grava no registro do próprio instituto
+                        const semVals = [1,2,3,4,5].map(w =>
+                            pacts.reduce((s, p) => s + (parseInt(p?.producao?.[`sem${w}`] || 0)), 0));
+                        const subTotal = semVals.reduce((s, v) => s + v, 0);
+
+                        // Passa sigtap + instId para que a pactuação possa ser criada no instituto certo se faltar
+                        const subWeekInputs = [1,2,3,4,5].map((w, idx) => `
+                            <td class="px-2 py-3 whitespace-nowrap text-center">
+                                <input
+                                    onchange="window.updateUnifiedWeek('${group.key}', 'sem${w}', this.value, '${pactId}', '${sigtap}', '${instId}')"
+                                    class="w-16 text-center rounded-lg border-slate-300 dark:border-slate-600 focus:ring-primary focus:border-primary text-xs shadow-sm font-bold ${activeClass}"
+                                    min="0" value="${semVals[idx]}" type="number" ${inputState}
+                                />
+                            </td>`).join('');
+
+                        return `
+                        <tr class="border-b border-indigo-50 dark:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800/30 transition-colors">
+                            <td class="pl-10 pr-4 py-3">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="material-symbols-outlined text-[14px] text-indigo-300">subdirectory_arrow_right</span>
+                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">${procName}</span>
+                                    ${instTag}
+                                </div>
+                            </td>
+                            <td class="px-6 py-3 text-[10px] font-mono text-slate-400">${sigtap}</td>
+                            <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
+                            <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
+                            <td class="px-6 py-3 text-center text-xs font-bold text-slate-500">${formatNumber(subTotal)}</td>
+                            <td class="px-4 py-3 text-center text-[10px] text-slate-400">—</td>
+                            ${subWeekInputs}
+                            <td></td>
+                        </tr>`;
+                    }).join('');
                 }).join('');
 
                 return headerRow + subRows;
@@ -1111,14 +1163,15 @@ function renderTableKeepFocus() {
     }
 }
 
-window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sigtap = null) => {
+window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sigtap = null, instId = null) => {
     const val = parseInt(value) || 0;
     const group = window.displayGroups[groupKey];
     if (!group) return;
 
     if (group.isGrupo && !pactId && sigtap) {
-        // No pactuação exists for this procedure yet — auto-create from a sibling item in the group
-        const template = group.items[0];
+        // Ainda não existe pactuação deste procedimento para este instituto — cria a partir de um
+        // item irmão DO MESMO instituto (não de outro), preservando o vínculo correto da oferta.
+        const template = (instId && group.items.find(i => i.instId === instId)) || group.items[0];
         if (!template) return;
         const newPact = {
             instId: template.instId,
@@ -1338,15 +1391,21 @@ window.openGlobalBreakdown = (sigtap) => {
         if (oldGlobal) oldGlobal.remove();
 
         if (group.global && group.global.breakdown.length > 0) {
+            // Em oferta unificada a meta é da REDE (mostrada no topo), não por instituto — então
+            // ocultamos a "Meta:" de cada linha para não sugerir uma meta individual inexistente.
+            const isGrupoRede = !!group.isGrupo;
             const breakdownHtml = group.global.breakdown.map(item => {
                 const inst = allInstitutes.find(i => i.id === item.instId);
-                const instName = inst ? inst.sigla : 'Inst. Desconhecido';
+                const instName = inst ? (inst.sigla || inst.nome) : 'Inst. Desconhecido';
+                const metaTag = isGrupoRede
+                    ? ''
+                    : `<span class="text-xs text-slate-500 font-medium">Meta: ${item.meta}</span>`;
 
                 return `
                     <div class="flex items-center justify-between text-sm py-3 border-b border-emerald-100 dark:border-emerald-800 last:border-0 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 px-2 rounded-lg transition-colors">
                         <span class="font-bold text-slate-700 dark:text-emerald-100">${instName}</span>
                         <div class="flex items-center gap-4">
-                            <span class="text-xs text-slate-500 font-medium">Meta: ${item.meta}</span>
+                            ${metaTag}
                             <span class="font-bold ${item.realizado >= item.meta ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}">
                                 Ofertado: ${item.realizado}
                             </span>
