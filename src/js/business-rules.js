@@ -195,18 +195,30 @@ export function chaveOfertaRede(p) {
  * @returns {Object} mapa chave (via chaveOfertaRede) -> oferta total da rede
  */
 export function mapaOfertaRede(pactuacoes = []) {
-    const porChaveInst = {}; // chave -> { instId -> oferta }
+    // chave -> instId -> sigtap normalizado -> oferta
+    //
+    // A oferta é um fato do par instituto+procedimento e está replicada em uma pactuação por
+    // incentivo. Deduplicamos por SIGTAP (MAIOR entre as cópias) ANTES de somar: num grupo
+    // unificado os SIGTAPs somam entre si por serem procedimentos distintos, mas o mesmo
+    // SIGTAP nunca pode contar duas vezes só porque participa de dois incentivos.
+    //
+    // Para procedimento individual a chave já fixa um único SIGTAP, então a soma interna
+    // devolve exatamente o maior — o mesmo resultado de antes, sem precisar de dois caminhos.
+    const porChaveInst = {};
     for (const p of pactuacoes) {
         const chave = chaveOfertaRede(p);
+        const sig = normalizarCodigo(p?.sigtap);
         if (!porChaveInst[chave]) porChaveInst[chave] = {};
-        const atual = porChaveInst[chave][p.instId] || 0;
-        porChaveInst[chave][p.instId] = p?.grupoOfertaId
-            ? atual + getOferta(p)          // grupo: soma os sigtaps do mesmo instituto
-            : Math.max(atual, getOferta(p)); // individual: maior oferta do instituto
+        if (!porChaveInst[chave][p.instId]) porChaveInst[chave][p.instId] = {};
+        const porSigtap = porChaveInst[chave][p.instId];
+        porSigtap[sig] = Math.max(porSigtap[sig] || 0, getOferta(p));
     }
     const mapa = {};
     for (const chave of Object.keys(porChaveInst)) {
-        mapa[chave] = Object.values(porChaveInst[chave]).reduce((s, v) => s + v, 0);
+        mapa[chave] = Object.values(porChaveInst[chave]).reduce(
+            (soma, porSigtap) => soma + Object.values(porSigtap).reduce((s, v) => s + v, 0),
+            0
+        );
     }
     return mapa;
 }

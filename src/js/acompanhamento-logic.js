@@ -697,10 +697,12 @@ async function renderTable() {
                 // Unit Values (Best available)
                 vSigtap: Math.max(safeParseFloat(p.vlrSigtapBase), safeParseFloat(proc?.vlrSigtap), 0),
                 vInc: safeParseFloat(p.vlrIncentivo),
-                // Track seen institutes to avoid double-counting production
-                seenProdInstIds: new Set(),
-                // Track max offer per institute (handles multiple incentive entries)
-                instMaxOffer: {}
+                // Produção e oferta são fatos FÍSICOS do par instituto+procedimento: a mesma
+                // quantidade está replicada em uma pactuação por incentivo. Deduplicamos por
+                // instId+sigtap pegando o MAIOR e só depois somamos — somar as cópias contaria
+                // o mesmo atendimento uma vez por incentivo.
+                prodByInstSigtap: {},   // "instId-sigtap" -> { realizada, aprovada }
+                offerByInstSigtap: {}   // "instId-sigtap" -> oferta
             };
         }
 
@@ -734,28 +736,30 @@ async function renderTable() {
             groups[key].totalMeta = Math.max(groups[key].totalMeta, meta);
         }
 
-        // Production: deduplicate by institute (first occurrence only)
-        if (!groups[key].seenProdInstIds.has(p.instId)) {
-            groups[key].seenProdInstIds.add(p.instId);
-            groups[key].totalProd += getProduzido(p);           // Previsto: Produzido (realizada)
-            groups[key].totalProdAprovada += getRetornoSMSA(p); // Pago: Aprovado/SMSA (aprovada)
-        }
+        // Chave física do lançamento: instituto + procedimento. O mesmo par reaparece uma vez
+        // por incentivo com o valor replicado, por isso MAIOR entre as cópias — nunca soma.
+        const pk = `${p.instId}-${normalizarCodigo(p.sigtap)}`;
 
-        // Offer: track max per institute (handles multiple incentive entries for same procedure)
-        // Uses weekly sums as primary source, falls back to realizada or static ofertado
-        const thisInstOffer = getOferta(p); // OFERTA do instituto = campo ofertado
-        if (grupo) {
-            // Grupos unificados: cada sigtap é independente, soma as contribuições
-            groups[key].instMaxOffer[p.instId] = (groups[key].instMaxOffer[p.instId] || 0) + thisInstOffer;
-        } else {
-            // Procedimentos individuais: max para evitar dupla contagem por incentivo
-            groups[key].instMaxOffer[p.instId] = Math.max(groups[key].instMaxOffer[p.instId] || 0, thisInstOffer);
-        }
+        const prodPk = groups[key].prodByInstSigtap[pk] || { realizada: 0, aprovada: 0 };
+        prodPk.realizada = Math.max(prodPk.realizada, getProduzido(p));    // Previsto: Produzido
+        prodPk.aprovada  = Math.max(prodPk.aprovada,  getRetornoSMSA(p));  // Pago: Retorno SMSA
+        groups[key].prodByInstSigtap[pk] = prodPk;
+
+        // Oferta segue a mesma regra. Num grupo unificado os SIGTAPs somam entre si (são
+        // procedimentos distintos), mas cada SIGTAP entra uma única vez.
+        groups[key].offerByInstSigtap[pk] = Math.max(
+            groups[key].offerByInstSigtap[pk] || 0,
+            getOferta(p)
+        );
     });
 
-    // Finalize totalOffer from per-institute max offers
+    // Consolida somando as chaves instituto+procedimento já deduplicadas. Procedimento
+    // individual tem uma chave por instituto; grupo unificado tem uma por instituto e SIGTAP.
     Object.values(groups).forEach(g => {
-        g.totalOffer = Object.values(g.instMaxOffer).reduce((sum, v) => sum + v, 0);
+        const prods = Object.values(g.prodByInstSigtap);
+        g.totalOffer        = Object.values(g.offerByInstSigtap).reduce((s, v) => s + v, 0);
+        g.totalProd         = prods.reduce((s, v) => s + v.realizada, 0);
+        g.totalProdAprovada = prods.reduce((s, v) => s + v.aprovada, 0);
     });
 
     // Remove standalone entries for SIGTAPs already covered by a unified group
@@ -808,14 +812,14 @@ async function renderTable() {
             const prodPrev = getProduzido(item); // Previsto: produzido (realizada)
             const instId = item.instId;
             const instSigtapKey = `${instId}-${item.sigtap}`;
-            if (!(instSigtapKey in usageByProg[pId].instProds)) {
-                usageByProg[pId].instProds[instSigtapKey] = { prod, prodPrev, unitVal: itemValInc };
-            } else {
-                const existing = usageByProg[pId].instProds[instSigtapKey];
-                if (prod > existing.prod || prodPrev > existing.prodPrev) {
-                    usageByProg[pId].instProds[instSigtapKey] = { prod, prodPrev, unitVal: itemValInc };
-                }
-            }
+            // MAIOR de cada campo independentemente: trocar a entrada inteira quando só um
+            // dos dois cresce descartaria o maior valor do outro.
+            const ex = usageByProg[pId].instProds[instSigtapKey] || { prod: 0, prodPrev: 0, unitVal: 0 };
+            usageByProg[pId].instProds[instSigtapKey] = {
+                prod:     Math.max(ex.prod, prod),
+                prodPrev: Math.max(ex.prodPrev, prodPrev),
+                unitVal:  Math.max(ex.unitVal, itemValInc),
+            };
         });
 
         // Calcula incentivo Pago (sobre aprovado) e Previsto (sobre produzido) da rede
@@ -1281,11 +1285,15 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
     const targetInstId = masterItem.instId;
     const targetSigtap = normalizarCodigo(masterItem.sigtap);
 
-    // Update only items with the same SIGTAP+Institute (same procedure, possibly multiple programs)
-    const itemsToUpdate = group.items.filter(i => {
-        const iSigtap = normalizarCodigo(i.sigtap);
-        return i.instId === targetInstId && iSigtap === targetSigtap;
-    });
+    // A produção é física do par instituto+procedimento: um atendimento realizado vale para
+    // TODOS os incentivos daquele procedimento. Por isso a busca é em `allPactuacoes` e não em
+    // `group.items` — este já passou pelo filtro de incentivo da tela e deixaria as pactuações
+    // dos demais incentivos com o valor antigo.
+    const itemsToUpdate = allPactuacoes.filter(i =>
+        i.instId === targetInstId &&
+        normalizarCodigo(i.sigtap) === targetSigtap &&
+        i.competencia === masterItem.competencia
+    );
 
     try {
         const updatePromises = itemsToUpdate.map(item => {
@@ -1297,14 +1305,15 @@ window.saveBreakdownItem = async (pactId, value, groupKey) => {
         await Promise.all(updatePromises);
         console.log(`Synced produzido ${val} for ${itemsToUpdate.length} items (Inst: ${targetInstId}, SIGTAP: ${targetSigtap})`);
 
-        // Recalc Group Totals (deduplicate by instId+sigtap to avoid double-counting multiple programs for same procedure)
-        const seenRecalcKeys = new Set();
-        group.totalProd = group.items.reduce((sum, i) => {
+        // Recalcula o total do grupo com a MESMA regra da montagem: maior valor por
+        // instituto+procedimento, depois soma. (renderTable() logo abaixo refaz tudo do zero;
+        // isto mantém o objeto coerente para quem o ler antes disso.)
+        const maiorPorInstSigtap = {};
+        group.items.forEach(i => {
             const k = `${i.instId}_${normalizarCodigo(i.sigtap)}`;
-            if (seenRecalcKeys.has(k)) return sum;
-            seenRecalcKeys.add(k);
-            return sum + (parseInt(i.producao?.realizada) || 0);
-        }, 0);
+            maiorPorInstSigtap[k] = Math.max(maiorPorInstSigtap[k] || 0, getProduzido(i));
+        });
+        group.totalProd = Object.values(maiorPorInstSigtap).reduce((s, v) => s + v, 0);
         group.totalFatSigtap = group.totalProd * group.vSigtap;
 
         // Re-render table to reflect new totals (and financial calculations)
@@ -1332,17 +1341,34 @@ window.saveBreakdownField = async (pactId, field, value, groupKey) => {
             // "Retorno SMSA" = quantidade aprovada pela secretaria (producao.aprovada).
             // O Incentivo Pago (definitivo) é calculado sobre essa quantidade.
             const qtd = parseInt(value) || 0;
-            if (!item.producao) item.producao = {};
-            item.producao.aprovada = qtd;
-            await Repository.savePactuacao({ id: item.id, producao: { aprovada: qtd } });
+            const alvoSigtap = normalizarCodigo(item.sigtap);
 
-            // Meta avaliada pela REDE (soma das ofertas dos institutos), nunca por instituto.
-            const incentivoPago = calcIncentivo({ vlrIncentivo: item.vlrIncentivo, quantidade: qtd, oferta: group.totalOffer, meta: group.totalMeta });
-            item.incentivoPago = incentivoPago;
-            await Repository.savePactuacao({ id: item.id, incentivoPago });
+            // Mesma regra da produção: a quantidade aprovada é do par instituto+procedimento e
+            // vale para todos os incentivos. Replica sobre `allPactuacoes` — `group.items` está
+            // restrito ao incentivo filtrado na tela.
+            const irmaos = allPactuacoes.filter(i =>
+                i.instId === item.instId &&
+                normalizarCodigo(i.sigtap) === alvoSigtap &&
+                i.competencia === item.competencia
+            );
+
+            await Promise.all(irmaos.map(i => {
+                if (!i.producao) i.producao = {};
+                i.producao.aprovada = qtd;
+                // A quantidade é comum, mas o valor devido não: cada incentivo tem seu próprio
+                // vlrIncentivo e sua própria meta. A oferta que libera o pagamento é a da REDE.
+                const inc = calcIncentivo({
+                    vlrIncentivo: i.vlrIncentivo,
+                    quantidade: qtd,
+                    oferta: group.totalOffer,
+                    meta: getMeta(i, localGruposOferta),
+                });
+                i.incentivoPago = inc;
+                return Repository.savePactuacao({ id: i.id, producao: { aprovada: qtd }, incentivoPago: inc });
+            }));
 
             const incentivoPagoEl = document.querySelector(`span[data-incentivo-pago="${pactId}"]`);
-            if (incentivoPagoEl) incentivoPagoEl.textContent = formatCurrency(incentivoPago);
+            if (incentivoPagoEl) incentivoPagoEl.textContent = formatCurrency(item.incentivoPago || 0);
         } else {
             const val = parseFloat(value);
             const numVal = isNaN(val) ? null : val;
