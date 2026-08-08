@@ -92,6 +92,8 @@ let cancelled = [];      // cancelados (com responsável)
 let currentUser = null;  // { uid, email, name }
 let view = 'board';      // 'board' | 'arquivados' | 'cancelados'
 let areaFilter = '';     // '' | 'central' | 'institutos' | 'ambos'
+let ownerFilter = '';    // '' = todos | 'none' = sem responsável | e-mail
+let teamUsers = [];      // candidatos a responsável (perfil Orçamento, ativos)
 let dragId = null;
 let boardUnsub = null;
 let commentsUnsub = null;
@@ -159,6 +161,11 @@ function toCard(id, data) {
         area: data.area ?? 'central',
         page: data.page ?? '',
         subitem: data.subitem ?? '',
+        // Responsável — chaveado por e-mail, não por uid: o doc de `usuarios`
+        // não usa o uid do Auth como id (o auth-guard acha o perfil por email),
+        // então o email é a única identidade compartilhada entre os dois.
+        assigneeEmail: (data.assigneeEmail ?? '').toLowerCase(),
+        assigneeName: data.assigneeName ?? '',
         order: typeof data.order === 'number' ? data.order : 0,
         imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
         createdBy: data.createdBy ?? '',
@@ -177,7 +184,55 @@ function toCard(id, data) {
 }
 
 function visibleCards() {
-    return cards.filter((c) => !areaFilter || c.area === areaFilter);
+    return cards.filter((c) => {
+        if (areaFilter && c.area !== areaFilter) return false;
+        if (ownerFilter === 'none') return !c.assigneeEmail;
+        if (ownerFilter) return c.assigneeEmail === ownerFilter;
+        return true;
+    });
+}
+
+// Mesma normalização do auth-guard: o papel é gravado como "Orçamento" (com
+// acento e maiúscula), então comparar cru não bate.
+function normalizeRole(str) {
+    return str ? str.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+}
+
+// Candidatos a responsável = perfil Orçamento e ativos. Institutos não abrem o
+// kanban.html (auth-guard trata como página de admin), então atribuir a eles
+// seria criar uma demanda que o dono nunca veria.
+async function loadTeam() {
+    try {
+        const { Repository } = await import('./repository.js');
+        const all = await Repository.getUsers();
+        teamUsers = all
+            .filter((u) => normalizeRole(u.role) === 'orcamento' && (u.status || 'Ativo') !== 'Inativo')
+            .map((u) => ({ email: (u.email || '').toLowerCase(), name: u.name || u.email || 'Sem nome' }))
+            .filter((u) => u.email)
+            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        renderOwnerFilter();
+    } catch (err) {
+        console.error('[Kanban] loadTeam:', err);
+    }
+}
+
+// Opções montadas a partir dos próprios cards (e não de teamUsers): quem saiu
+// da equipe continua filtrável enquanto tiver demanda aberta.
+function renderOwnerFilter() {
+    const sel = document.getElementById('filter-owner');
+    if (!sel) return;
+    const map = new Map();
+    cards.forEach((c) => { if (c.assigneeEmail) map.set(c.assigneeEmail, c.assigneeName || c.assigneeEmail); });
+    const semDono = cards.filter((c) => !c.assigneeEmail).length;
+    const opts = [...map].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+
+    sel.innerHTML = `<option value="">Todos os responsáveis</option>`
+        + opts.map(([email, name]) => `<option value="${escapeHtml(email)}">${escapeHtml(name)}</option>`).join('')
+        + (semDono ? `<option value="none">Sem responsável (${semDono})</option>` : '');
+
+    // O filtro selecionado pode ter deixado de existir (último card dele saiu).
+    if (ownerFilter && !sel.querySelector(`option[value="${CSS.escape(ownerFilter)}"]`)) ownerFilter = '';
+    sel.value = ownerFilter;
 }
 
 // ── Firestore ────────────────────────────────────────────────────────────────
@@ -503,6 +558,18 @@ function updateTabs() {
 
 // ── Render: card (face) ────────────────────────────────────────────────────
 
+// Sem responsável fica um círculo tracejado — o buraco precisa ser visível,
+// senão demanda órfã se camufla no meio das atribuídas.
+function assigneeChipHtml(card) {
+    if (!card.assigneeEmail) {
+        return `<span title="Sem responsável"
+            class="h-6 w-6 shrink-0 rounded-full border border-dashed border-slate-300 dark:border-slate-600 text-slate-300 dark:text-slate-600 text-[10px] font-bold flex items-center justify-center">?</span>`;
+    }
+    const name = card.assigneeName || card.assigneeEmail;
+    return `<span title="Responsável: ${escapeHtml(name)}"
+        class="h-6 w-6 shrink-0 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">${escapeHtml(initials(name))}</span>`;
+}
+
 function cardFaceHtml(card) {
     const prio = PRIORITIES[card.priority] || PRIORITIES.media;
     const area = AREAS[card.area] || AREAS.central;
@@ -524,6 +591,7 @@ function cardFaceHtml(card) {
         ${card.createdByName ? `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 pl-6">Aberto por ${escapeHtml(card.createdByName)}</p>` : ''}
       </button>
       <div class="px-3 pb-2.5 pt-1 pl-9 flex items-center gap-2">
+        ${assigneeChipHtml(card)}
         <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${prio.badge}">${prio.label}</span>
         ${card.imageUrls?.length ? `<span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-text-secondary dark:text-slate-400" title="${card.imageUrls.length} anexo(s)"><span class="material-symbols-outlined text-[14px]">attachment</span>${card.imageUrls.length}</span>` : ''}
         <div class="ml-auto flex items-center gap-1">
@@ -549,6 +617,7 @@ function cardFaceHtml(card) {
 
 function render() {
     updateTabs();
+    renderOwnerFilter();
     if (view === 'board') renderBoard();
     else if (view === 'arquivados') renderArchived();
     else renderCancelled();
@@ -782,6 +851,9 @@ function openCardModal(card, defaultColumn) {
         title: '', description: '', priority: 'media',
         area: 'central', page: '', subitem: '',
         column: defaultColumn || 'reportado',
+        // Demanda nova já nasce com quem está criando — trocar é um clique.
+        assigneeEmail: (currentUser?.email || '').toLowerCase(),
+        assigneeName: currentUser?.name || '',
     };
     const root = document.getElementById('kanban-modal-root');
 
@@ -843,6 +915,19 @@ function openCardModal(card, defaultColumn) {
           </div>
 
           <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wide">Responsável</label>
+            <select id="f-owner" class="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 text-text-main dark:text-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+              <option value="">— Sem responsável</option>
+              ${teamUsers.map((u) => `<option value="${escapeHtml(u.email)}" ${u.email === c.assigneeEmail ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+              ${c.assigneeEmail && !teamUsers.some((u) => u.email === c.assigneeEmail)
+                  // Responsável que saiu da equipe continua na lista deste card:
+                  // sem isso, salvar qualquer edição apagaria a atribuição.
+                  ? `<option value="${escapeHtml(c.assigneeEmail)}" selected>${escapeHtml(c.assigneeName || c.assigneeEmail)}</option>`
+                  : ''}
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
             <label class="text-xs font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wide">Anexos <span class="normal-case font-normal text-slate-400">(imagem ou PDF · cole um print com Ctrl+V)</span></label>
             ${isEdit && c.imageUrls?.length ? `<div id="saved-attachments" class="flex flex-wrap gap-2 mb-2">${c.imageUrls.map((u) => attachmentThumbHtml(u, { removable: true })).join('')}</div>` : ''}
             <div id="attach-stager" class="space-y-2"></div>
@@ -892,6 +977,8 @@ function openCardModal(card, defaultColumn) {
         e.preventDefault();
         const title = root.querySelector('#f-title').value.trim();
         if (!title) return;
+        const ownerEmail = root.querySelector('#f-owner').value;
+        const ownerOpt = root.querySelector('#f-owner').selectedOptions[0];
         const payload = {
             title,
             description: root.querySelector('#f-desc').value.trim(),
@@ -900,6 +987,11 @@ function openCardModal(card, defaultColumn) {
             subitem: root.querySelector('#f-subitem').value.trim(),
             column: root.querySelector('#f-column').value,
             priority: root.querySelector('#f-priority').value,
+            assigneeEmail: ownerEmail,
+            // Nome desnormalizado: o rótulo da própria opção, que já é o nome
+            // cadastrado em `usuarios` — desenhar a inicial não pode custar
+            // uma leitura por card.
+            assigneeName: ownerEmail ? (ownerOpt?.textContent.trim() || '') : '',
         };
         const btn = root.querySelector('#modal-save');
         btn.disabled = true;
@@ -985,6 +1077,7 @@ function openViewModal(card) {
             <div>
               <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Informações</p>
               <dl class="space-y-2 text-sm">
+                <div class="flex gap-2"><dt class="text-text-secondary w-28 shrink-0">Responsável</dt><dd class="text-text-main dark:text-slate-200">${card.assigneeName ? escapeHtml(card.assigneeName) : '<span class="text-slate-400 italic">não definido</span>'}</dd></div>
                 ${card.createdByName ? `<div class="flex gap-2"><dt class="text-text-secondary w-28 shrink-0">Aberto por</dt><dd class="text-text-main dark:text-slate-200">${escapeHtml(card.createdByName)}</dd></div>` : ''}
                 <div class="flex gap-2"><dt class="text-text-secondary w-28 shrink-0">Criado em</dt><dd class="text-text-main dark:text-slate-200">${fmtDate(card.createdAt)}</dd></div>
                 <div class="flex gap-2"><dt class="text-text-secondary w-28 shrink-0">Atualizado</dt><dd class="text-text-main dark:text-slate-200">${timeAgo(card.updatedAt)}</dd></div>
@@ -1137,6 +1230,7 @@ function initKanban() {
     document.getElementById('tab-cancelled').addEventListener('click', () => { view = 'cancelados'; render(); });
     document.getElementById('btn-new-card').addEventListener('click', () => openCardModal(null));
     document.getElementById('filter-area').addEventListener('change', (e) => { areaFilter = e.target.value; render(); });
+    document.getElementById('filter-owner').addEventListener('change', (e) => { ownerFilter = e.target.value; render(); });
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
@@ -1151,6 +1245,7 @@ function initKanban() {
         }
     });
 
+    loadTeam();
     subscribeBoard();
 }
 

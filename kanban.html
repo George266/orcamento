@@ -124,6 +124,16 @@
                         class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
                 </div>
 
+                <!-- Filtro por responsável (opções montadas em runtime a partir dos cards) -->
+                <div class="relative">
+                    <select id="filter-owner"
+                        class="appearance-none rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-800 text-text-main dark:text-white pl-3 pr-8 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="">Todos os responsáveis</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-lg">expand_more</span>
+                </div>
+
                 <!-- Alternância de visão -->
                 <div class="flex rounded-lg border border-border-light dark:border-border-dark overflow-hidden text-sm">
                     <button id="tab-board"
