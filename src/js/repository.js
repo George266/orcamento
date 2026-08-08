@@ -76,6 +76,29 @@ const findNearMatches = (id, existingIds, maxDist = 2) => {
     );
 };
 
+// Competência "mmm/yy" (ex.: "jul/25") -> "YYYY-MM" (ex.: "2025-07"). Null se não-mensal.
+const _MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const competenciaToYM = (comp) => {
+    if (!comp) return null;
+    const m = comp.toString().trim().toLowerCase().match(/^([a-zç]{3})\/(\d{2,4})$/);
+    if (!m) return null;
+    const mi = _MESES_CURTOS.indexOf(m[1]);
+    if (mi < 0) return null;
+    const yy = m[2].length <= 2 ? 2000 + parseInt(m[2], 10) : parseInt(m[2], 10);
+    return `${yy}-${String(mi + 1).padStart(2, '0')}`;
+};
+
+// Verdadeiro se o mês "YYYY-MM" cai na vigência do grupo (nulos = período aberto).
+const grupoCobreYM = (ym, grupo) => {
+    if (!ym || !grupo) return false;
+    const vi = grupo.vigenciaInicio || '0000-01';
+    const vf = grupo.vigenciaFim || '9999-12';
+    return ym >= vi && ym <= vf;
+};
+
+// A "família" agrupa versões do mesmo grupo (vigências distintas). Fallback = próprio id.
+const familiaDoGrupo = (g) => (g && (g.familiaId || g.id)) || null;
+
 /**
  * Repository to handle all Firestore operations.
  */
@@ -138,8 +161,11 @@ export const Repository = {
 
     async saveGrupoOferta(grupo) {
         const id = grupo.id || normalizeId(grupo.nome);
+        // familiaId liga as versões (vigências) do mesmo grupo. Grupo novo sem família
+        // adota o próprio id; a cópia p/ nova vigência já chega com a família da origem.
+        const familiaId = grupo.familiaId || id;
         const ref = doc(db, COLL_GRUPOS_OFERTA, id);
-        await setDoc(ref, { ...grupo, id }, { merge: true });
+        await setDoc(ref, { ...grupo, id, familiaId }, { merge: true });
         return id;
     },
 
@@ -340,6 +366,23 @@ export const Repository = {
 
         if (snapshot.empty) throw new Error(`Nenhuma pactuação encontrada para ${sourceComp}.`);
 
+        // Reaponta o vínculo de grupo para a VERSÃO (vigência) da mesma família que cobre a
+        // competência destino — assim a meta do grupo acompanha a virada de ciclo. Se nenhuma
+        // versão cobre o destino (ou destino não-mensal), mantém o vínculo atual.
+        const grupos = await this.getGruposOferta();
+        const grupoById = new Map(grupos.map(g => [g.id, g]));
+        const targetYM = competenciaToYM(targetComp);
+        const resolverGrupoDestino = (oldGrupoId) => {
+            if (!oldGrupoId || !targetYM) return oldGrupoId || null;
+            const atual = grupoById.get(oldGrupoId);
+            if (!atual) return oldGrupoId;
+            const familia = familiaDoGrupo(atual);
+            const candidatos = grupos.filter(g => familiaDoGrupo(g) === familia && grupoCobreYM(targetYM, g));
+            if (candidatos.length === 0) return oldGrupoId; // nenhuma versão cobre: preserva
+            const escolhido = candidatos.find(g => g.vigenciaInicio && g.vigenciaFim) || candidatos[0];
+            return escolhido.id;
+        };
+
         // 2. Batch Write
         const batchSize = 400;
         const chunks = [];
@@ -348,6 +391,7 @@ export const Repository = {
         }
 
         let count = 0;
+        let reapontados = 0;
         for (const chunk of chunks) {
             const batch = writeBatch(db);
             chunk.forEach(d => {
@@ -355,10 +399,14 @@ export const Repository = {
                 // Create new ID: prog_inst_sigtap_targetComp
                 const newId = normalizeId(`${data.progId}_${data.instId}_${data.sigtap}_${targetComp}`);
 
+                const novoGrupoId = resolverGrupoDestino(data.grupoOfertaId);
+                if (data.grupoOfertaId && novoGrupoId !== data.grupoOfertaId) reapontados++;
+
                 const newData = {
                     ...data,
                     id: newId,
                     competencia: targetComp,
+                    grupoOfertaId: novoGrupoId ?? null,
                     // Reset production for new month
                     producao: { sem1: 0, sem2: 0, sem3: 0, sem4: 0, sem5: 0, realizada: 0 },
                     importedAt: new Date(),
@@ -372,8 +420,8 @@ export const Repository = {
             await batch.commit();
         }
 
-        await this.logActivity('DUPLICATE_COMPETENCIA', { source: sourceComp, target: targetComp, count });
-        return count;
+        await this.logActivity('DUPLICATE_COMPETENCIA', { source: sourceComp, target: targetComp, count, reapontados });
+        return { count, reapontados };
     },
 
 
@@ -398,6 +446,27 @@ export const Repository = {
         const uniqueInsts = new Map();
         const uniqueProcs = new Map();
 
+        // Especialidades cadastradas (config/system): mapeia NOME -> código curto (variante).
+        // Consultas especializadas compartilham o mesmo SIGTAP real; a variante distingue.
+        const cfg = await this.getSystemConfig();
+        const espList = Array.isArray(cfg?.especialidades) ? cfg.especialidades : [];
+        const normName = (t) => String(t || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
+        const espByName = new Map(espList.map(e => [normName(e.nome), e]));
+        const espByCode = new Map(espList.map(e => [String(e.codigo || '').toUpperCase(), e]));
+        // Resolve a especialidade da linha do CSV. Aceita o NOME ("Cardiologia") ou o
+        // CÓDIGO curto ("CARD"); se não achar na lista, deriva um código do texto.
+        const deriveVar = (raw) => {
+            const n = String(raw || '').trim();
+            if (!n) return { variante: '', especialidade: '' };
+            const byName = espByName.get(normName(n));
+            if (byName) return { variante: byName.codigo, especialidade: byName.nome || n };
+            const byCode = espByCode.get(n.toUpperCase());
+            if (byCode) return { variante: byCode.codigo, especialidade: byCode.nome || n };
+            return { variante: normName(n).slice(0, 8), especialidade: n };
+        };
+        // Monta o SIGTAP composto (identidade): "0301010072-CARD" quando há variante.
+        const montarSigtap = (digitos, variante) => (digitos && variante) ? `${digitos}-${variante}` : digitos;
+
         const getCol = (row, ...names) => {
             const keys = Object.keys(row);
             const clean = (t) => t.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -420,13 +489,17 @@ export const Repository = {
                 sCod = sCod.padStart(10, '0');
             }
 
+            const { variante, especialidade } = deriveVar(getCol(item, 'Especialidade', 'Especialidad', 'Esp'));
+            const sigtapComposto = montarSigtap(sCod, variante);
+
             if (pNome) uniqueProgs.set(normalizeId(pNome), pNome);
             if (iNome) uniqueInsts.set(normalizeId(iNome), iNome);
-            if (sCod) {
+            if (sigtapComposto) {
                 const pNomeProc = getCol(item, 'Procedimento', 'Proc', 'Desc', 'Nome').toString().trim();
                 const vBaseRaw = getCol(item, 'Valor Sigtap', 'Valor Unitário', 'Base', 'Preço', 'Unitário', 'Vlr').toString().replace(/[R$\s\u00A0]/g, "").replace(/\./g, "").replace(',', '.');
                 const vBase = parseFloat(vBaseRaw || 0);
-                uniqueProcs.set(sCod, { nome: pNomeProc, vlr: vBase });
+                // Chave = SIGTAP composto → cada especialidade vira um procedimento distinto.
+                uniqueProcs.set(sigtapComposto, { nome: pNomeProc, vlr: vBase, codigoFaturamento: sCod, variante, especialidade });
             }
         });
 
@@ -497,7 +570,13 @@ export const Repository = {
             } else if (item.type === 'proc') {
                 // SKIP if exists
                 if (!existingProcIds.has(item.id)) {
-                    batch.set(doc(db, COLL_PROCEDIMENTOS, item.id), { sigtap: item.id, nome: item.nome, vlrSigtap: item.vlr, status: 'Ativo' }, { merge: true });
+                    batch.set(doc(db, COLL_PROCEDIMENTOS, item.id), {
+                        sigtap: item.id,                       // identidade (composto p/ especializadas)
+                        codigoFaturamento: item.codigoFaturamento || item.id, // SIGTAP real (só dígitos)
+                        variante: item.variante || '',
+                        especialidade: item.especialidade || '',
+                        nome: item.nome, vlrSigtap: item.vlr, status: 'Ativo'
+                    }, { merge: true });
                 }
             }
         }, 10, 30);
@@ -537,14 +616,21 @@ export const Repository = {
                 }
             }
 
+            const { variante, especialidade } = deriveVar(getCol(row, 'Especialidade', 'Especialidad', 'Esp'));
+            const sigtapComposto = montarSigtap(sCod, variante);
+
             const progId = normalizeId(pNome);
             const instId = normalizeId(iNome);
-            const pactId = normalizeId(`${progId}_${instId}_${sCod}_${comp}`);
+            // Id composto usa o SIGTAP COMPOSTO → especialidades do mesmo código real não colidem.
+            const pactId = normalizeId(`${progId}_${instId}_${sigtapComposto}_${comp}`);
 
             const pactData = {
                 progId,
                 instId,
-                sigtap: sCod,
+                sigtap: sigtapComposto,          // identidade (real-VARIANTE nas especializadas)
+                codigoFaturamento: sCod,         // SIGTAP real (só dígitos)
+                variante,
+                especialidade,
                 competencia: comp,
                 // Metadata
                 processamento: getCol(row, 'Processamento'),

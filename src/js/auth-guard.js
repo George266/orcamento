@@ -33,7 +33,8 @@ export function initAuthGuard() {
                     currentPage.includes('acompanhamento_orcamento.html') ||
                     currentPage.includes('lancamento_producao.html') ||
                     currentPage.includes('configuracao.html') ||
-                    currentPage.includes('usuarios.html');
+                    currentPage.includes('usuarios.html') ||
+                    currentPage.includes('kanban.html');
 
                 const isInstitutePage = currentPage.includes('dashboard_instituto.html') ||
                     currentPage.includes('acompanhamento_instituto.html');

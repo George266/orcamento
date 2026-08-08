@@ -45,31 +45,28 @@
     <header
         class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101822] shadow-sm">
         <div class="px-4 md:px-8 flex items-center justify-between h-16">
-            <a href="dashboard_orcamento.html"
-                class="flex items-center gap-4 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
-                <div class="size-10 flex items-center justify-center overflow-hidden">
-                    <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
-                </div>
-                <div>
-                    <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
-                    <p class="text-text-secondary dark:text-slate-400 text-sm font-medium">Total Ofertado (Realizado)
-                    </p>
-                </div>
-            </a>
-            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="dashboard_orcamento.html">Visão Geral</a>
-                <a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="alertas.html">Alertas</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="lancamento_producao.html">Lançar Produção</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="configuracao.html">Parâmetros do Incentivo</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium"
-                    href="usuarios.html">Gestão de Usuários</a>
-            </nav>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 lg:gap-8 min-w-0">
+                <a href="dashboard_orcamento.html"
+                    class="flex items-center gap-3 shrink-0 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+                    <div class="size-10 flex items-center justify-center overflow-hidden">
+                        <img src="/logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-none tracking-tight">Gestão SUS</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Módulo Orçamento</p>
+                    </div>
+                </a>
+                <nav class="hidden md:flex items-center gap-5 lg:gap-7">
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="dashboard_orcamento.html">Visão Geral</a>
+                    <a class="whitespace-nowrap text-primary text-sm font-bold border-b-2 border-primary py-5" href="alertas.html">Alertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="acompanhamento_orcamento.html">Monitoramento de Ofertas</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="lancamento_producao.html">Lançar Produção</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="configuracao.html">Parâmetros do Incentivo</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="usuarios.html">Gestão de Usuários</a>
+                    <a class="whitespace-nowrap text-slate-600 dark:text-slate-300 hover:text-primary transition-colors text-sm font-medium" href="kanban.html">Demandas</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
                 <button onclick="window.handleLogout && window.handleLogout()"
                     class="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors">
                     <span class="material-symbols-outlined text-[20px]">logout</span>
@@ -96,8 +93,8 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <div class="xl:col-span-2">
+        <div id="alertas-grid" class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div id="col-tabela" class="xl:col-span-2">
                 <div
                     class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
                     <div
@@ -123,13 +120,18 @@
                     </div>
                 </div>
             </div>
-            <div class="xl:col-span-1 flex flex-col gap-6">
+            <div id="col-alertas" class="xl:col-span-1 flex flex-col gap-6">
                 <div
                     class="bg-white dark:bg-[#101822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
                     <div
-                        class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
+                        class="w-full px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
                         <span class="material-symbols-outlined text-orange-500">warning</span>
                         <h3 class="font-bold">Alertas Operacionais</h3>
+                        <button type="button" onclick="window.toggleAlertsPanel && window.toggleAlertsPanel()"
+                            class="ml-auto flex items-center justify-center size-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            title="Recolher painel (ampliar a tabela)">
+                            <span class="material-symbols-outlined text-[20px]">right_panel_close</span>
+                        </button>
                     </div>
                     <div id="alerts-container" class="p-4 flex flex-col gap-4">
                         <!-- Carregado via JS -->
@@ -137,6 +139,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- Aba flutuante para reabrir o painel de alertas quando recolhido -->
+        <button id="alerts-reopen" type="button" onclick="window.toggleAlertsPanel && window.toggleAlertsPanel()"
+            class="hidden fixed right-0 top-40 z-40 items-center gap-1.5 bg-orange-500 text-white pl-2 pr-2.5 py-3 rounded-l-xl shadow-lg hover:bg-orange-600 transition-colors"
+            style="writing-mode: vertical-rl;" title="Mostrar alertas operacionais">
+            <span class="material-symbols-outlined text-[18px]" style="writing-mode: horizontal-tb;">warning</span>
+            <span class="text-xs font-bold tracking-wide">Alertas</span>
+        </button>
 
         <!-- MODAL: DETALHAMENTO POR PROCEDIMENTO -->
         <div id="modal-detalhe-procedimento"
