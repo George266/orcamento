@@ -1163,6 +1163,74 @@ function renderTableKeepFocus() {
     }
 }
 
+/**
+ * Soma um valor pelos SIGTAPs do grupo, deduplicando as cópias por incentivo.
+ * Cada SIGTAP existe uma vez por incentivo com o MESMO valor replicado, então somar as linhas
+ * direto contaria o mesmo procedimento uma vez por incentivo. Maior por SIGTAP, depois soma.
+ */
+const somarPorSigtap = (itens = [], valorDe) => {
+    const porSigtap = {};
+    itens.forEach(i => {
+        const k = normalizarCodigo(i.sigtap);
+        porSigtap[k] = Math.max(porSigtap[k] || 0, valorDe(i) || 0);
+    });
+    return Object.values(porSigtap).reduce((s, v) => s + v, 0);
+};
+
+/**
+ * Grava uma semana da OFERTA e replica em todas as pactuações do mesmo
+ * instituto + procedimento + competência.
+ *
+ * A oferta é um fato físico do par instituto+procedimento: o instituto ofertou N daquele
+ * procedimento no mês, não "N dentro do incentivo A". Como a pactuação é gravada por incentivo
+ * (progId_instId_sigtap_competencia), a semana precisa alcançar todas as cópias — inclusive as
+ * de incentivos que o filtro da tela esconde. É a mesma regra já aplicada à produção.
+ */
+async function replicarSemanaNaRede(master, weekField, val) {
+    const alvoSigtap = normalizarCodigo(master.sigtap);
+
+    const aplicar = (p) => {
+        if (!p.producao) p.producao = {};
+        p.producao[weekField] = val;
+        // A soma das semanas é a OFERTA do instituto; `ofertado` é o espelho dessa soma.
+        p.ofertado = [1, 2, 3, 4, 5].reduce((s, w) => s + (parseInt(p.producao[`sem${w}`]) || 0), 0);
+        return p.ofertado;
+    };
+
+    // O master entra sempre — pode ainda não estar em allPactuacoes (pactuação recém-criada).
+    const vistos = new Set();
+    const alvos = [];
+    [master, ...allPactuacoes].forEach(p => {
+        if (vistos.has(p.id)) return;
+        const mesmo = p === master || (
+            p.instId === master.instId &&
+            normalizarCodigo(p.sigtap) === alvoSigtap &&
+            p.competencia === master.competencia
+        );
+        if (!mesmo) return;
+        vistos.add(p.id);
+        alvos.push(p);
+    });
+
+    await Promise.all(alvos.map(p => {
+        const ofertado = aplicar(p);
+        return Repository.savePactuacao({ id: p.id, ofertado, producao: { [weekField]: val } });
+    }));
+
+    // Espelha nas listas que alimentam a tabela (podem guardar instâncias distintas).
+    alvos.forEach(p => {
+        [localPactuacoes, allPactuacoes].forEach(lista => {
+            const idx = lista.findIndex(x => x.id === p.id);
+            if (idx === -1 || lista[idx] === p) return;
+            if (!lista[idx].producao) lista[idx].producao = {};
+            lista[idx].producao[weekField] = val;
+            lista[idx].ofertado = p.ofertado;
+        });
+    });
+
+    return alvos;
+}
+
 window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sigtap = null, instId = null) => {
     const val = parseInt(value) || 0;
     const group = window.displayGroups[groupKey];
@@ -1193,10 +1261,13 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
             newPact.id = newId;
             group.items.push(newPact);
             localPactuacoes.push(newPact);
+            allPactuacoes.push(newPact);
+            // Replica a semana nas pactuações deste mesmo procedimento nos demais incentivos.
+            await replicarSemanaNaRede(newPact, weekField, val);
             // Recalc group totals
-            group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.ofertado) || 0), 0);
+            group.totalRealizado = somarPorSigtap(group.items, i => parseInt(i.ofertado) || 0);
             [1,2,3,4,5].forEach(w => {
-                group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
+                group[`sem${w}`] = somarPorSigtap(group.items, i => parseInt(i.producao?.[`sem${w}`]) || 0);
             });
             renderTableKeepFocus();
         } catch (error) {
@@ -1207,61 +1278,35 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
     }
 
     if (group.isGrupo && pactId) {
-        // Unified group: update only the specific pactuacao (one procedure's input)
+        // Grupo unificado: a semana pertence a UM procedimento do grupo, mas precisa alcançar
+        // esse procedimento em todos os incentivos — não só na pactuação clicada.
         const pact = group.items.find(i => i.id === pactId);
         if (!pact) return;
-        if (!pact.producao) pact.producao = {};
-        pact.producao[weekField] = val;
-        // Soma das semanas = OFERTA do instituto
-        pact.ofertado = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
-
-        // Recalc group total from ALL items
-        group.totalRealizado = group.items.reduce((s, i) => s + (parseInt(i.ofertado) || 0), 0);
-        // Also update group semX totals
-        [1,2,3,4,5].forEach(w => {
-            group[`sem${w}`] = group.items.reduce((s, i) => s + (parseInt(i.producao?.[`sem${w}`]) || 0), 0);
-        });
 
         try {
-            await Repository.savePactuacao({ id: pact.id, ofertado: pact.ofertado, producao: { [weekField]: val } });
-            const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
-            if (localIdx !== -1) localPactuacoes[localIdx].producao = { ...pact.producao };
-            const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
-            if (allIdx !== -1) allPactuacoes[allIdx].producao = { ...pact.producao };
+            await replicarSemanaNaRede(pact, weekField, val);
+
+            // Totais do grupo: cada SIGTAP conta uma vez, somados entre si.
+            group.totalRealizado = somarPorSigtap(group.items, i => parseInt(i.ofertado) || 0);
+            [1,2,3,4,5].forEach(w => {
+                group[`sem${w}`] = somarPorSigtap(group.items, i => parseInt(i.producao?.[`sem${w}`]) || 0);
+            });
             renderTableKeepFocus();
         } catch (error) {
             console.error("Error updating week for grupo item:", error);
             alert("Erro ao salvar semana.");
         }
     } else {
-        // Individual item: original mirror logic
+        // Procedimento individual: um único SIGTAP, replicado entre os incentivos.
         group[weekField] = val;
-        group.totalRealizado = [1,2,3,4,5].reduce((s, w) => s + (group[`sem${w}`] || 0), 0);
-
-        const updatePromises = group.items.map(async (pact) => {
-            if (!pact.producao) pact.producao = {};
-            pact.producao[weekField] = val;
-            // Soma das semanas = OFERTA do instituto (replicada entre os incentivos do mesmo procedimento)
-            pact.ofertado = [1,2,3,4,5].reduce((s, w) => s + (parseInt(pact.producao[`sem${w}`]) || 0), 0);
-            return Repository.savePactuacao({ id: pact.id, ofertado: pact.ofertado, producao: { [weekField]: val } });
-        });
 
         try {
-            await Promise.all(updatePromises);
-            group.items.forEach(pact => {
-                const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
-                if (localIdx !== -1) {
-                    if (!localPactuacoes[localIdx].producao) localPactuacoes[localIdx].producao = {};
-                    localPactuacoes[localIdx].producao[weekField] = val;
-                    localPactuacoes[localIdx].ofertado = pact.ofertado;
-                }
-                const allIdx = allPactuacoes.findIndex(lp => lp.id === pact.id);
-                if (allIdx !== -1) {
-                    if (!allPactuacoes[allIdx].producao) allPactuacoes[allIdx].producao = {};
-                    allPactuacoes[allIdx].producao[weekField] = val;
-                    allPactuacoes[allIdx].ofertado = pact.ofertado;
-                }
-            });
+            // group.items já passou pelo filtro de incentivo da tela; replicarSemanaNaRede
+            // busca em allPactuacoes e alcança também os incentivos ocultos pelo filtro.
+            await Promise.all(
+                group.items.map(pact => replicarSemanaNaRede(pact, weekField, val))
+            );
+            group.totalRealizado = somarPorSigtap(group.items, i => parseInt(i.ofertado) || 0);
             renderTableKeepFocus();
         } catch (error) {
             console.error("Error bulk updating week:", error);
@@ -1270,33 +1315,10 @@ window.updateUnifiedWeek = async (groupKey, weekField, value, pactId = null, sig
     }
 };
 
-// Global functions for Unified Interface
-window.updateUnifiedOffer = async (sigtap, value) => {
-    const val = parseInt(value) || 0;
-    const group = window.displayGroups[sigtap];
-    if (group) {
-        // Optimistic Update & Save Logic
-        // We update EVERY item in the group to have this same realized value
-        const updatePromises = group.items.map(async (pact) => {
-            pact.ofertado = val;
-
-            // Also update localPactuacoes state to allow re-render without refetch
-            const localIdx = localPactuacoes.findIndex(lp => lp.id === pact.id);
-            if (localIdx !== -1) localPactuacoes[localIdx].ofertado = val;
-
-            return Repository.savePactuacao({ id: pact.id, ofertado: val });
-        });
-
-        try {
-            await Promise.all(updatePromises);
-            // Re-render to update progress bars correctly
-            renderTableKeepFocus();
-        } catch (error) {
-            console.error("Error bulk updating offer:", error);
-            alert("Erro ao salvar oferta unificada.");
-        }
-    }
-};
+// (removido) window.updateUnifiedOffer — gravava `ofertado` direto, sem tocar nas semanas.
+// Nenhum onchange o chamava e a OFERTA hoje vem da soma de sem1..sem5 (ver getOferta em
+// business-rules.js), então esse caminho só voltaria a existir para gravar um valor que a
+// leitura ignoraria. Use window.updateUnifiedWeek.
 
 // New Function for Exclusive Global Breakdown
 
@@ -1684,32 +1706,7 @@ function setupProfileMenu() {
     }
 }
 
-// Make update function global
-window.updateProducao = async function (input) {
-    const pId = input.dataset.id;
-    const newVal = input.value;
-
-    // Optimistic UI update could happen here
-    // Find item
-    const ofertaVal = parseInt(newVal) || 0;
-    const idx = localPactuacoes.findIndex(p => p.id === pId);
-    if (idx !== -1) {
-        localPactuacoes[idx].ofertado = ofertaVal;
-    }
-    // Update in ALL list too
-    const allIdx = allPactuacoes.findIndex(p => p.id === pId);
-    if (allIdx !== -1) {
-        allPactuacoes[allIdx].ofertado = ofertaVal;
-    }
-
-    try {
-        await Repository.savePactuacao({ id: pId, ofertado: ofertaVal });
-        input.classList.add('border-green-500');
-        setTimeout(() => input.classList.remove('border-green-500'), 1000);
-    } catch (e) {
-        console.error(e);
-        alert('Erro ao salvar produção.');
-    }
-};
+// (removido) window.updateProducao — apesar do nome, gravava `ofertado` direto, sem semanas.
+// Sem nenhum onchange apontando para ele e conflitante com getOferta. Use updateUnifiedWeek.
 
 initAcompanhamentoInst();
